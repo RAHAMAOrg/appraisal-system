@@ -1,0 +1,645 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Employee Appraisal System</title>
+    <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body>
+    <div id="root"></div>
+    
+    <script type="text/babel">
+        const { useState, useEffect } = React;
+
+        // Supabase configuration
+        const SUPABASE_URL = 'https://wdondphcmnhdslcypeya.supabase.co';
+        const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Indkb25kcGhjbW5oZHNsY3lwZXlhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Njg5MDA3MDcsImV4cCI6MjA4NDQ3NjcwN30.wIisWHb3w4cSGZIB4f3q0Z6lboidH6SzL7oGToGdnsw';
+
+        const AppraisalSystem = () => {
+          const [user, setUser] = useState(null);
+          const [loading, setLoading] = useState(true);
+          const [view, setView] = useState('login');
+
+          useEffect(() => {
+            checkSession();
+          }, []);
+
+          const checkSession = async () => {
+            const sessionData = localStorage.getItem('appraisal_session');
+            if (sessionData) {
+              setUser(JSON.parse(sessionData));
+              setView(JSON.parse(sessionData).role === 'employee' ? 'dashboard' : 'supervisor-dashboard');
+            }
+            setLoading(false);
+          };
+
+          const handleLogin = async (email, password, role) => {
+            try {
+              const response = await fetch(`${SUPABASE_URL}/rest/v1/users?email=eq.${email}&role=eq.${role}`, {
+                headers: {
+                  'apikey': SUPABASE_ANON_KEY,
+                  'Authorization': `Bearer ${SUPABASE_ANON_KEY}`
+                }
+              });
+              
+              const users = await response.json();
+              
+              if (users.length > 0 && users[0].password === password) {
+                const userData = { email, name: users[0].name, role, id: users[0].id };
+                setUser(userData);
+                localStorage.setItem('appraisal_session', JSON.stringify(userData));
+                setView(role === 'employee' ? 'dashboard' : 'supervisor-dashboard');
+              } else {
+                alert('Invalid credentials');
+              }
+            } catch (error) {
+              console.error('Login error:', error);
+              alert('Login failed. Please check your credentials.');
+            }
+          };
+
+          const handleLogout = () => {
+            setUser(null);
+            localStorage.removeItem('appraisal_session');
+            setView('login');
+          };
+
+          if (loading) {
+            return (
+              <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center">
+                <div className="text-indigo-600">Loading...</div>
+              </div>
+            );
+          }
+
+          if (view === 'login') {
+            return <LoginView onLogin={handleLogin} />;
+          }
+
+          if (view === 'dashboard') {
+            return <EmployeeDashboard user={user} onLogout={handleLogout} />;
+          }
+
+          if (view === 'supervisor-dashboard') {
+            return <SupervisorDashboard user={user} onLogout={handleLogout} />;
+          }
+        };
+
+        const LoginView = ({ onLogin }) => {
+          const [email, setEmail] = useState('');
+          const [password, setPassword] = useState('');
+          const [role, setRole] = useState('employee');
+
+          const handleSubmit = () => {
+            if (!email || !password) {
+              alert('Please enter email and password');
+              return;
+            }
+            onLogin(email, password, role);
+          };
+
+          return (
+            <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 p-8">
+              <div className="max-w-md mx-auto">
+                <div className="bg-white rounded-lg shadow-lg p-8">
+                  <div className="text-center mb-8">
+                    <h1 className="text-3xl font-bold text-gray-800">Employee Appraisal System</h1>
+                    <p className="text-gray-600 mt-2">Login to continue</p>
+                  </div>
+
+                  <div className="space-y-4">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">Login As</label>
+                      <div className="flex gap-4">
+                        <button
+                          onClick={() => setRole('employee')}
+                          className={`flex-1 py-2 px-4 rounded-lg border-2 transition ${
+                            role === 'employee' 
+                              ? 'border-indigo-600 bg-indigo-50 text-indigo-700' 
+                              : 'border-gray-300 text-gray-700 hover:border-indigo-300'
+                          }`}
+                        >
+                          Employee
+                        </button>
+                        <button
+                          onClick={() => setRole('supervisor')}
+                          className={`flex-1 py-2 px-4 rounded-lg border-2 transition ${
+                            role === 'supervisor' 
+                              ? 'border-indigo-600 bg-indigo-50 text-indigo-700' 
+                              : 'border-gray-300 text-gray-700 hover:border-indigo-300'
+                          }`}
+                        >
+                          Supervisor
+                        </button>
+                      </div>
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">Email</label>
+                      <input
+                        type="email"
+                        value={email}
+                        onChange={(e) => setEmail(e.target.value)}
+                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                        placeholder="your.email@company.com"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">Password</label>
+                      <input
+                        type="password"
+                        value={password}
+                        onChange={(e) => setPassword(e.target.value)}
+                        onKeyPress={(e) => e.key === 'Enter' && handleSubmit()}
+                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                        placeholder="Enter password"
+                      />
+                    </div>
+
+                    <button
+                      onClick={handleSubmit}
+                      className="w-full bg-indigo-600 text-white py-3 rounded-lg font-medium hover:bg-indigo-700 transition"
+                    >
+                      Login
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          );
+        };
+
+        const EmployeeDashboard = ({ user, onLogout }) => {
+          const [view, setView] = useState('list');
+          const [appraisals, setAppraisals] = useState([]);
+          const [loading, setLoading] = useState(true);
+
+          useEffect(() => {
+            loadAppraisals();
+          }, []);
+
+          const loadAppraisals = async () => {
+            try {
+              const response = await fetch(
+                `${SUPABASE_URL}/rest/v1/appraisals?employee_id=eq.${user.id}&order=created_at.desc`,
+                {
+                  headers: {
+                    'apikey': SUPABASE_ANON_KEY,
+                    'Authorization': `Bearer ${SUPABASE_ANON_KEY}`
+                  }
+                }
+              );
+              const data = await response.json();
+              setAppraisals(data);
+            } catch (error) {
+              console.error('Error loading appraisals:', error);
+            }
+            setLoading(false);
+          };
+
+          const competencies = [
+            'Job Knowledge & Skills',
+            'Quality of Work',
+            'Communication',
+            'Teamwork & Collaboration',
+            'Initiative & Problem Solving',
+            'Time Management'
+          ];
+
+          if (view === 'create') {
+            return <SelfAssessmentForm 
+              user={user}
+              competencies={competencies}
+              onComplete={() => {
+                setView('list');
+                loadAppraisals();
+              }}
+              onCancel={() => setView('list')}
+            />;
+          }
+
+          return (
+            <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 p-8">
+              <div className="max-w-4xl mx-auto">
+                <div className="bg-white rounded-lg shadow-lg p-8">
+                  <div className="flex justify-between items-center mb-6">
+                    <div>
+                      <h2 className="text-2xl font-bold text-gray-800">My Appraisals</h2>
+                      <p className="text-gray-600">{user.name}</p>
+                    </div>
+                    <button
+                      onClick={onLogout}
+                      className="flex items-center gap-2 text-gray-600 hover:text-gray-800"
+                    >
+                      Logout
+                    </button>
+                  </div>
+
+                  <button
+                    onClick={() => setView('create')}
+                    className="w-full bg-indigo-600 text-white py-3 rounded-lg font-medium hover:bg-indigo-700 transition mb-6"
+                  >
+                    + New Self-Assessment
+                  </button>
+
+                  {loading ? (
+                    <div className="text-center py-12 text-gray-500">Loading...</div>
+                  ) : appraisals.length === 0 ? (
+                    <div className="text-center py-12 text-gray-500">
+                      <p>No appraisals yet. Create your first self-assessment!</p>
+                    </div>
+                  ) : (
+                    <div className="space-y-4">
+                      {appraisals.map(appraisal => (
+                        <div key={appraisal.id} className="border border-gray-200 rounded-lg p-4">
+                          <div className="flex justify-between items-start">
+                            <div>
+                              <p className="text-sm text-gray-600">
+                                Submitted: {new Date(appraisal.created_at).toLocaleDateString()}
+                              </p>
+                              <span className={`inline-block mt-2 px-3 py-1 rounded text-sm ${
+                                appraisal.status === 'completed' 
+                                  ? 'bg-green-100 text-green-800' 
+                                  : 'bg-yellow-100 text-yellow-800'
+                              }`}>
+                                {appraisal.status === 'completed' ? 'Completed' : 'Pending Review'}
+                              </span>
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+          );
+        };
+
+        const SelfAssessmentForm = ({ user, competencies, onComplete, onCancel }) => {
+          const [ratings, setRatings] = useState({});
+          const [comments, setComments] = useState({});
+          const [overallComments, setOverallComments] = useState('');
+          const [submitting, setSubmitting] = useState(false);
+
+          const handleSubmit = async () => {
+            const allRated = competencies.every(comp => ratings[comp]);
+            if (!allRated) {
+              alert('Please rate all competencies before submitting.');
+              return;
+            }
+
+            setSubmitting(true);
+            try {
+              const response = await fetch(`${SUPABASE_URL}/rest/v1/appraisals`, {
+                method: 'POST',
+                headers: {
+                  'apikey': SUPABASE_ANON_KEY,
+                  'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
+                  'Content-Type': 'application/json',
+                  'Prefer': 'return=minimal'
+                },
+                body: JSON.stringify({
+                  employee_id: user.id,
+                  status: 'pending',
+                  self_ratings: ratings,
+                  self_comments: comments,
+                  self_overall_comments: overallComments
+                })
+              });
+
+              if (response.ok) {
+                alert('Self-assessment submitted successfully!');
+                onComplete();
+              } else {
+                alert('Failed to submit. Please try again.');
+              }
+            } catch (error) {
+              console.error('Submission error:', error);
+              alert('An error occurred. Please try again.');
+            }
+            setSubmitting(false);
+          };
+
+          return (
+            <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 p-8">
+              <div className="max-w-3xl mx-auto">
+                <div className="bg-white rounded-lg shadow-lg p-8">
+                  <div className="mb-6">
+                    <h2 className="text-2xl font-bold text-gray-800">Self-Assessment</h2>
+                    <p className="text-gray-600">{user.name}</p>
+                    <p className="text-sm text-gray-500 mt-2">Rate yourself from 1 (Needs Improvement) to 5 (Excellent)</p>
+                  </div>
+
+                  <div className="space-y-6">
+                    {competencies.map(comp => (
+                      <div key={comp} className="border-b border-gray-200 pb-4">
+                        <label className="block font-medium text-gray-700 mb-3">{comp}</label>
+                        <div className="flex gap-2 mb-3">
+                          {[1, 2, 3, 4, 5].map(rating => (
+                            <button
+                              key={rating}
+                              onClick={() => setRatings({...ratings, [comp]: rating})}
+                              className={`flex-1 py-2 px-3 rounded border-2 transition ${
+                                ratings[comp] === rating
+                                  ? 'border-indigo-600 bg-indigo-600 text-white'
+                                  : 'border-gray-300 text-gray-700 hover:border-indigo-300'
+                              }`}
+                            >
+                              {rating}
+                            </button>
+                          ))}
+                        </div>
+                        <input
+                          type="text"
+                          placeholder="Comments (optional)"
+                          value={comments[comp] || ''}
+                          onChange={(e) => setComments({...comments, [comp]: e.target.value})}
+                          className="w-full px-3 py-2 border border-gray-300 rounded focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                        />
+                      </div>
+                    ))}
+
+                    <div>
+                      <label className="block font-medium text-gray-700 mb-2">Overall Comments</label>
+                      <textarea
+                        value={overallComments}
+                        onChange={(e) => setOverallComments(e.target.value)}
+                        rows="4"
+                        className="w-full px-3 py-2 border border-gray-300 rounded focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                        placeholder="Share your achievements, challenges, and goals..."
+                      />
+                    </div>
+
+                    <div className="flex gap-4">
+                      <button
+                        onClick={onCancel}
+                        disabled={submitting}
+                        className="flex-1 bg-gray-200 text-gray-700 py-3 rounded-lg font-medium hover:bg-gray-300 transition disabled:opacity-50"
+                      >
+                        Cancel
+                      </button>
+                      <button
+                        onClick={handleSubmit}
+                        disabled={submitting}
+                        className="flex-1 bg-indigo-600 text-white py-3 rounded-lg font-medium hover:bg-indigo-700 transition flex items-center justify-center gap-2 disabled:opacity-50"
+                      >
+                        {submitting ? 'Submitting...' : 'Submit Assessment'}
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          );
+        };
+
+        const SupervisorDashboard = ({ user, onLogout }) => {
+          const [appraisals, setAppraisals] = useState([]);
+          const [selectedAppraisal, setSelectedAppraisal] = useState(null);
+          const [loading, setLoading] = useState(true);
+
+          useEffect(() => {
+            loadAppraisals();
+          }, []);
+
+          const loadAppraisals = async () => {
+            try {
+              const response = await fetch(
+                `${SUPABASE_URL}/rest/v1/appraisals?status=eq.pending&order=created_at.desc`,
+                {
+                  headers: {
+                    'apikey': SUPABASE_ANON_KEY,
+                    'Authorization': `Bearer ${SUPABASE_ANON_KEY}`
+                  }
+                }
+              );
+              const data = await response.json();
+              setAppraisals(data);
+            } catch (error) {
+              console.error('Error loading appraisals:', error);
+            }
+            setLoading(false);
+          };
+
+          const competencies = [
+            'Job Knowledge & Skills',
+            'Quality of Work',
+            'Communication',
+            'Teamwork & Collaboration',
+            'Initiative & Problem Solving',
+            'Time Management'
+          ];
+
+          if (selectedAppraisal) {
+            return <SupervisorReviewForm
+              appraisal={selectedAppraisal}
+              competencies={competencies}
+              onComplete={() => {
+                setSelectedAppraisal(null);
+                loadAppraisals();
+              }}
+              onCancel={() => setSelectedAppraisal(null)}
+            />;
+          }
+
+          return (
+            <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 p-8">
+              <div className="max-w-4xl mx-auto">
+                <div className="bg-white rounded-lg shadow-lg p-8">
+                  <div className="flex justify-between items-center mb-6">
+                    <div>
+                      <h2 className="text-2xl font-bold text-gray-800">Supervisor Dashboard</h2>
+                      <p className="text-gray-600">{user.name}</p>
+                      <p className="text-sm text-gray-500 mt-1">Pending Reviews: {appraisals.length}</p>
+                    </div>
+                    <button
+                      onClick={onLogout}
+                      className="flex items-center gap-2 text-gray-600 hover:text-gray-800"
+                    >
+                      Logout
+                    </button>
+                  </div>
+
+                  {loading ? (
+                    <div className="text-center py-12 text-gray-500">Loading...</div>
+                  ) : appraisals.length === 0 ? (
+                    <div className="text-center py-12 text-gray-500">
+                      <p className="text-lg">No pending appraisals to review</p>
+                    </div>
+                  ) : (
+                    <div className="space-y-4">
+                      {appraisals.map(appraisal => (
+                        <div
+                          key={appraisal.id}
+                          className="border border-gray-200 rounded-lg p-4 hover:border-indigo-300 transition cursor-pointer"
+                          onClick={() => setSelectedAppraisal(appraisal)}
+                        >
+                          <div className="flex justify-between items-center">
+                            <div>
+                              <h3 className="font-semibold text-gray-800">Employee ID: {appraisal.employee_id}</h3>
+                              <p className="text-sm text-gray-600">
+                                Submitted: {new Date(appraisal.created_at).toLocaleDateString()}
+                              </p>
+                            </div>
+                            <button className="bg-indigo-600 text-white px-4 py-2 rounded hover:bg-indigo-700 transition">
+                              Review
+                            </button>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+          );
+        };
+
+        const SupervisorReviewForm = ({ appraisal, competencies, onComplete, onCancel }) => {
+          const [ratings, setRatings] = useState({});
+          const [comments, setComments] = useState({});
+          const [overallComments, setOverallComments] = useState('');
+          const [submitting, setSubmitting] = useState(false);
+
+          const handleSubmit = async () => {
+            const allRated = competencies.every(comp => ratings[comp]);
+            if (!allRated) {
+              alert('Please rate all competencies before submitting.');
+              return;
+            }
+
+            setSubmitting(true);
+            try {
+              const response = await fetch(`${SUPABASE_URL}/rest/v1/appraisals?id=eq.${appraisal.id}`, {
+                method: 'PATCH',
+                headers: {
+                  'apikey': SUPABASE_ANON_KEY,
+                  'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
+                  'Content-Type': 'application/json',
+                  'Prefer': 'return=minimal'
+                },
+                body: JSON.stringify({
+                  status: 'completed',
+                  supervisor_ratings: ratings,
+                  supervisor_comments: comments,
+                  supervisor_overall_comments: overallComments,
+                  completed_at: new Date().toISOString()
+                })
+              });
+
+              if (response.ok) {
+                alert('Appraisal completed successfully!');
+                onComplete();
+              } else {
+                alert('Failed to submit. Please try again.');
+              }
+            } catch (error) {
+              console.error('Submission error:', error);
+              alert('An error occurred. Please try again.');
+            }
+            setSubmitting(false);
+          };
+
+          return (
+            <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 p-8">
+              <div className="max-w-4xl mx-auto">
+                <div className="bg-white rounded-lg shadow-lg p-8">
+                  <div className="mb-6">
+                    <button onClick={onCancel} className="text-indigo-600 hover:text-indigo-700 mb-4">
+                      ← Back to List
+                    </button>
+                    <h2 className="text-2xl font-bold text-gray-800">Review Appraisal</h2>
+                    <p className="text-gray-600">Employee ID: {appraisal.employee_id}</p>
+                  </div>
+
+                  <div className="space-y-6">
+                    {competencies.map(comp => (
+                      <div key={comp} className="border border-gray-200 rounded-lg p-4">
+                        <label className="block font-medium text-gray-700 mb-3">{comp}</label>
+                        
+                        <div className="bg-blue-50 p-3 rounded mb-3">
+                          <p className="text-sm text-gray-700">
+                            <strong>Employee Rating:</strong> {appraisal.self_ratings[comp]} / 5
+                          </p>
+                          {appraisal.self_comments[comp] && (
+                            <p className="text-sm text-gray-600 mt-1">
+                              <strong>Employee Comment:</strong> {appraisal.self_comments[comp]}
+                            </p>
+                          )}
+                        </div>
+
+                        <label className="block text-sm font-medium text-gray-700 mb-2">Your Rating</label>
+                        <div className="flex gap-2 mb-3">
+                          {[1, 2, 3, 4, 5].map(rating => (
+                            <button
+                              key={rating}
+                              onClick={() => setRatings({...ratings, [comp]: rating})}
+                              className={`flex-1 py-2 px-3 rounded border-2 transition ${
+                                ratings[comp] === rating
+                                  ? 'border-indigo-600 bg-indigo-600 text-white'
+                                  : 'border-gray-300 text-gray-700 hover:border-indigo-300'
+                              }`}
+                            >
+                              {rating}
+                            </button>
+                          ))}
+                        </div>
+                        <input
+                          type="text"
+                          placeholder="Your comments"
+                          value={comments[comp] || ''}
+                          onChange={(e) => setComments({...comments, [comp]: e.target.value})}
+                          className="w-full px-3 py-2 border border-gray-300 rounded focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                        />
+                      </div>
+                    ))}
+
+                    <div className="bg-blue-50 p-4 rounded">
+                      <label className="block font-medium text-gray-700 mb-2">Employee's Overall Comments</label>
+                      <p className="text-gray-700">{appraisal.self_overall_comments || 'No comments provided'}</p>
+                    </div>
+
+                    <div>
+                      <label className="block font-medium text-gray-700 mb-2">Your Overall Assessment</label>
+                      <textarea
+                        value={overallComments}
+                        onChange={(e) => setOverallComments(e.target.value)}
+                        rows="4"
+                        className="w-full px-3 py-2 border border-gray-300 rounded focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                        placeholder="Provide overall feedback, strengths, areas for improvement, and development plans..."
+                      />
+                    </div>
+
+                    <div className="flex gap-4">
+                      <button
+                        onClick={onCancel}
+                        disabled={submitting}
+                        className="flex-1 bg-gray-200 text-gray-700 py-3 rounded-lg font-medium hover:bg-gray-300 transition disabled:opacity-50"
+                      >
+                        Cancel
+                      </button>
+                      <button
+                        onClick={handleSubmit}
+                        disabled={submitting}
+                        className="flex-1 bg-indigo-600 text-white py-3 rounded-lg font-medium hover:bg-indigo-700 transition flex items-center justify-center gap-2 disabled:opacity-50"
+                      >
+                        {submitting ? 'Submitting...' : 'Complete Appraisal'}
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          );
+        };
+
+        ReactDOM.render(<AppraisalSystem />, document.getElementById('root'));
+    </script>
+</body>
+</html>
