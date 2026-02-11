@@ -10,739 +10,987 @@
     <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
     <style>
-        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
-        * { font-family: 'Inter', sans-serif; }
-       body { 
-    position: relative;
-    min-height: 100vh; 
-    margin: 0;
-}
-body::before {
-    content: '';
-    position: fixed;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    background-image: url('Image_20260210_052446_792.jpeg');
-    background-size: cover;
-    background-position: center;
-    background-attachment: fixed;
-    background-repeat: no-repeat;
-    z-index: -1;
-}
-/* Green gradient fallback if image fails to load */
-body::after {
-    content: '';
-    position: fixed;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    background: linear-gradient(135deg, #10b981 0%, #059669 100%);
-    z-index: -2;
-}
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: linear-gradient(135deg, #10b981 0%, #059669 100%);
-            z-index: -1;
+        @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap');
+        * { font-family: 'Plus Jakarta Sans', sans-serif; }
+        body { min-height: 100vh; margin: 0; overflow-x: hidden; }
+        /* Background: tries your image first, falls back to gradient */
+        body::before {
+            content: ''; position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: url('Image_20260210_052446_792.jpeg') center/cover no-repeat,
+                linear-gradient(135deg, #065f46 0%, #047857 30%, #10b981 60%, #34d399 100%);
+            z-index: -2;
         }
-        .glass { background: rgba(255, 255, 255, 0.95); backdrop-filter: blur(10px); box-shadow: 0 8px 32px rgba(31, 38, 135, 0.37); }
-        @keyframes slideIn { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
-        .animate-in { animation: slideIn 0.5s ease-out; }
+        body::after {
+            content: ''; position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.3); z-index: -1;
+        }
+        .glass { background: rgba(255,255,255,0.96); backdrop-filter: blur(16px); box-shadow: 0 8px 32px rgba(0,0,0,0.12); border: 1px solid rgba(255,255,255,0.3); }
+        @keyframes slideUp { from { opacity:0; transform:translateY(24px); } to { opacity:1; transform:translateY(0); } }
+        .animate-in { animation: slideUp 0.5s cubic-bezier(0.16,1,0.3,1); }
+        .progress-anim { transition: width 0.6s cubic-bezier(0.16,1,0.3,1); }
+        .btn-green { background: linear-gradient(135deg,#059669,#047857); transition: all 0.2s; }
+        .btn-green:hover { box-shadow: 0 4px 20px rgba(5,150,105,0.4); transform: translateY(-1px); }
+        .btn-green:disabled { opacity:0.5; transform:none; box-shadow:none; }
+        .r-btn { transition: all 0.15s; }
+        .r-btn:hover { transform: translateY(-2px); box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
+        .r-btn.sel { background: linear-gradient(135deg,#059669,#047857); color:white; border-color:#059669; transform:translateY(-2px); box-shadow:0 4px 12px rgba(5,150,105,0.3); }
+        .stat:hover { transform: translateY(-2px); box-shadow: 0 12px 32px rgba(0,0,0,0.1); }
+        .stat { transition: all 0.2s; }
+        .toast-box { position:fixed; top:24px; right:24px; z-index:100; animation: slideUp 0.4s cubic-bezier(0.16,1,0.3,1); }
+        textarea:focus, input:focus { outline:none; border-color:#059669; box-shadow:0 0 0 3px rgba(5,150,105,0.15); }
+        .cbar { height:8px; border-radius:999px; background:#e5e7eb; overflow:hidden; }
+        .cbar-fill { height:100%; border-radius:999px; transition: width 0.8s cubic-bezier(0.16,1,0.3,1); }
     </style>
 </head>
 <body>
-    <div id="root"></div>
-    <script type="text/babel">
-        const { useState, useEffect } = React;
-        const SUPABASE_URL = 'https://wdondphcmnhdslcypeya.supabase.co';
-        const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Indkb25kcGhjbW5oZHNsY3lwZXlhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Njg5MDA3MDcsImV4cCI6MjA4NDQ3NjcwN30.wIisWHb3w4cSGZIB4f3q0Z6lboidH6SzL7oGToGdnsw';
+<div id="root"></div>
+<script type="text/babel">
+const { useState, useEffect } = React;
+const SB = 'https://wdondphcmnhdslcypeya.supabase.co';
+const SK = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Indkb25kcGhjbW5oZHNsY3lwZXlhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Njg5MDA3MDcsImV4cCI6MjA4NDQ3NjcwN30.wIisWHb3w4cSGZIB4f3q0Z6lboidH6SzL7oGToGdnsw';
+const H = {'apikey':SK,'Authorization':`Bearer ${SK}`};
+const HJ = {...H,'Content-Type':'application/json','Prefer':'return=minimal'};
 
-        const competencies = [
-            { name: 'Job Knowledge & Expertise', desc: 'Technical skills and knowledge' },
-            { name: 'Quality of Work', desc: 'Accuracy and thoroughness' },
-            { name: 'Innovation & Problem Solving', desc: 'Solutions and improvements' },
-            { name: 'Communication Skills', desc: 'Information sharing' },
-            { name: 'Teamwork & Collaboration', desc: 'Cooperative work' },
-            { name: 'Adaptability', desc: 'Adjusts to changes' },
-            { name: 'Initiative & Ownership', desc: 'Proactive action' },
-            { name: 'Time Management', desc: 'Meets deadlines' },
-            { name: 'Professional Development', desc: 'Growth and learning' }
-        ];
+const comps = [
+    {name:'Job Knowledge & Expertise',desc:'Technical skills and knowledge',icon:'fa-brain'},
+    {name:'Quality of Work',desc:'Accuracy and thoroughness',icon:'fa-star'},
+    {name:'Innovation & Problem Solving',desc:'Creative solutions and improvements',icon:'fa-lightbulb'},
+    {name:'Communication Skills',desc:'Information sharing and engagement',icon:'fa-comments'},
+    {name:'Teamwork & Collaboration',desc:'Cooperative work and support',icon:'fa-people-group'},
+    {name:'Adaptability',desc:'Adjusts to changes effectively',icon:'fa-arrows-rotate'},
+    {name:'Initiative & Ownership',desc:'Proactive action and accountability',icon:'fa-rocket'},
+    {name:'Time Management',desc:'Prioritization and meeting deadlines',icon:'fa-clock'},
+    {name:'Professional Development',desc:'Growth, learning, and skill building',icon:'fa-graduation-cap'}
+];
+const rats = [{v:1,l:'Needs Improvement',c:'#ef4444'},{v:2,l:'Developing',c:'#f59e0b'},{v:3,l:'Competent',c:'#3b82f6'},{v:4,l:'Proficient',c:'#8b5cf6'},{v:5,l:'Expert',c:'#059669'}];
+const avg = r => { const v=Object.values(r||{}); return v.length?(v.reduce((a,b)=>a+b,0)/v.length).toFixed(1):'0.0'; };
 
-        const ratings = [
-            { val: 1, label: 'Needs Improvement' },
-            { val: 2, label: 'Developing' },
-            { val: 3, label: 'Competent' },
-            { val: 4, label: 'Proficient' },
-            { val: 5, label: 'Expert' }
-        ];
+function Toast({message,type,onClose}) {
+    useEffect(()=>{const t=setTimeout(onClose,3500);return()=>clearTimeout(t);},[]);
+    const bg = {success:'bg-green-600',error:'bg-red-600',info:'bg-blue-600'}[type];
+    const ic = {success:'fa-check-circle',error:'fa-exclamation-circle',info:'fa-info-circle'}[type];
+    return <div className={`toast-box ${bg} text-white px-6 py-4 rounded-xl shadow-2xl flex items-center gap-3`}>
+        <i className={`fas ${ic} text-lg`}/><span className="font-medium">{message}</span>
+        <button onClick={onClose} className="ml-4 opacity-70 hover:opacity-100"><i className="fas fa-times"/></button>
+    </div>;
+}
 
-        function App() {
-            const [user, setUser] = useState(null);
-            const [view, setView] = useState('login');
+function App() {
+    const [user,setUser]=useState(null);
+    const [view,setView]=useState('login');
+    const [toast,setToast]=useState(null);
+    const notify=(msg,type='success')=>setToast({message:msg,type});
 
-            useEffect(() => {
-                const session = localStorage.getItem('rahama_session');
-                if (session) {
-                    const u = JSON.parse(session);
-                    setUser(u);
-                    setView(u.role === 'employee' ? 'dashboard' : 'supervisor');
-                }
-            }, []);
+    useEffect(()=>{
+        const s=localStorage.getItem('rahama_session');
+        if(s){const u=JSON.parse(s);setUser(u);setView(u.role==='employee'?'dashboard':'supervisor');}
+    },[]);
 
-            const login = async (email, password, role) => {
-                try {
-                    const res = await fetch(`${SUPABASE_URL}/rest/v1/users?email=eq.${email}&role=eq.${role}`, {
-                        headers: { 'apikey': SUPABASE_KEY, 'Authorization': `Bearer ${SUPABASE_KEY}` }
-                    });
-                    const users = await res.json();
-                    if (users[0]?.password === password) {
-                        const u = { email, name: users[0].name, role, id: users[0].id };
-                        setUser(u);
-                        localStorage.setItem('rahama_session', JSON.stringify(u));
-                        setView(role === 'employee' ? 'dashboard' : 'supervisor');
-                    } else {
-                        alert('Invalid credentials');
-                    }
-                } catch (e) {
-                    alert('Login failed');
-                }
-            };
+    const login=async(email,pw,role)=>{
+        try{
+            const r=await fetch(`${SB}/rest/v1/users?email=eq.${encodeURIComponent(email)}&role=eq.${role}`,{headers:H});
+            const u=await r.json();
+            if(u.length>0&&u[0].password===pw){
+                const d={email,name:u[0].name,role,id:u[0].id};
+                setUser(d);localStorage.setItem('rahama_session',JSON.stringify(d));
+                setView(role==='employee'?'dashboard':'supervisor');
+                notify(`Welcome, ${u[0].name}!`);
+            } else notify('Invalid credentials','error');
+        }catch(e){notify('Login failed','error');}
+    };
+    const logout=()=>{setUser(null);localStorage.removeItem('rahama_session');setView('login');};
 
-            const logout = () => {
-                setUser(null);
-                localStorage.removeItem('rahama_session');
-                setView('login');
-            };
+    return <>
+        {toast&&<Toast {...toast} onClose={()=>setToast(null)}/>}
+        {view==='login'&&<Login onLogin={login}/>}
+        {view==='dashboard'&&<Dashboard user={user} onLogout={logout} notify={notify}/>}
+        {view==='supervisor'&&<SuperDash user={user} onLogout={logout} notify={notify}/>}
+    </>;
+}
 
-            if (view === 'login') return <Login onLogin={login} />;
-            if (view === 'dashboard') return <Dashboard user={user} onLogout={logout} />;
-            if (view === 'supervisor') return <Supervisor user={user} onLogout={logout} />;
-        }
+function Login({onLogin}) {
+    const [email,setEmail]=useState('');
+    const [pw,setPw]=useState('');
+    const [role,setRole]=useState('employee');
+    const [show,setShow]=useState(false);
+    const [busy,setBusy]=useState(false);
+    const go=async()=>{if(!email||!pw)return;setBusy(true);await onLogin(email,pw,role);setBusy(false);};
 
-        function Login({ onLogin }) {
-            const [email, setEmail] = useState('');
-            const [password, setPassword] = useState('');
-            const [role, setRole] = useState('employee');
-            const [show, setShow] = useState(false);
-
-            return (
-                <div className="min-h-screen flex items-center justify-center p-4">
-                    <div className="w-full max-w-md glass rounded-2xl p-8 animate-in">
-                        <div className="text-center mb-8">
-                            <img src="RAHAMA Empowerment Logo Design (3).png" alt="RAHAMA" className="w-24 h-24 mx-auto mb-4 object-contain" />
-                            <h1 className="text-3xl font-bold text-gray-800 mb-2">Performance Management</h1>
-                            <p className="text-gray-600">RAHAMA Initiative Staff Portal</p>
-                        </div>
-                        
-                        <div className="mb-6">
-                            <label className="block text-sm font-semibold text-gray-700 mb-3">Your Role</label>
-                            <div className="grid grid-cols-2 gap-3">
-                                <button onClick={() => setRole('employee')}
-                                    className={`py-3 rounded-xl font-medium transition ${role === 'employee' ? 'bg-green-600 text-white' : 'bg-gray-100 text-gray-700'}`}>
-                                    <i className="fas fa-user mr-2"></i>Employee
-                                </button>
-                                <button onClick={() => setRole('supervisor')}
-                                    className={`py-3 rounded-xl font-medium transition ${role === 'supervisor' ? 'bg-green-600 text-white' : 'bg-gray-100 text-gray-700'}`}>
-                                    <i className="fas fa-user-tie mr-2"></i>Supervisor
-                                </button>
-                            </div>
-                        </div>
-
-                        <div className="mb-4">
-                            <label className="block text-sm font-semibold text-gray-700 mb-2">Email</label>
-                            <input type="email" value={email} onChange={e => setEmail(e.target.value)}
-                                className="w-full px-4 py-3 border rounded-xl focus:ring-2 focus:ring-green-500"
-                                placeholder="your.email@rgcweinigeria.org" />
-                        </div>
-
-                        <div className="mb-6">
-                            <label className="block text-sm font-semibold text-gray-700 mb-2">Password</label>
-                            <div className="relative">
-                                <input type={show ? "text" : "password"} value={password}
-                                    onChange={e => setPassword(e.target.value)}
-                                    onKeyPress={e => e.key === 'Enter' && email && password && onLogin(email, password, role)}
-                                    className="w-full px-4 py-3 border rounded-xl focus:ring-2 focus:ring-green-500"
-                                    placeholder="Enter password" />
-                                <button onClick={() => setShow(!show)} className="absolute right-3 top-3">
-                                    <i className={`fas fa-eye${show ? '-slash' : ''} text-gray-400`}></i>
-                                </button>
-                            </div>
-                        </div>
-
-                        <button onClick={() => email && password && onLogin(email, password, role)}
-                            className="w-full bg-gradient-to-r from-green-600 to-green-700 text-white py-3 rounded-xl font-semibold hover:shadow-lg transition">
-                            <i className="fas fa-sign-in-alt mr-2"></i>Sign In
+    return <div className="min-h-screen flex items-center justify-center p-4">
+        <div className="w-full max-w-md glass rounded-3xl p-8 animate-in">
+            <div className="text-center mb-8">
+                <div className="w-20 h-20 mx-auto mb-4 rounded-2xl bg-gradient-to-br from-green-500 to-emerald-700 flex items-center justify-center shadow-lg">
+                    <i className="fas fa-chart-line text-white text-3xl"/>
+                </div>
+                <h1 className="text-3xl font-extrabold text-gray-800 mb-1">RAHAMA</h1>
+                <p className="text-sm font-medium text-gray-500 tracking-wide uppercase">Performance Management System</p>
+            </div>
+            <div className="mb-6">
+                <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-3">Sign in as</label>
+                <div className="grid grid-cols-2 gap-3">
+                    {[['employee','fa-user','Employee'],['supervisor','fa-user-tie','Supervisor']].map(([r,ic,lb])=>
+                        <button key={r} onClick={()=>setRole(r)}
+                            className={`py-3 rounded-xl font-semibold transition-all ${role===r?'btn-green text-white shadow-lg':'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}>
+                            <i className={`fas ${ic} mr-2`}/>{lb}
                         </button>
-
-                        <p className="text-center text-sm text-gray-600 mt-6">© 2025 RAHAMA Initiative</p>
-                    </div>
+                    )}
                 </div>
-            );
-        }
-
-        function ChangePassword({ user, onClose }) {
-            const [currentPassword, setCurrentPassword] = useState('');
-            const [newPassword, setNewPassword] = useState('');
-            const [confirmPassword, setConfirmPassword] = useState('');
-            const [saving, setSaving] = useState(false);
-
-            const handleSubmit = async () => {
-                if (newPassword !== confirmPassword) {
-                    alert('New passwords do not match');
-                    return;
-                }
-                if (newPassword.length < 6) {
-                    alert('Password must be at least 6 characters');
-                    return;
-                }
-                setSaving(true);
-                try {
-                    // Verify current password
-                    const res = await fetch(`${SUPABASE_URL}/rest/v1/users?id=eq.${user.id}`, {
-                        headers: { 'apikey': SUPABASE_KEY, 'Authorization': `Bearer ${SUPABASE_KEY}` }
-                    });
-                    const users = await res.json();
-                    if (users[0]?.password !== currentPassword) {
-                        alert('Current password is incorrect');
-                        setSaving(false);
-                        return;
-                    }
-                    
-                    // Update password
-                    const updateRes = await fetch(`${SUPABASE_URL}/rest/v1/users?id=eq.${user.id}`, {
-                        method: 'PATCH',
-                        headers: { 
-                            'apikey': SUPABASE_KEY, 
-                            'Authorization': `Bearer ${SUPABASE_KEY}`, 
-                            'Content-Type': 'application/json',
-                            'Prefer': 'return=minimal'
-                        },
-                        body: JSON.stringify({ password: newPassword })
-                    });
-                    
-                    if (updateRes.ok) {
-                        alert('✓ Password changed successfully!');
-                        onClose();
-                    } else {
-                        alert('Failed to update password');
-                    }
-                } catch (e) {
-                    alert('Error changing password');
-                }
-                setSaving(false);
-            };
-
-            return (
-                <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-                    <div className="bg-white rounded-2xl p-6 max-w-md w-full">
-                        <div className="flex justify-between items-center mb-6">
-                            <h2 className="text-2xl font-bold text-gray-800">Change Password</h2>
-                            <button onClick={onClose} className="text-gray-500 hover:text-gray-700">
-                                <i className="fas fa-times text-xl"></i>
-                            </button>
-                        </div>
-                        
-                        <div className="space-y-4">
-                            <div>
-                                <label className="block text-sm font-semibold text-gray-700 mb-2">Current Password</label>
-                                <input 
-                                    type="password" 
-                                    value={currentPassword} 
-                                    onChange={e => setCurrentPassword(e.target.value)}
-                                    className="w-full px-4 py-3 border rounded-xl focus:ring-2 focus:ring-green-500"
-                                    placeholder="Enter current password" 
-                                />
-                            </div>
-                            
-                            <div>
-                                <label className="block text-sm font-semibold text-gray-700 mb-2">New Password</label>
-                                <input 
-                                    type="password" 
-                                    value={newPassword} 
-                                    onChange={e => setNewPassword(e.target.value)}
-                                    className="w-full px-4 py-3 border rounded-xl focus:ring-2 focus:ring-green-500"
-                                    placeholder="Enter new password" 
-                                />
-                            </div>
-                            
-                            <div>
-                                <label className="block text-sm font-semibold text-gray-700 mb-2">Confirm New Password</label>
-                                <input 
-                                    type="password" 
-                                    value={confirmPassword} 
-                                    onChange={e => setConfirmPassword(e.target.value)}
-                                    className="w-full px-4 py-3 border rounded-xl focus:ring-2 focus:ring-green-500"
-                                    placeholder="Confirm new password" 
-                                />
-                            </div>
-                        </div>
-                        
-                        <div className="flex gap-3 mt-6">
-                            <button 
-                                onClick={onClose} 
-                                disabled={saving}
-                                className="flex-1 bg-gray-200 py-3 rounded-xl font-semibold hover:bg-gray-300 transition"
-                            >
-                                Cancel
-                            </button>
-                            <button 
-                                onClick={handleSubmit} 
-                                disabled={saving || !currentPassword || !newPassword || !confirmPassword}
-                                className="flex-1 bg-gradient-to-r from-green-600 to-green-700 text-white py-3 rounded-xl font-semibold disabled:opacity-50 transition"
-                            >
-                                {saving ? 'Changing...' : 'Change Password'}
-                            </button>
-                        </div>
-                    </div>
+            </div>
+            <div className="mb-4">
+                <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Email</label>
+                <div className="relative">
+                    <i className="fas fa-envelope absolute left-4 top-3.5 text-gray-400"/>
+                    <input type="email" value={email} onChange={e=>setEmail(e.target.value)}
+                        className="w-full pl-11 pr-4 py-3 border-2 border-gray-200 rounded-xl transition"
+                        placeholder="your.email@rgcweinigeria.org"/>
                 </div>
-            );
-        }
-
-        function Dashboard({ user, onLogout }) {
-            const [view, setView] = useState('list');
-            const [showPasswordChange, setShowPasswordChange] = useState(false);
-            const [appraisals, setAppraisals] = useState([]);
-            const [loading, setLoading] = useState(true);
-
-            useEffect(() => {
-                fetch(`${SUPABASE_URL}/rest/v1/appraisals?employee_id=eq.${user.id}&order=created_at.desc`, {
-                    headers: { 'apikey': SUPABASE_KEY, 'Authorization': `Bearer ${SUPABASE_KEY}` }
-                }).then(r => r.json()).then(setAppraisals).finally(() => setLoading(false));
-            }, []);
-
-            if (view === 'create') return <Assessment user={user} onDone={() => { setView('list'); window.location.reload(); }} />;
-
-            const avg = (r) => {
-                const v = Object.values(r || {});
-                return v.length ? (v.reduce((a,b) => a+b, 0) / v.length).toFixed(1) : 0;
-            };
-
-            return (
-                <div className="min-h-screen p-4 md:p-8">
-                    <div className="max-w-6xl mx-auto">
-                        <div className="glass rounded-2xl p-6 mb-6">
-                            <div className="flex justify-between items-center">
-                                <div>
-                                    <h1 className="text-3xl font-bold text-gray-800">My Dashboard</h1>
-                                    <p className="text-gray-600"><i className="fas fa-user-circle mr-2"></i>{user.name}</p>
-                                </div>
-                                <div className="flex gap-2">
-                                    <button onClick={() => setShowPasswordChange(true)} 
-                                        className="px-4 py-2 bg-green-100 text-green-700 hover:bg-green-200 rounded-lg font-medium transition">
-                                        <i className="fas fa-key mr-2"></i>Change Password
-                                    </button>
-                                    <button onClick={onLogout} className="px-4 py-2 text-gray-600 hover:bg-gray-100 rounded-lg">
-                                        <i className="fas fa-sign-out-alt mr-2"></i>Logout
-                                    </button>
-                                </div>
-                            </div>
-                        </div>
-
-                        <div className="grid md:grid-cols-3 gap-4 mb-6">
-                            <div className="glass rounded-xl p-6">
-                                <div className="flex justify-between items-center">
-                                    <div>
-                                        <p className="text-sm text-gray-600">Total</p>
-                                        <p className="text-3xl font-bold text-gray-800 mt-1">{appraisals.length}</p>
-                                    </div>
-                                    <div className="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center">
-                                        <i className="fas fa-clipboard-list text-blue-600 text-xl"></i>
-                                    </div>
-                                </div>
-                            </div>
-                            <div className="glass rounded-xl p-6">
-                                <div className="flex justify-between items-center">
-                                    <div>
-                                        <p className="text-sm text-gray-600">Pending</p>
-                                        <p className="text-3xl font-bold text-gray-800 mt-1">{appraisals.filter(a => a.status === 'pending').length}</p>
-                                    </div>
-                                    <div className="w-12 h-12 bg-yellow-100 rounded-lg flex items-center justify-center">
-                                        <i className="fas fa-clock text-yellow-600 text-xl"></i>
-                                    </div>
-                                </div>
-                            </div>
-                            <div className="glass rounded-xl p-6">
-                                <div className="flex justify-between items-center">
-                                    <div>
-                                        <p className="text-sm text-gray-600">Completed</p>
-                                        <p className="text-3xl font-bold text-gray-800 mt-1">{appraisals.filter(a => a.status === 'completed').length}</p>
-                                    </div>
-                                    <div className="w-12 h-12 bg-green-100 rounded-lg flex items-center justify-center">
-                                        <i className="fas fa-check-circle text-green-600 text-xl"></i>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-
-                        <button onClick={() => setView('create')} className="w-full glass rounded-xl p-6 mb-6 hover:shadow-lg transition group">
-                            <div className="flex items-center justify-center gap-3">
-                                <div className="w-12 h-12 bg-gradient-to-r from-green-600 to-green-700 rounded-lg flex items-center justify-center">
-                                    <i className="fas fa-plus text-white text-xl"></i>
-                                </div>
-                                <div className="text-left">
-                                    <p className="text-lg font-semibold text-gray-800">Start New Assessment</p>
-                                    <p className="text-sm text-gray-600">Complete your evaluation</p>
-                                </div>
-                            </div>
-                        </button>
-
-                        <div className="glass rounded-2xl p-6">
-                            <h2 className="text-xl font-bold mb-4"><i className="fas fa-history mr-2"></i>Assessment History</h2>
-                            {loading ? (
-                                <div className="text-center py-8 text-gray-500">Loading...</div>
-                            ) : appraisals.length === 0 ? (
-                                <div className="text-center py-12 text-gray-500">
-                                    <i className="fas fa-clipboard-list text-4xl mb-3"></i>
-                                    <p className="text-lg font-medium">No assessments yet</p>
-                                    <p className="text-sm mt-1">Click "Start New Assessment" to begin</p>
-                                </div>
-                            ) : (
-                                <div className="space-y-4">
-                                    {appraisals.map(a => (
-                                        <div key={a.id} className="border rounded-xl p-5">
-                                            <div className="flex justify-between items-start">
-                                                <div>
-                                                    <div className="flex items-center gap-2 mb-2">
-                                                        <span className={`px-3 py-1 rounded-full text-sm font-semibold ${
-                                                            a.status === 'completed' ? 'bg-green-100 text-green-700' : 'bg-yellow-100 text-yellow-700'
-                                                        }`}>
-                                                            {a.status === 'completed' ? '✓ Completed' : '⏳ Pending Review'}
-                                                        </span>
-                                                    </div>
-                                                    <p className="text-sm text-gray-600">
-                                                        Submitted: {new Date(a.created_at).toLocaleDateString()}
-                                                    </p>
-                                                    {a.completed_at && (
-                                                        <p className="text-sm text-gray-600">
-                                                            Reviewed: {new Date(a.completed_at).toLocaleDateString()}
-                                                        </p>
-                                                    )}
-                                                </div>
-                                                {a.status === 'completed' && (
-                                                    <div className="text-right">
-                                                        <p className="text-sm text-gray-600">Average Score</p>
-                                                        <p className="text-2xl font-bold text-green-600">{avg(a.supervisor_ratings)}/5</p>
-                                                    </div>
-                                                )}
-                                            </div>
-                                        </div>
-                                    ))}
-                                </div>
-                            )}
-                        </div>
-
-                        {showPasswordChange && <ChangePassword user={user} onClose={() => setShowPasswordChange(false)} />}
-                    </div>
+            </div>
+            <div className="mb-6">
+                <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Password</label>
+                <div className="relative">
+                    <i className="fas fa-lock absolute left-4 top-3.5 text-gray-400"/>
+                    <input type={show?"text":"password"} value={pw} onChange={e=>setPw(e.target.value)}
+                        onKeyPress={e=>e.key==='Enter'&&go()}
+                        className="w-full pl-11 pr-12 py-3 border-2 border-gray-200 rounded-xl transition"
+                        placeholder="Enter password"/>
+                    <button onClick={()=>setShow(!show)} className="absolute right-4 top-3.5 text-gray-400 hover:text-gray-600">
+                        <i className={`fas fa-eye${show?'-slash':''}`}/>
+                    </button>
                 </div>
-            );
-        }
-
-        function Assessment({ user, onDone }) {
-            const [rate, setRate] = useState({});
-            const [comm, setComm] = useState({});
-            const [overall, setOverall] = useState('');
-            const [saving, setSaving] = useState(false);
-            const progress = (Object.keys(rate).length / competencies.length) * 100;
-
-            const submit = async () => {
-                if (Object.keys(rate).length < competencies.length) { alert('Please rate all competencies'); return; }
-                setSaving(true);
-                try {
-                    const res = await fetch(`${SUPABASE_URL}/rest/v1/appraisals`, {
-                        method: 'POST',
-                        headers: { 'apikey': SUPABASE_KEY, 'Authorization': `Bearer ${SUPABASE_KEY}`, 'Content-Type': 'application/json', 'Prefer': 'return=minimal' },
-                        body: JSON.stringify({ employee_id: user.id, status: 'pending', self_ratings: rate, self_comments: comm, self_overall_comments: overall })
-                    });
-                    if (res.ok) { alert('✓ Submitted!'); onDone(); } else alert('Failed');
-                } catch (e) { alert('Error'); }
-                setSaving(false);
-            };
-
-            return (
-                <div className="min-h-screen p-4 md:p-8">
-                    <div className="max-w-5xl mx-auto">
-                        <div className="glass rounded-2xl p-6 mb-6">
-                            <button onClick={onDone} className="text-green-600 mb-3"><i className="fas fa-arrow-left mr-2"></i>Back</button>
-                            <div className="flex justify-between mb-4">
-                                <div>
-                                    <h1 className="text-3xl font-bold text-gray-800">Self-Assessment</h1>
-                                    <p className="text-gray-600">{user.name}</p>
-                                </div>
-                                <div className="text-right">
-                                    <p className="text-sm text-gray-600">Progress</p>
-                                    <p className="text-2xl font-bold text-green-600">{Math.round(progress)}%</p>
-                                </div>
-                            </div>
-                            <div className="w-full bg-gray-200 rounded-full h-3">
-                                <div className="bg-gradient-to-r from-green-600 to-green-700 h-3 rounded-full transition-all" style={{width: `${progress}%`}}></div>
-                            </div>
-                        </div>
-
-                        <div className="glass rounded-xl p-6 mb-6">
-                            <h3 className="font-semibold mb-3"><i className="fas fa-info-circle text-green-600 mr-2"></i>Rating Scale</h3>
-                            <div className="grid md:grid-cols-5 gap-2">
-                                {ratings.map(r => (
-                                    <div key={r.val} className="p-3 rounded-lg border-2 bg-gray-50 border-gray-300">
-                                        <div className="font-semibold text-sm">{r.val} - {r.label}</div>
-                                    </div>
-                                ))}
-                            </div>
-                        </div>
-
-                        <div className="glass rounded-2xl p-6 mb-6">
-                            <h2 className="text-xl font-bold text-gray-800 mb-6">Competencies</h2>
-                            <div className="space-y-6">
-                                {competencies.map(c => (
-                                    <div key={c.name} className="border rounded-xl p-5">
-                                        <div className="mb-4">
-                                            <h3 className="font-semibold text-gray-800 flex items-center gap-2">
-                                                {c.name}
-                                                {rate[c.name] && <span className="text-sm bg-green-100 text-green-700 px-2 py-1 rounded-full"><i className="fas fa-check mr-1"></i>Rated</span>}
-                                            </h3>
-                                            <p className="text-sm text-gray-600">{c.desc}</p>
-                                        </div>
-                                        <div className="grid grid-cols-5 gap-2 mb-4">
-                                            {ratings.map(r => (
-                                                <button key={r.val} onClick={() => setRate({...rate, [c.name]: r.val})}
-                                                    className={`py-3 rounded-lg border-2 font-medium transition ${rate[c.name] === r.val ? 'bg-green-600 text-white border-green-600' : 'bg-white border-gray-300 hover:border-green-300'}`}>
-                                                    <div className="font-bold text-lg">{r.val}</div>
-                                                    <div className="text-xs">{r.label}</div>
-                                                </button>
-                                            ))}
-                                        </div>
-                                        <textarea placeholder="Comments (optional)" value={comm[c.name] || ''} onChange={e => setComm({...comm, [c.name]: e.target.value})}
-                                            rows="2" className="w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-green-500" />
-                                    </div>
-                                ))}
-                            </div>
-                        </div>
-
-                        <div className="glass rounded-2xl p-6 mb-6">
-                            <h3 className="font-semibold mb-3"><i className="fas fa-comment-alt text-green-600 mr-2"></i>Overall Reflection</h3>
-                            <textarea value={overall} onChange={e => setOverall(e.target.value)} rows="6"
-                                className="w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-green-500"
-                                placeholder="Share your achievements, challenges, and development goals..." />
-                        </div>
-
-                        <div className="glass rounded-xl p-6 flex gap-4">
-                            <button onClick={onDone} disabled={saving} className="flex-1 bg-gray-200 py-4 rounded-xl font-semibold hover:bg-gray-300 transition">Cancel</button>
-                            <button onClick={submit} disabled={saving || progress < 100}
-                                className="flex-1 bg-gradient-to-r from-green-600 to-green-700 text-white py-4 rounded-xl font-semibold disabled:opacity-50 transition">
-                                {saving ? 'Submitting...' : progress < 100 ? `Complete All (${Math.round(progress)}%)` : 'Submit Assessment'}
-                            </button>
-                        </div>
-                    </div>
-                </div>
-            );
-        }
-
-        function Supervisor({ user, onLogout }) {
-            const [apps, setApps] = useState([]);
-            const [selected, setSelected] = useState(null);
-            const [names, setNames] = useState({});
-            const [showPasswordChange, setShowPasswordChange] = useState(false);
-
-            useEffect(() => {
-                fetch(`${SUPABASE_URL}/rest/v1/appraisals?status=eq.pending&order=created_at.desc`, {
-                    headers: { 'apikey': SUPABASE_KEY, 'Authorization': `Bearer ${SUPABASE_KEY}` }
-                }).then(r => r.json()).then(data => {
-                    setApps(data);
-                    const ids = [...new Set(data.map(a => a.employee_id))];
-                    if (ids.length > 0) {
-                        fetch(`${SUPABASE_URL}/rest/v1/users?id=in.(${ids.join(',')})`, {
-                            headers: { 'apikey': SUPABASE_KEY, 'Authorization': `Bearer ${SUPABASE_KEY}` }
-                        }).then(r => r.json()).then(users => {
-                            const n = {};
-                            users.forEach(u => n[u.id] = u.name);
-                            setNames(n);
-                        });
-                    }
-                });
-            }, []);
-
-            if (selected) return <Review app={selected} name={names[selected.employee_id]} onDone={() => { setSelected(null); window.location.reload(); }} />;
-
-            return (
-                <div className="min-h-screen p-4 md:p-8">
-                    <div className="max-w-6xl mx-auto">
-                        <div className="glass rounded-2xl p-6 mb-6">
-                            <div className="flex justify-between items-center">
-                                <div>
-                                    <h1 className="text-3xl font-bold text-gray-800">Supervisor Dashboard</h1>
-                                    <p className="text-gray-600"><i className="fas fa-user-tie mr-2"></i>{user.name}</p>
-                                </div>
-                                <div className="flex gap-2">
-                                    <button onClick={() => setShowPasswordChange(true)} 
-                                        className="px-4 py-2 bg-green-100 text-green-700 hover:bg-green-200 rounded-lg font-medium transition">
-                                        <i className="fas fa-key mr-2"></i>Change Password
-                                    </button>
-                                    <button onClick={onLogout} className="px-4 py-2 text-gray-600 hover:bg-gray-100 rounded-lg">
-                                        <i className="fas fa-sign-out-alt mr-2"></i>Logout
-                                    </button>
-                                </div>
-                            </div>
-                        </div>
-
-                        <div className="glass rounded-2xl p-6">
-                            <h2 className="text-xl font-bold mb-4"><i className="fas fa-tasks mr-2"></i>Pending Reviews ({apps.length})</h2>
-                            {apps.length === 0 ? 
-                                <div className="text-center py-12 text-gray-500">
-                                    <i className="fas fa-check-double text-4xl mb-3 text-green-500"></i>
-                                    <p className="text-lg font-medium">All caught up!</p>
-                                    <p className="text-sm mt-1">No pending appraisals</p>
-                                </div> :
-                                <div className="space-y-4">
-                                    {apps.map(a => (
-                                        <div key={a.id} className="border rounded-xl p-5 hover:border-green-300 cursor-pointer transition" onClick={() => setSelected(a)}>
-                                            <div className="flex justify-between items-center">
-                                                <div>
-                                                    <h3 className="font-semibold text-lg text-gray-800">
-                                                        <i className="fas fa-user-circle text-green-600 mr-2"></i>
-                                                        {names[a.employee_id] || 'Employee'}
-                                                    </h3>
-                                                    <p className="text-sm text-gray-600 mt-1">
-                                                        Submitted: {new Date(a.created_at).toLocaleDateString()}
-                                                    </p>
-                                                </div>
-                                                <button className="bg-gradient-to-r from-green-600 to-green-700 text-white px-6 py-3 rounded-xl font-semibold hover:shadow-lg transition">
-                                                    <i className="fas fa-eye mr-2"></i>Review
-                                                </button>
-                                            </div>
-                                        </div>
-                                    ))}
-                                </div>
-                            }
-                        </div>
-
-                        {showPasswordChange && <ChangePassword user={user} onClose={() => setShowPasswordChange(false)} />}
-                    </div>
-                </div>
-            );
-        }
-
-        function Review({ app, name, onDone }) {
-            const [rate, setRate] = useState({});
-            const [comm, setComm] = useState({});
-            const [overall, setOverall] = useState('');
-            const [saving, setSaving] = useState(false);
-            const progress = (Object.keys(rate).length / competencies.length) * 100;
-
-            const submit = async () => {
-                if (Object.keys(rate).length < competencies.length) { alert('Please rate all competencies'); return; }
-                setSaving(true);
-                try {
-                    const res = await fetch(`${SUPABASE_URL}/rest/v1/appraisals?id=eq.${app.id}`, {
-                        method: 'PATCH',
-                        headers: { 'apikey': SUPABASE_KEY, 'Authorization': `Bearer ${SUPABASE_KEY}`, 'Content-Type': 'application/json', 'Prefer': 'return=minimal' },
-                        body: JSON.stringify({ status: 'completed', supervisor_ratings: rate, supervisor_comments: comm, supervisor_overall_comments: overall, completed_at: new Date().toISOString() })
-                    });
-                    if (res.ok) { alert('✓ Review completed!'); onDone(); } else alert('Failed');
-                } catch (e) { alert('Error'); }
-                setSaving(false);
-            };
-
-            return (
-                <div className="min-h-screen p-4 md:p-8">
-                    <div className="max-w-5xl mx-auto">
-                        <div className="glass rounded-2xl p-6 mb-6">
-                            <button onClick={onDone} className="text-green-600 mb-3"><i className="fas fa-arrow-left mr-2"></i>Back</button>
-                            <div className="flex justify-between mb-4">
-                                <div>
-                                    <h1 className="text-3xl font-bold text-gray-800">Performance Review</h1>
-                                    <p className="text-gray-600"><i className="fas fa-user-circle mr-2"></i>{name}</p>
-                                </div>
-                                <div className="text-right">
-                                    <p className="text-sm text-gray-600">Progress</p>
-                                    <p className="text-2xl font-bold text-green-600">{Math.round(progress)}%</p>
-                                </div>
-                            </div>
-                            <div className="w-full bg-gray-200 rounded-full h-3">
-                                <div className="bg-gradient-to-r from-green-600 to-green-700 h-3 rounded-full transition-all" style={{width: `${progress}%`}}></div>
-                            </div>
-                        </div>
-
-                        <div className="glass rounded-xl p-6 mb-6">
-                            <h3 className="font-semibold mb-3"><i className="fas fa-info-circle text-green-600 mr-2"></i>Rating Scale</h3>
-                            <div className="grid md:grid-cols-5 gap-2">
-                                {ratings.map(r => (
-                                    <div key={r.val} className="p-3 rounded-lg border-2 bg-gray-50 border-gray-300">
-                                        <div className="font-semibold text-sm">{r.val} - {r.label}</div>
-                                    </div>
-                                ))}
-                            </div>
-                        </div>
-
-                        <div className="glass rounded-2xl p-6 mb-6">
-                            <h2 className="text-xl font-bold text-gray-800 mb-6">Competency Review</h2>
-                            <div className="space-y-6">
-                                {competencies.map(c => (
-                                    <div key={c.name} className="border rounded-xl p-5">
-                                        <div className="mb-4">
-                                            <h3 className="font-semibold text-gray-800">{c.name}</h3>
-                                            <p className="text-sm text-gray-600">{c.desc}</p>
-                                        </div>
-                                        
-                                        <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-4">
-                                            <p className="text-sm font-semibold text-gray-700 mb-1">Employee Self-Rating</p>
-                                            <p className="text-2xl font-bold text-blue-700">
-                                                {app.self_ratings[c.name] || 'N/A'}/5
-                                            </p>
-                                            {app.self_comments[c.name] && (
-                                                <p className="text-sm text-gray-700 mt-2 italic">"{app.self_comments[c.name]}"</p>
-                                            )}
-                                        </div>
-
-                                        <label className="block text-sm font-semibold text-gray-700 mb-3">Your Assessment</label>
-                                        <div className="grid grid-cols-5 gap-2 mb-4">
-                                            {ratings.map(r => (
-                                                <button key={r.val} onClick={() => setRate({...rate, [c.name]: r.val})}
-                                                    className={`py-3 rounded-lg border-2 font-medium transition ${rate[c.name] === r.val ? 'bg-green-600 text-white border-green-600' : 'bg-white border-gray-300 hover:border-green-300'}`}>
-                                                    <div className="font-bold text-lg">{r.val}</div>
-                                                    <div className="text-xs">{r.label}</div>
-                                                </button>
-                                            ))}
-                                        </div>
-                                        <textarea placeholder="Your feedback and guidance" value={comm[c.name] || ''} 
-                                            onChange={e => setComm({...comm, [c.name]: e.target.value})}
-                                            rows="3" className="w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-green-500" />
-                                    </div>
-                                ))}
-                            </div>
-                        </div>
-
-                        <div className="glass rounded-2xl p-6 mb-6">
-                            <h3 className="font-semibold mb-3"><i className="fas fa-comment text-blue-600 mr-2"></i>Employee's Overall Comments</h3>
-                            <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-                                <p className="text-gray-700 whitespace-pre-wrap">{app.self_overall_comments || 'No comments provided'}</p>
-                            </div>
-                        </div>
-
-                        <div className="glass rounded-2xl p-6 mb-6">
-                            <h3 className="font-semibold mb-3"><i className="fas fa-award text-green-600 mr-2"></i>Your Overall Assessment</h3>
-                            <textarea value={overall} onChange={e => setOverall(e.target.value)} rows="8"
-                                className="w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-green-500"
-                                placeholder="Provide comprehensive feedback: strengths, areas for improvement, development goals, action items..." />
-                        </div>
-
-                        <div className="glass rounded-xl p-6 flex gap-4">
-                            <button onClick={onDone} disabled={saving} className="flex-1 bg-gray-200 py-4 rounded-xl font-semibold hover:bg-gray-300 transition">Cancel</button>
-                            <button onClick={submit} disabled={saving || progress < 100}
-                                className="flex-1 bg-gradient-to-r from-green-600 to-green-700 text-white py-4 rounded-xl font-semibold disabled:opacity-50 transition">
-                                {saving ? 'Submitting...' : progress < 100 ? `Complete All (${Math.round(progress)}%)` : 'Complete Review'}
-                            </button>
-                        </div>
-                    </div>
-                </div>
-            );
-        }
-
-        // Render the app
-        ReactDOM.render(<App />, document.getElementById('root'));
-    </script>
+            </div>
+            <button onClick={go} disabled={busy||!email||!pw}
+                className="w-full btn-green text-white py-3.5 rounded-xl font-bold disabled:opacity-50">
+                {busy?<><i className="fas fa-spinner fa-spin mr-2"/>Signing in...</>:<><i className="fas fa-sign-in-alt mr-2"/>Sign In</>}
+            </button>
+            <p className="text-center text-xs text-gray-400 mt-6">© 2025 RAHAMA Initiative</p>
+        </div>
+    </div>;
+}
+</script>
 </body>
 </html>
+<!-- PART 2: Add this BEFORE the closing </script> tag in Part 1 -->
+<!-- Remove the </script></body></html> from Part 1, paste this, then Part 3 and Part 4 -->
+
+function ChangePw({user,onClose,notify}) {
+    const [cur,setCur]=useState('');
+    const [nw,setNw]=useState('');
+    const [cf,setCf]=useState('');
+    const [busy,setBusy]=useState(false);
+
+    const go=async()=>{
+        if(nw!==cf){notify('Passwords do not match','error');return;}
+        if(nw.length<6){notify('Minimum 6 characters','error');return;}
+        if(cur===nw){notify('New password must be different','error');return;}
+        setBusy(true);
+        try{
+            const r=await fetch(`${SB}/rest/v1/users?id=eq.${user.id}`,{headers:H});
+            const u=await r.json();
+            if(!u.length||u[0].password!==cur){notify('Current password is incorrect','error');setBusy(false);return;}
+
+            const up=await fetch(`${SB}/rest/v1/users?id=eq.${user.id}`,{
+                method:'PATCH',
+                headers:{...H,'Content-Type':'application/json','Prefer':'return=representation'},
+                body:JSON.stringify({password:nw})
+            });
+
+            if(up.ok){
+                // Verify it actually saved
+                const vr=await fetch(`${SB}/rest/v1/users?id=eq.${user.id}`,{headers:H});
+                const vd=await vr.json();
+                if(vd.length>0&&vd[0].password===nw){
+                    notify('Password changed successfully!');
+                    onClose();
+                } else {
+                    notify('Update failed — please ask admin to add UPDATE policy on users table','error');
+                }
+            } else {
+                notify('Failed to update password','error');
+            }
+        }catch(e){notify('Error changing password','error');}
+        setBusy(false);
+    };
+
+    return <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50" style={{animation:'fadeIn 0.3s'}}>
+        <div className="bg-white rounded-2xl p-6 max-w-md w-full animate-in">
+            <div className="flex justify-between items-center mb-6">
+                <h2 className="text-xl font-bold text-gray-800"><i className="fas fa-key text-green-600 mr-2"/>Change Password</h2>
+                <button onClick={onClose} className="w-8 h-8 rounded-full bg-gray-100 hover:bg-gray-200 flex items-center justify-center">
+                    <i className="fas fa-times text-gray-500"/>
+                </button>
+            </div>
+            <div className="bg-amber-50 border border-amber-200 rounded-xl p-3 mb-5">
+                <p className="text-xs text-amber-700"><i className="fas fa-info-circle mr-1"/>Password must be at least 6 characters.</p>
+            </div>
+            <div className="space-y-4">
+                <div>
+                    <label className="block text-xs font-bold text-gray-500 uppercase mb-2">Current Password</label>
+                    <input type="password" value={cur} onChange={e=>setCur(e.target.value)}
+                        className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl" placeholder="Current password"/>
+                </div>
+                <div>
+                    <label className="block text-xs font-bold text-gray-500 uppercase mb-2">New Password</label>
+                    <input type="password" value={nw} onChange={e=>setNw(e.target.value)}
+                        className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl" placeholder="New password"/>
+                </div>
+                <div>
+                    <label className="block text-xs font-bold text-gray-500 uppercase mb-2">Confirm New Password</label>
+                    <input type="password" value={cf} onChange={e=>setCf(e.target.value)}
+                        className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl" placeholder="Confirm password"/>
+                    {cf&&nw!==cf&&<p className="text-red-500 text-xs mt-1"><i className="fas fa-exclamation-triangle mr-1"/>Passwords don't match</p>}
+                </div>
+            </div>
+            <div className="flex gap-3 mt-6">
+                <button onClick={onClose} className="flex-1 bg-gray-100 py-3 rounded-xl font-semibold hover:bg-gray-200">Cancel</button>
+                <button onClick={go} disabled={busy||!cur||!nw||!cf||nw!==cf}
+                    className="flex-1 btn-green text-white py-3 rounded-xl font-semibold disabled:opacity-50">
+                    {busy?'Updating...':'Update Password'}
+                </button>
+            </div>
+        </div>
+    </div>;
+}
+
+function Dashboard({user,onLogout,notify}) {
+    const [view,setView]=useState('list');
+    const [showPw,setShowPw]=useState(false);
+    const [apps,setApps]=useState([]);
+    const [loading,setLoading]=useState(true);
+    const [selApp,setSelApp]=useState(null);
+
+    const load=()=>{
+        setLoading(true);
+        fetch(`${SB}/rest/v1/appraisals?employee_id=eq.${user.id}&order=created_at.desc`,{headers:H})
+        .then(r=>r.json()).then(d=>{setApps(d);setLoading(false);}).catch(()=>setLoading(false));
+    };
+    useEffect(()=>{load();},[]);
+
+    if(view==='create') return <Assessment user={user} notify={notify} onDone={()=>{setView('list');load();}}/>;
+    if(view==='review') return <EmpReview appraisal={selApp} user={user} notify={notify} onDone={()=>{setView('list');load();}}/>;
+
+    const pending=apps.filter(a=>a.status==='pending');
+    const completed=apps.filter(a=>a.status==='completed');
+    const needsResponse=apps.filter(a=>a.status==='completed'&&(!a.employee_review_status||a.employee_review_status==='pending'));
+
+    return <div className="min-h-screen p-4 md:p-8">
+        <div className="max-w-6xl mx-auto">
+            {/* Header */}
+            <div className="glass rounded-2xl p-6 mb-6 animate-in">
+                <div className="flex flex-wrap justify-between items-center gap-4">
+                    <div>
+                        <h1 className="text-2xl md:text-3xl font-extrabold text-gray-800">My Dashboard</h1>
+                        <p className="text-gray-500 font-medium mt-1"><i className="fas fa-user-circle text-green-600 mr-2"/>{user.name}</p>
+                    </div>
+                    <div className="flex gap-2">
+                        <button onClick={()=>setShowPw(true)} className="px-4 py-2 bg-green-50 text-green-700 hover:bg-green-100 rounded-xl font-medium text-sm">
+                            <i className="fas fa-key mr-2"/>Password
+                        </button>
+                        <button onClick={onLogout} className="px-4 py-2 text-gray-500 hover:bg-gray-100 rounded-xl text-sm">
+                            <i className="fas fa-sign-out-alt mr-2"/>Logout
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            {/* Alert for pending reviews */}
+            {needsResponse.length>0&&<div className="bg-blue-50 border-2 border-blue-200 rounded-2xl p-5 mb-6">
+                <div className="flex items-start gap-3">
+                    <div className="w-10 h-10 bg-blue-100 rounded-xl flex items-center justify-center flex-shrink-0">
+                        <i className="fas fa-bell text-blue-600"/>
+                    </div>
+                    <div>
+                        <h3 className="font-bold text-blue-800">Supervisor Review Available</h3>
+                        <p className="text-sm text-blue-600 mt-1">You have {needsResponse.length} review(s) to respond to. Please review and accept or dispute.</p>
+                    </div>
+                </div>
+            </div>}
+
+            {/* Stats */}
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+                {[
+                    {label:'Total',val:apps.length,icon:'fa-clipboard-list',bg:'bg-blue-50',color:'text-blue-600'},
+                    {label:'Pending',val:pending.length,icon:'fa-clock',bg:'bg-amber-50',color:'text-amber-600'},
+                    {label:'Completed',val:completed.length,icon:'fa-check-circle',bg:'bg-green-50',color:'text-green-600'},
+                    {label:'Needs Response',val:needsResponse.length,icon:'fa-reply',bg:'bg-purple-50',color:'text-purple-600'}
+                ].map((s,i)=><div key={i} className="glass rounded-xl p-5 stat">
+                    <div className="flex justify-between items-start">
+                        <div>
+                            <p className="text-xs font-bold text-gray-400 uppercase tracking-wider">{s.label}</p>
+                            <p className="text-3xl font-extrabold text-gray-800 mt-1">{s.val}</p>
+                        </div>
+                        <div className={`w-10 h-10 ${s.bg} rounded-lg flex items-center justify-center`}>
+                            <i className={`fas ${s.icon} ${s.color}`}/>
+                        </div>
+                    </div>
+                </div>)}
+            </div>
+
+            {/* New Assessment */}
+            <button onClick={()=>setView('create')} className="w-full glass rounded-2xl p-5 mb-6 hover:shadow-xl stat group">
+                <div className="flex items-center gap-4">
+                    <div className="w-14 h-14 btn-green rounded-xl flex items-center justify-center shadow-lg">
+                        <i className="fas fa-plus text-white text-xl"/>
+                    </div>
+                    <div className="text-left">
+                        <p className="text-lg font-bold text-gray-800">Start New Self-Assessment</p>
+                        <p className="text-sm text-gray-500">Rate yourself across 9 competencies</p>
+                    </div>
+                    <i className="fas fa-arrow-right text-gray-300 ml-auto group-hover:text-green-600 transition"/>
+                </div>
+            </button>
+
+            {/* History */}
+            <div className="glass rounded-2xl p-6">
+                <h2 className="text-lg font-bold mb-4"><i className="fas fa-history text-green-600 mr-2"/>Assessment History</h2>
+                {loading?<div className="text-center py-12 text-gray-400"><i className="fas fa-spinner fa-spin text-2xl"/></div>
+                :apps.length===0?<div className="text-center py-12 text-gray-400">
+                    <i className="fas fa-clipboard-list text-4xl mb-3"/><p className="font-semibold">No assessments yet</p>
+                </div>
+                :<div className="space-y-3">{apps.map(a=><div key={a.id} className="border-2 border-gray-100 rounded-xl p-5 hover:border-green-200 transition">
+                    <div className="flex flex-wrap justify-between items-start gap-3">
+                        <div>
+                            <div className="flex flex-wrap items-center gap-2 mb-2">
+                                <span className={`px-3 py-1 rounded-full text-xs font-bold ${a.status==='completed'?'bg-green-100 text-green-700':'bg-amber-100 text-amber-700'}`}>
+                                    {a.status==='completed'?'✓ Reviewed':'⏳ Awaiting Review'}
+                                </span>
+                                {a.employee_review_status==='accepted'&&<span className="px-3 py-1 rounded-full text-xs font-bold bg-blue-100 text-blue-700">✓ Accepted</span>}
+                                {a.employee_review_status==='rejected'&&<span className="px-3 py-1 rounded-full text-xs font-bold bg-red-100 text-red-700">⚠ Disputed</span>}
+                            </div>
+                            <p className="text-sm text-gray-500">Submitted: {new Date(a.created_at).toLocaleDateString()}</p>
+                            {a.completed_at&&<p className="text-sm text-gray-500">Reviewed: {new Date(a.completed_at).toLocaleDateString()}</p>}
+                        </div>
+                        <div className="flex items-center gap-3">
+                            {a.status==='completed'&&<div className="text-right mr-2">
+                                <p className="text-xs text-gray-400 font-bold uppercase">Score</p>
+                                <p className="text-2xl font-extrabold text-green-600">{avg(a.supervisor_ratings)}<span className="text-sm text-gray-400">/5</span></p>
+                            </div>}
+                            {a.status==='completed'&&(!a.employee_review_status||a.employee_review_status==='pending')&&
+                                <button onClick={()=>{setSelApp(a);setView('review');}}
+                                    className="btn-green text-white px-5 py-2.5 rounded-xl font-semibold text-sm">
+                                    <i className="fas fa-eye mr-2"/>Review
+                                </button>}
+                            {a.status==='completed'&&a.employee_review_status&&a.employee_review_status!=='pending'&&
+                                <button onClick={()=>{setSelApp(a);setView('review');}}
+                                    className="bg-gray-100 text-gray-600 px-5 py-2.5 rounded-xl font-semibold text-sm hover:bg-gray-200">
+                                    <i className="fas fa-eye mr-2"/>View
+                                </button>}
+                        </div>
+                    </div>
+                </div>)}</div>}
+            </div>
+            {showPw&&<ChangePw user={user} onClose={()=>setShowPw(false)} notify={notify}/>}
+        </div>
+    </div>;
+}
+
+function Assessment({user,notify,onDone}) {
+    const [rate,setRate]=useState({});
+    const [comm,setComm]=useState({});
+    const [overall,setOverall]=useState('');
+    const [busy,setBusy]=useState(false);
+    const rated=Object.keys(rate).length;
+    const progress=(rated/comps.length)*100;
+    const allComm=Object.keys(rate).every(k=>comm[k]&&comm[k].trim().length>=10);
+    const missing=Object.keys(rate).filter(k=>!comm[k]||comm[k].trim().length<10);
+
+    const submit=async()=>{
+        if(rated<comps.length){notify('Rate all competencies','error');return;}
+        if(!allComm){notify(`Add justification for: ${missing[0]}`,'error');return;}
+        if(!overall.trim()){notify('Add overall reflection','error');return;}
+        setBusy(true);
+        try{
+            const r=await fetch(`${SB}/rest/v1/appraisals`,{method:'POST',headers:HJ,
+                body:JSON.stringify({employee_id:user.id,status:'pending',self_ratings:rate,self_comments:comm,self_overall_comments:overall})});
+            if(r.ok){notify('Assessment submitted!');onDone();}else notify('Failed','error');
+        }catch(e){notify('Error','error');}
+        setBusy(false);
+    };
+
+    return <div className="min-h-screen p-4 md:p-8"><div className="max-w-5xl mx-auto">
+        {/* Header + Progress */}
+        <div className="glass rounded-2xl p-6 mb-6 animate-in">
+            <button onClick={onDone} className="text-green-600 font-semibold text-sm mb-3 hover:underline"><i className="fas fa-arrow-left mr-2"/>Back</button>
+            <div className="flex justify-between items-end mb-4">
+                <div>
+                    <h1 className="text-2xl md:text-3xl font-extrabold text-gray-800">Self-Assessment</h1>
+                    <p className="text-gray-500 mt-1">{user.name}</p>
+                </div>
+                <div className="text-right">
+                    <p className="text-xs font-bold text-gray-400 uppercase">Progress</p>
+                    <p className="text-3xl font-extrabold text-green-600">{Math.round(progress)}%</p>
+                </div>
+            </div>
+            <div className="w-full bg-gray-200 rounded-full h-3 overflow-hidden">
+                <div className="bg-gradient-to-r from-green-500 to-emerald-600 h-3 rounded-full progress-anim" style={{width:`${progress}%`}}/>
+            </div>
+            <p className="text-xs text-gray-400 mt-2">{rated} of {comps.length} competencies rated</p>
+        </div>
+
+        {/* Rating Scale */}
+        <div className="glass rounded-xl p-5 mb-6">
+            <h3 className="font-bold text-sm mb-3 text-gray-600"><i className="fas fa-info-circle text-green-600 mr-2"/>Rating Scale</h3>
+            <div className="grid grid-cols-5 gap-2">
+                {rats.map(r=><div key={r.v} className="p-2 rounded-lg border text-center" style={{borderColor:r.c+'40',background:r.c+'10'}}>
+                    <div className="font-extrabold text-sm" style={{color:r.c}}>{r.v}</div>
+                    <div className="text-xs text-gray-600">{r.l}</div>
+                </div>)}
+            </div>
+        </div>
+
+        {/* Mandatory notice */}
+        <div className="bg-amber-50 border-2 border-amber-200 rounded-xl p-4 mb-6">
+            <p className="text-sm text-amber-800 font-semibold"><i className="fas fa-exclamation-triangle mr-2"/>Justification Required</p>
+            <p className="text-xs text-amber-600 mt-1">Provide a justification comment (min 10 characters) for each rating.</p>
+        </div>
+
+        {/* Competencies */}
+        <div className="glass rounded-2xl p-6 mb-6">
+            <h2 className="text-lg font-bold mb-6">Competencies</h2>
+            <div className="space-y-6">{comps.map(c=>{
+                const isR=rate[c.name]!==undefined;
+                const hasC=comm[c.name]&&comm[c.name].trim().length>=10;
+                const needC=isR&&!hasC;
+                return <div key={c.name} className={`border-2 rounded-xl p-5 transition ${isR&&hasC?'border-green-200 bg-green-50 bg-opacity-30':needC?'border-amber-300':'border-gray-100'}`}>
+                    <div className="flex items-start justify-between mb-4">
+                        <div className="flex items-start gap-3">
+                            <div className={`w-9 h-9 rounded-lg flex items-center justify-center ${isR&&hasC?'bg-green-100':'bg-gray-100'}`}>
+                                <i className={`fas ${c.icon} ${isR&&hasC?'text-green-600':'text-gray-400'} text-sm`}/>
+                            </div>
+                            <div>
+                                <h3 className="font-bold text-gray-800">{c.name}</h3>
+                                <p className="text-sm text-gray-500 mt-0.5">{c.desc}</p>
+                            </div>
+                        </div>
+                        {isR&&hasC&&<span className="text-xs bg-green-100 text-green-700 px-2 py-1 rounded-full font-bold"><i className="fas fa-check mr-1"/>Done</span>}
+                    </div>
+                    <div className="grid grid-cols-5 gap-2 mb-4">
+                        {rats.map(r=><button key={r.v} onClick={()=>setRate({...rate,[c.name]:r.v})}
+                            className={`py-3 rounded-xl border-2 font-medium r-btn ${rate[c.name]===r.v?'sel':'bg-white border-gray-200 hover:border-green-300'}`}>
+                            <div className="font-extrabold text-lg">{r.v}</div>
+                            <div className="text-xs opacity-80 hidden md:block">{r.l}</div>
+                        </button>)}
+                    </div>
+                    <textarea placeholder="Justification (required) — explain your rating with examples..."
+                        value={comm[c.name]||''} onChange={e=>setComm({...comm,[c.name]:e.target.value})}
+                        rows="3" className={`w-full px-4 py-3 border-2 rounded-xl text-sm ${needC?'border-amber-300 bg-amber-50':'border-gray-200'}`}/>
+                    {needC&&<p className="text-amber-600 text-xs mt-1 font-medium"><i className="fas fa-exclamation-circle mr-1"/>Min 10 chars — {Math.max(0,10-(comm[c.name]?.trim().length||0))} more needed</p>}
+                </div>;
+            })}</div>
+        </div>
+
+        {/* Overall */}
+        <div className="glass rounded-2xl p-6 mb-6">
+            <h3 className="font-bold mb-3"><i className="fas fa-comment-alt text-green-600 mr-2"/>Overall Reflection <span className="text-red-500">*</span></h3>
+            <textarea value={overall} onChange={e=>setOverall(e.target.value)} rows="6"
+                className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl text-sm"
+                placeholder="Key achievements, challenges, lessons, and goals..."/>
+        </div>
+
+        {/* Submit */}
+        <div className="glass rounded-xl p-6 flex gap-4">
+            <button onClick={onDone} disabled={busy} className="flex-1 bg-gray-100 py-4 rounded-xl font-bold hover:bg-gray-200">Cancel</button>
+            <button onClick={submit} disabled={busy||progress<100||!allComm||!overall.trim()}
+                className="flex-1 btn-green text-white py-4 rounded-xl font-bold disabled:opacity-50">
+                {busy?'Submitting...':progress<100?`Rate All (${rated}/${comps.length})`:!allComm?'Add Justifications':!overall.trim()?'Add Reflection':'Submit Assessment'}
+            </button>
+        </div>
+    </div></div>;
+}
+                        <!-- PART 3: Employee Review + Evidence Upload + Accept/Reject -->
+
+function EmpReview({appraisal,user,notify,onDone}) {
+    const [response,setResponse]=useState(appraisal.employee_review_status==='pending'?'':appraisal.employee_review_status||'');
+    const [comments,setComments]=useState(appraisal.employee_review_comments||'');
+    const [evidence,setEvidence]=useState(appraisal.employee_evidence||[]);
+    const [evDesc,setEvDesc]=useState('');
+    const [evLink,setEvLink]=useState('');
+    const [busy,setBusy]=useState(false);
+    const readOnly=appraisal.employee_review_status&&appraisal.employee_review_status!=='pending';
+
+    const selfAvg=avg(appraisal.self_ratings);
+    const supAvg=avg(appraisal.supervisor_ratings);
+    const diff=(selfAvg-supAvg).toFixed(1);
+
+    const addEv=()=>{
+        if(!evDesc.trim()){notify('Describe the evidence','error');return;}
+        setEvidence([...evidence,{description:evDesc,link:evLink,added_at:new Date().toISOString()}]);
+        setEvDesc('');setEvLink('');
+    };
+
+    const submit=async()=>{
+        if(!response){notify('Select Accept or Dispute','error');return;}
+        if(response==='rejected'&&comments.trim().length<20){notify('Provide detailed reasons (min 20 chars)','error');return;}
+        setBusy(true);
+        try{
+            const r=await fetch(`${SB}/rest/v1/appraisals?id=eq.${appraisal.id}`,{
+                method:'PATCH',headers:HJ,
+                body:JSON.stringify({employee_review_status:response,employee_review_comments:comments,employee_evidence:evidence,review_submitted_at:new Date().toISOString()})
+            });
+            if(r.ok){notify(response==='accepted'?'Review accepted!':'Dispute submitted');onDone();}
+            else notify('Failed','error');
+        }catch(e){notify('Error','error');}
+        setBusy(false);
+    };
+
+    return <div className="min-h-screen p-4 md:p-8"><div className="max-w-5xl mx-auto">
+        {/* Header */}
+        <div className="glass rounded-2xl p-6 mb-6 animate-in">
+            <button onClick={onDone} className="text-green-600 font-semibold text-sm mb-3 hover:underline"><i className="fas fa-arrow-left mr-2"/>Back</button>
+            <h1 className="text-2xl md:text-3xl font-extrabold text-gray-800">{readOnly?'Review Details':'Review Supervisor Feedback'}</h1>
+            <p className="text-gray-500 mt-1">Reviewed on {new Date(appraisal.completed_at).toLocaleDateString()}</p>
+        </div>
+
+        {/* Score Summary */}
+        <div className="glass rounded-2xl p-6 mb-6">
+            <h2 className="text-lg font-bold mb-4">Score Summary</h2>
+            <div className="grid md:grid-cols-3 gap-4 mb-6">
+                <div className="bg-blue-50 border border-blue-200 rounded-xl p-5 text-center">
+                    <p className="text-xs font-bold text-blue-500 uppercase">Your Self-Rating</p>
+                    <p className="text-4xl font-extrabold text-blue-700 mt-2">{selfAvg}<span className="text-lg text-blue-400">/5</span></p>
+                </div>
+                <div className="bg-green-50 border border-green-200 rounded-xl p-5 text-center">
+                    <p className="text-xs font-bold text-green-500 uppercase">Supervisor Rating</p>
+                    <p className="text-4xl font-extrabold text-green-700 mt-2">{supAvg}<span className="text-lg text-green-400">/5</span></p>
+                </div>
+                <div className="bg-gray-50 border border-gray-200 rounded-xl p-5 text-center">
+                    <p className="text-xs font-bold text-gray-400 uppercase">Difference</p>
+                    <p className={`text-4xl font-extrabold mt-2 ${Math.abs(diff)>1?'text-red-600':'text-gray-700'}`}>
+                        {diff>0?'+':''}{diff}
+                    </p>
+                </div>
+            </div>
+            {/* Comparison bars */}
+            <div className="space-y-3">
+                <div className="flex items-center gap-3">
+                    <span className="text-xs font-bold text-blue-600 w-16">Self</span>
+                    <div className="flex-1 cbar"><div className="cbar-fill bg-blue-500" style={{width:`${(selfAvg/5)*100}%`}}/></div>
+                    <span className="text-sm font-bold text-blue-700 w-10 text-right">{selfAvg}</span>
+                </div>
+                <div className="flex items-center gap-3">
+                    <span className="text-xs font-bold text-green-600 w-16">Supv.</span>
+                    <div className="flex-1 cbar"><div className="cbar-fill bg-green-500" style={{width:`${(supAvg/5)*100}%`}}/></div>
+                    <span className="text-sm font-bold text-green-700 w-10 text-right">{supAvg}</span>
+                </div>
+            </div>
+        </div>
+
+        {/* Detailed Competency Breakdown */}
+        <div className="glass rounded-2xl p-6 mb-6">
+            <h2 className="text-lg font-bold mb-6">Competency Breakdown</h2>
+            <div className="space-y-5">{comps.map(c=>{
+                const selfR=appraisal.self_ratings?.[c.name]||0;
+                const supR=appraisal.supervisor_ratings?.[c.name]||0;
+                const d=selfR-supR;
+                return <div key={c.name} className="border-2 border-gray-100 rounded-xl p-5">
+                    <div className="flex items-start justify-between mb-3">
+                        <div className="flex items-center gap-2">
+                            <i className={`fas ${c.icon} text-green-600`}/>
+                            <h3 className="font-bold text-gray-800">{c.name}</h3>
+                        </div>
+                        {d!==0&&<span className={`text-xs font-bold px-2 py-1 rounded-full ${d>0?'bg-amber-100 text-amber-700':'bg-blue-100 text-blue-700'}`}>
+                            {d>0?`↑ Self +${d}`:`↓ Self ${d}`}
+                        </span>}
+                    </div>
+                    <div className="space-y-2 mb-3">
+                        <div className="flex items-center gap-3">
+                            <span className="text-xs text-blue-600 font-bold w-20">You rated</span>
+                            <div className="flex-1 cbar"><div className="cbar-fill bg-blue-400" style={{width:`${(selfR/5)*100}%`}}/></div>
+                            <span className="text-sm font-extrabold text-blue-700 w-8 text-right">{selfR}/5</span>
+                        </div>
+                        <div className="flex items-center gap-3">
+                            <span className="text-xs text-green-600 font-bold w-20">Supervisor</span>
+                            <div className="flex-1 cbar"><div className="cbar-fill bg-green-500" style={{width:`${(supR/5)*100}%`}}/></div>
+                            <span className="text-sm font-extrabold text-green-700 w-8 text-right">{supR}/5</span>
+                        </div>
+                    </div>
+                    {appraisal.self_comments?.[c.name]&&<div className="bg-blue-50 rounded-lg p-3 mb-2">
+                        <p className="text-xs font-bold text-blue-500 mb-1">Your Comment:</p>
+                        <p className="text-sm text-gray-700">{appraisal.self_comments[c.name]}</p>
+                    </div>}
+                    {appraisal.supervisor_comments?.[c.name]&&<div className="bg-green-50 rounded-lg p-3">
+                        <p className="text-xs font-bold text-green-500 mb-1">Supervisor Feedback:</p>
+                        <p className="text-sm text-gray-700">{appraisal.supervisor_comments[c.name]}</p>
+                    </div>}
+                </div>;
+            })}</div>
+        </div>
+
+        {/* Supervisor Overall Comments */}
+        {appraisal.supervisor_overall_comments&&<div className="glass rounded-2xl p-6 mb-6">
+            <h3 className="font-bold mb-3"><i className="fas fa-comment text-green-600 mr-2"/>Supervisor's Overall Assessment</h3>
+            <div className="bg-green-50 border border-green-200 rounded-xl p-5">
+                <p className="text-gray-700 whitespace-pre-wrap text-sm">{appraisal.supervisor_overall_comments}</p>
+            </div>
+        </div>}
+
+        {!readOnly?<>
+            {/* Evidence Upload */}
+            <div className="glass rounded-2xl p-6 mb-6">
+                <h3 className="font-bold mb-3"><i className="fas fa-file-alt text-blue-600 mr-2"/>Supporting Evidence (Optional)</h3>
+                <p className="text-sm text-gray-500 mb-4">Attach evidence supporting your self-assessment — project links, reports, certifications, etc.</p>
+                
+                {evidence.length>0&&<div className="space-y-2 mb-4">{evidence.map((ev,i)=>
+                    <div key={i} className="flex items-center gap-3 bg-blue-50 rounded-xl p-3">
+                        <i className="fas fa-paperclip text-blue-500"/>
+                        <div className="flex-1 min-w-0">
+                            <p className="text-sm font-semibold text-gray-800 truncate">{ev.description}</p>
+                            {ev.link&&<p className="text-xs text-blue-600 truncate">{ev.link}</p>}
+                        </div>
+                        <button onClick={()=>setEvidence(evidence.filter((_,j)=>j!==i))} className="text-red-400 hover:text-red-600">
+                            <i className="fas fa-trash-alt"/>
+                        </button>
+                    </div>
+                )}</div>}
+
+                <div className="space-y-3">
+                    <input type="text" value={evDesc} onChange={e=>setEvDesc(e.target.value)}
+                        className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl text-sm"
+                        placeholder="Description (e.g. 'Q3 project completion report')"/>
+                    <input type="text" value={evLink} onChange={e=>setEvLink(e.target.value)}
+                        className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl text-sm"
+                        placeholder="Link/URL (optional)"/>
+                    <button onClick={addEv} disabled={!evDesc.trim()}
+                        className="px-5 py-2.5 bg-blue-600 text-white rounded-xl font-semibold text-sm disabled:opacity-50 hover:bg-blue-700">
+                        <i className="fas fa-plus mr-2"/>Add Evidence
+                    </button>
+                </div>
+            </div>
+
+            {/* Accept / Reject */}
+            <div className="glass rounded-2xl p-6 mb-6">
+                <h3 className="font-bold mb-4"><i className="fas fa-gavel text-green-600 mr-2"/>Your Decision</h3>
+                <div className="grid md:grid-cols-2 gap-4 mb-4">
+                    <button onClick={()=>setResponse('accepted')}
+                        className={`p-5 rounded-xl border-2 text-left transition ${response==='accepted'?'border-green-500 bg-green-50':'border-gray-200 hover:border-green-300'}`}>
+                        <div className="flex items-center gap-3 mb-2">
+                            <div className={`w-10 h-10 rounded-full flex items-center justify-center ${response==='accepted'?'bg-green-500 text-white':'bg-gray-100 text-gray-400'}`}>
+                                <i className="fas fa-check"/>
+                            </div>
+                            <h4 className="font-bold text-gray-800">Accept Review</h4>
+                        </div>
+                        <p className="text-sm text-gray-500">I agree with my supervisor's assessment.</p>
+                    </button>
+                    <button onClick={()=>setResponse('rejected')}
+                        className={`p-5 rounded-xl border-2 text-left transition ${response==='rejected'?'border-red-500 bg-red-50':'border-gray-200 hover:border-red-300'}`}>
+                        <div className="flex items-center gap-3 mb-2">
+                            <div className={`w-10 h-10 rounded-full flex items-center justify-center ${response==='rejected'?'bg-red-500 text-white':'bg-gray-100 text-gray-400'}`}>
+                                <i className="fas fa-times"/>
+                            </div>
+                            <h4 className="font-bold text-gray-800">Dispute Review</h4>
+                        </div>
+                        <p className="text-sm text-gray-500">I disagree and want to provide reasoning.</p>
+                    </button>
+                </div>
+                <div>
+                    <label className="block text-sm font-bold text-gray-700 mb-2">
+                        Your Comments {response==='rejected'&&<span className="text-red-500">* (required)</span>}
+                    </label>
+                    <textarea value={comments} onChange={e=>setComments(e.target.value)} rows="5"
+                        className={`w-full px-4 py-3 border-2 rounded-xl text-sm ${response==='rejected'&&comments.trim().length<20?'border-red-300':'border-gray-200'}`}
+                        placeholder={response==='rejected'?'Explain which ratings you disagree with and why (min 20 chars)...':'Additional comments (optional)...'}/>
+                    {response==='rejected'&&comments.trim().length<20&&
+                        <p className="text-red-500 text-xs mt-1"><i className="fas fa-exclamation-circle mr-1"/>Min 20 characters required</p>}
+                </div>
+            </div>
+
+            {/* Submit */}
+            <div className="glass rounded-xl p-6 flex gap-4">
+                <button onClick={onDone} disabled={busy} className="flex-1 bg-gray-100 py-4 rounded-xl font-bold hover:bg-gray-200">Cancel</button>
+                <button onClick={submit} disabled={busy||!response||(response==='rejected'&&comments.trim().length<20)}
+                    className={`flex-1 text-white py-4 rounded-xl font-bold disabled:opacity-50 ${response==='rejected'?'bg-red-600 hover:bg-red-700':'btn-green'}`}>
+                    {busy?'Submitting...':!response?'Select Accept or Dispute':response==='accepted'?'✓ Accept Review':'⚠ Submit Dispute'}
+                </button>
+            </div>
+        </>
+        :/* Read-only view */
+        <div className="glass rounded-2xl p-6 mb-6">
+            <h3 className="font-bold mb-3">
+                <i className={`fas ${appraisal.employee_review_status==='accepted'?'fa-check-circle text-green-600':'fa-exclamation-circle text-red-600'} mr-2`}/>
+                Your Response: {appraisal.employee_review_status==='accepted'?'Accepted':'Disputed'}
+            </h3>
+            {appraisal.employee_review_comments&&<div className="bg-gray-50 rounded-xl p-4 mb-3">
+                <p className="text-sm text-gray-700 whitespace-pre-wrap">{appraisal.employee_review_comments}</p>
+            </div>}
+            {appraisal.employee_evidence&&appraisal.employee_evidence.length>0&&<div>
+                <p className="text-sm font-bold text-gray-600 mb-2">Attached Evidence:</p>
+                {appraisal.employee_evidence.map((ev,i)=><div key={i} className="flex items-center gap-2 bg-blue-50 rounded-lg p-3 mb-1">
+                    <i className="fas fa-paperclip text-blue-500"/>
+                    <span className="text-sm text-gray-800">{ev.description}</span>
+                    {ev.link&&<a href={ev.link} target="_blank" rel="noreferrer" className="text-blue-600 text-xs hover:underline ml-auto">{ev.link}</a>}
+                </div>)}
+            </div>}
+            <button onClick={onDone} className="mt-4 btn-green text-white px-6 py-3 rounded-xl font-semibold">
+                <i className="fas fa-arrow-left mr-2"/>Back to Dashboard
+            </button>
+        </div>}
+    </div></div>;
+}
+    <!-- PART 4: Supervisor Dashboard + Review + Render -->
+
+function SuperDash({user,onLogout,notify}) {
+    const [allApps,setAllApps]=useState([]);
+    const [selected,setSelected]=useState(null);
+    const [names,setNames]=useState({});
+    const [showPw,setShowPw]=useState(false);
+    const [tab,setTab]=useState('pending');
+
+    const load=()=>{
+        fetch(`${SB}/rest/v1/appraisals?order=created_at.desc`,{headers:H})
+        .then(r=>r.json()).then(data=>{
+            setAllApps(data);
+            const ids=[...new Set(data.map(a=>a.employee_id))];
+            if(ids.length>0)
+                fetch(`${SB}/rest/v1/users?id=in.(${ids.join(',')})`,{headers:H})
+                .then(r=>r.json()).then(users=>{const n={};users.forEach(u=>n[u.id]=u.name);setNames(n);});
+        });
+    };
+    useEffect(()=>{load();},[]);
+
+    if(selected) return <SupReview app={selected} name={names[selected.employee_id]} notify={notify} onDone={()=>{setSelected(null);load();}}/>;
+
+    const pending=allApps.filter(a=>a.status==='pending');
+    const completed=allApps.filter(a=>a.status==='completed');
+    const disputed=allApps.filter(a=>a.employee_review_status==='rejected');
+    const list=tab==='pending'?pending:tab==='completed'?completed:disputed;
+
+    return <div className="min-h-screen p-4 md:p-8"><div className="max-w-6xl mx-auto">
+        {/* Header */}
+        <div className="glass rounded-2xl p-6 mb-6 animate-in">
+            <div className="flex flex-wrap justify-between items-center gap-4">
+                <div>
+                    <h1 className="text-2xl md:text-3xl font-extrabold text-gray-800">Supervisor Dashboard</h1>
+                    <p className="text-gray-500 font-medium mt-1"><i className="fas fa-user-tie text-green-600 mr-2"/>{user.name}</p>
+                </div>
+                <div className="flex gap-2">
+                    <button onClick={()=>setShowPw(true)} className="px-4 py-2 bg-green-50 text-green-700 hover:bg-green-100 rounded-xl font-medium text-sm">
+                        <i className="fas fa-key mr-2"/>Password
+                    </button>
+                    <button onClick={onLogout} className="px-4 py-2 text-gray-500 hover:bg-gray-100 rounded-xl text-sm">
+                        <i className="fas fa-sign-out-alt mr-2"/>Logout
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        {/* Stats */}
+        <div className="grid grid-cols-3 gap-4 mb-6">
+            {[
+                {label:'Pending',val:pending.length,icon:'fa-clock',bg:'bg-amber-50',color:'text-amber-600'},
+                {label:'Completed',val:completed.length,icon:'fa-check-circle',bg:'bg-green-50',color:'text-green-600'},
+                {label:'Disputed',val:disputed.length,icon:'fa-flag',bg:'bg-red-50',color:'text-red-600'}
+            ].map((s,i)=><div key={i} className="glass rounded-xl p-5 stat">
+                <div className="flex justify-between items-start">
+                    <div>
+                        <p className="text-xs font-bold text-gray-400 uppercase tracking-wider">{s.label}</p>
+                        <p className="text-3xl font-extrabold text-gray-800 mt-1">{s.val}</p>
+                    </div>
+                    <div className={`w-10 h-10 ${s.bg} rounded-lg flex items-center justify-center`}>
+                        <i className={`fas ${s.icon} ${s.color}`}/>
+                    </div>
+                </div>
+            </div>)}
+        </div>
+
+        {/* Tabs + List */}
+        <div className="glass rounded-2xl p-6">
+            <div className="flex gap-2 mb-6 border-b pb-4">
+                {[['pending','Pending',pending.length],['completed','Completed',completed.length],['disputed','Disputed',disputed.length]].map(([k,l,c])=>
+                    <button key={k} onClick={()=>setTab(k)}
+                        className={`px-4 py-2 rounded-xl text-sm font-bold transition ${tab===k?'btn-green text-white':'text-gray-500 hover:bg-gray-100'}`}>
+                        {l} ({c})
+                    </button>
+                )}
+            </div>
+            {list.length===0?<div className="text-center py-12 text-gray-400">
+                <i className="fas fa-check-double text-4xl mb-3 text-green-400"/><p className="font-semibold">No items</p>
+            </div>
+            :<div className="space-y-3">{list.map(a=>
+                <div key={a.id} className="border-2 border-gray-100 rounded-xl p-5 hover:border-green-200 cursor-pointer transition" onClick={()=>setSelected(a)}>
+                    <div className="flex flex-wrap justify-between items-center gap-3">
+                        <div>
+                            <h3 className="font-bold text-gray-800"><i className="fas fa-user-circle text-green-600 mr-2"/>{names[a.employee_id]||'Employee'}</h3>
+                            <div className="flex items-center gap-2 mt-1">
+                                <p className="text-sm text-gray-500">{new Date(a.created_at).toLocaleDateString()}</p>
+                                {a.employee_review_status==='rejected'&&<span className="px-2 py-0.5 bg-red-100 text-red-700 text-xs font-bold rounded-full">Disputed</span>}
+                                {a.employee_review_status==='accepted'&&<span className="px-2 py-0.5 bg-green-100 text-green-700 text-xs font-bold rounded-full">Accepted</span>}
+                            </div>
+                        </div>
+                        <button className="btn-green text-white px-5 py-2.5 rounded-xl font-semibold text-sm">
+                            <i className="fas fa-eye mr-2"/>{a.status==='pending'?'Review':'View'}
+                        </button>
+                    </div>
+                </div>
+            )}</div>}
+        </div>
+        {showPw&&<ChangePw user={user} onClose={()=>setShowPw(false)} notify={notify}/>}
+    </div></div>;
+}
+
+function SupReview({app,name,notify,onDone}) {
+    const [rate,setRate]=useState(app.supervisor_ratings||{});
+    const [comm,setComm]=useState(app.supervisor_comments||{});
+    const [overall,setOverall]=useState(app.supervisor_overall_comments||'');
+    const [busy,setBusy]=useState(false);
+    const done=app.status==='completed';
+    const rated=Object.keys(rate).length;
+    const progress=(rated/comps.length)*100;
+    const allComm=Object.keys(rate).every(k=>comm[k]&&comm[k].trim().length>=10);
+    const missing=Object.keys(rate).filter(k=>!comm[k]||comm[k].trim().length<10);
+
+    const submit=async()=>{
+        if(rated<comps.length){notify('Rate all competencies','error');return;}
+        if(!allComm){notify(`Add feedback for: ${missing[0]}`,'error');return;}
+        if(!overall.trim()){notify('Add overall assessment','error');return;}
+        setBusy(true);
+        try{
+            const r=await fetch(`${SB}/rest/v1/appraisals?id=eq.${app.id}`,{method:'PATCH',headers:HJ,
+                body:JSON.stringify({status:'completed',supervisor_ratings:rate,supervisor_comments:comm,supervisor_overall_comments:overall,completed_at:new Date().toISOString(),employee_review_status:'pending'})});
+            if(r.ok){notify('Review completed!');onDone();}else notify('Failed','error');
+        }catch(e){notify('Error','error');}
+        setBusy(false);
+    };
+
+    return <div className="min-h-screen p-4 md:p-8"><div className="max-w-5xl mx-auto">
+        {/* Header */}
+        <div className="glass rounded-2xl p-6 mb-6 animate-in">
+            <button onClick={onDone} className="text-green-600 font-semibold text-sm mb-3 hover:underline"><i className="fas fa-arrow-left mr-2"/>Back</button>
+            <div className="flex justify-between items-end mb-4">
+                <div>
+                    <h1 className="text-2xl md:text-3xl font-extrabold text-gray-800">{done?'Review Details':'Performance Review'}</h1>
+                    <p className="text-gray-500 mt-1"><i className="fas fa-user-circle text-green-600 mr-2"/>{name}</p>
+                </div>
+                {!done&&<div className="text-right">
+                    <p className="text-xs font-bold text-gray-400 uppercase">Progress</p>
+                    <p className="text-3xl font-extrabold text-green-600">{Math.round(progress)}%</p>
+                </div>}
+            </div>
+            {!done&&<>
+                <div className="w-full bg-gray-200 rounded-full h-3 overflow-hidden">
+                    <div className="bg-gradient-to-r from-green-500 to-emerald-600 h-3 rounded-full progress-anim" style={{width:`${progress}%`}}/>
+                </div>
+                <p className="text-xs text-gray-400 mt-2">{rated} of {comps.length} rated</p>
+            </>}
+        </div>
+
+        {/* Dispute alert */}
+        {app.employee_review_status==='rejected'&&app.employee_review_comments&&
+            <div className="bg-red-50 border-2 border-red-200 rounded-2xl p-5 mb-6">
+                <div className="flex items-start gap-3">
+                    <div className="w-10 h-10 bg-red-100 rounded-xl flex items-center justify-center flex-shrink-0">
+                        <i className="fas fa-flag text-red-600"/>
+                    </div>
+                    <div>
+                        <h3 className="font-bold text-red-800">Employee Disputed This Review</h3>
+                        <p className="text-sm text-red-700 mt-1 whitespace-pre-wrap">{app.employee_review_comments}</p>
+                        {app.employee_evidence&&app.employee_evidence.length>0&&<div className="mt-3">
+                            <p className="text-xs font-bold text-red-600 mb-1">Evidence Provided:</p>
+                            {app.employee_evidence.map((ev,i)=><div key={i} className="flex items-center gap-2 bg-white rounded-lg p-2 mb-1">
+                                <i className="fas fa-paperclip text-red-400"/>
+                                <span className="text-sm text-gray-800">{ev.description}</span>
+                                {ev.link&&<a href={ev.link} target="_blank" rel="noreferrer" className="text-blue-600 text-xs hover:underline ml-auto">{ev.link}</a>}
+                            </div>)}
+                        </div>}
+                    </div>
+                </div>
+            </div>}
+
+        {/* Rating scale + mandatory notice */}
+        {!done&&<>
+            <div className="glass rounded-xl p-5 mb-6">
+                <h3 className="font-bold text-sm mb-3 text-gray-600"><i className="fas fa-info-circle text-green-600 mr-2"/>Rating Scale</h3>
+                <div className="grid grid-cols-5 gap-2">
+                    {rats.map(r=><div key={r.v} className="p-2 rounded-lg border text-center" style={{borderColor:r.c+'40',background:r.c+'10'}}>
+                        <div className="font-extrabold text-sm" style={{color:r.c}}>{r.v}</div>
+                        <div className="text-xs text-gray-600">{r.l}</div>
+                    </div>)}
+                </div>
+            </div>
+            <div className="bg-amber-50 border-2 border-amber-200 rounded-xl p-4 mb-6">
+                <p className="text-sm text-amber-800 font-semibold"><i className="fas fa-exclamation-triangle mr-2"/>Feedback Required</p>
+                <p className="text-xs text-amber-600 mt-1">Written feedback (min 10 characters) is mandatory for each competency.</p>
+            </div>
+        </>}
+
+        {/* Competencies */}
+        <div className="glass rounded-2xl p-6 mb-6">
+            <h2 className="text-lg font-bold mb-6">Competency Review</h2>
+            <div className="space-y-6">{comps.map(c=>{
+                const isR=rate[c.name]!==undefined;
+                const hasC=comm[c.name]&&comm[c.name].trim().length>=10;
+                const needC=isR&&!hasC&&!done;
+                return <div key={c.name} className={`border-2 rounded-xl p-5 transition ${isR&&hasC?'border-green-200':needC?'border-amber-300':'border-gray-100'}`}>
+                    <div className="flex items-center gap-2 mb-4">
+                        <i className={`fas ${c.icon} text-green-600`}/>
+                        <h3 className="font-bold text-gray-800">{c.name}</h3>
+                        {isR&&hasC&&!done&&<span className="text-xs bg-green-100 text-green-700 px-2 py-0.5 rounded-full font-bold"><i className="fas fa-check"/></span>}
+                    </div>
+                    
+                    {/* Employee self-rating */}
+                    <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 mb-4">
+                        <div className="flex justify-between items-center mb-1">
+                            <p className="text-xs font-bold text-blue-500 uppercase">Employee Self-Rating</p>
+                            <p className="text-xl font-extrabold text-blue-700">{app.self_ratings?.[c.name]||'N/A'}/5</p>
+                        </div>
+                        {app.self_comments?.[c.name]&&<p className="text-sm text-gray-600 mt-2 italic border-t border-blue-100 pt-2">"{app.self_comments[c.name]}"</p>}
+                    </div>
+
+                    {!done?<>
+                        <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-3">Your Assessment</label>
+                        <div className="grid grid-cols-5 gap-2 mb-4">
+                            {rats.map(r=><button key={r.v} onClick={()=>setRate({...rate,[c.name]:r.v})}
+                                className={`py-3 rounded-xl border-2 font-medium r-btn ${rate[c.name]===r.v?'sel':'bg-white border-gray-200 hover:border-green-300'}`}>
+                                <div className="font-extrabold text-lg">{r.v}</div>
+                                <div className="text-xs opacity-80 hidden md:block">{r.l}</div>
+                            </button>)}
+                        </div>
+                        <textarea placeholder="Your feedback (required, min 10 chars)..." value={comm[c.name]||''}
+                            onChange={e=>setComm({...comm,[c.name]:e.target.value})}
+                            rows="3" className={`w-full px-4 py-3 border-2 rounded-xl text-sm ${needC?'border-amber-300 bg-amber-50':'border-gray-200'}`}/>
+                        {needC&&<p className="text-amber-600 text-xs mt-1"><i className="fas fa-exclamation-circle mr-1"/>{Math.max(0,10-(comm[c.name]?.trim().length||0))} more chars needed</p>}
+                    </>
+                    :<div className="bg-green-50 border border-green-200 rounded-xl p-4">
+                        <div className="flex justify-between items-center mb-1">
+                            <p className="text-xs font-bold text-green-500 uppercase">Supervisor Rating</p>
+                            <p className="text-xl font-extrabold text-green-700">{rate[c.name]||'N/A'}/5</p>
+                        </div>
+                        {comm[c.name]&&<p className="text-sm text-gray-600 mt-2 italic border-t border-green-100 pt-2">"{comm[c.name]}"</p>}
+                    </div>}
+                </div>;
+            })}</div>
+        </div>
+
+        {/* Employee's overall comments */}
+        <div className="glass rounded-2xl p-6 mb-6">
+            <h3 className="font-bold mb-3"><i className="fas fa-comment text-blue-600 mr-2"/>Employee's Overall Reflection</h3>
+            <div className="bg-blue-50 border border-blue-200 rounded-xl p-5">
+                <p className="text-gray-700 whitespace-pre-wrap text-sm">{app.self_overall_comments||'No comments provided'}</p>
+            </div>
+        </div>
+
+        {!done?<>
+            {/* Supervisor overall assessment */}
+            <div className="glass rounded-2xl p-6 mb-6">
+                <h3 className="font-bold mb-3"><i className="fas fa-award text-green-600 mr-2"/>Your Overall Assessment <span className="text-red-500">*</span></h3>
+                <textarea value={overall} onChange={e=>setOverall(e.target.value)} rows="8"
+                    className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl text-sm"
+                    placeholder="Strengths, areas for improvement, development goals, action items..."/>
+            </div>
+            <div className="glass rounded-xl p-6 flex gap-4">
+                <button onClick={onDone} disabled={busy} className="flex-1 bg-gray-100 py-4 rounded-xl font-bold hover:bg-gray-200">Cancel</button>
+                <button onClick={submit} disabled={busy||progress<100||!allComm||!overall.trim()}
+                    className="flex-1 btn-green text-white py-4 rounded-xl font-bold disabled:opacity-50">
+                    {busy?'Submitting...':progress<100?`Rate All (${rated}/${comps.length})`:!allComm?'Add Feedback':!overall.trim()?'Add Assessment':'Complete Review'}
+                </button>
+            </div>
+        </>
+        :/* View completed overall */
+        overall&&<div className="glass rounded-2xl p-6 mb-6">
+            <h3 className="font-bold mb-3"><i className="fas fa-award text-green-600 mr-2"/>Supervisor's Overall Assessment</h3>
+            <div className="bg-green-50 border border-green-200 rounded-xl p-5">
+                <p className="text-gray-700 whitespace-pre-wrap text-sm">{overall}</p>
+            </div>
+        </div>}
+    </div></div>;
+}
+
+ReactDOM.render(<App/>, document.getElementById('root'));
