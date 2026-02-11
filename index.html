@@ -379,15 +379,74 @@ function Dashboard({user,onLogout,notify}) {
     </div>;
 }
 
+// COMPLETE ASSESSMENT COMPONENT WITH EVIDENCE UPLOAD
+// Replace your entire Assessment function with this:
+
 function Assessment({user,notify,onDone}) {
     const [rate,setRate]=useState({});
     const [comm,setComm]=useState({});
     const [overall,setOverall]=useState('');
     const [busy,setBusy]=useState(false);
+    
+    // NEW: Evidence upload state
+    const [evidence, setEvidence] = useState([]);
+    const [evDesc, setEvDesc] = useState('');
+    const [evLink, setEvLink] = useState('');
+    const [evFile, setEvFile] = useState(null);
+    const [uploading, setUploading] = useState(false);
+    const fileRef = React.createRef();
+    
     const rated=Object.keys(rate).length;
     const progress=(rated/comps.length)*100;
     const allComm=Object.keys(rate).every(k=>comm[k]&&comm[k].trim().length>=10);
     const missing=Object.keys(rate).filter(k=>!comm[k]||comm[k].trim().length<10);
+
+    // NEW: Helper function to convert file to base64
+    const fileToBase64 = (file) => new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(reader.result);
+        reader.onerror = reject;
+        reader.readAsDataURL(file);
+    });
+
+    // NEW: Add evidence function
+    const addEv = async () => {
+        if (!evDesc.trim()) {
+            notify('Describe the evidence', 'error');
+            return;
+        }
+        setUploading(true);
+        try {
+            let fileData = null;
+            if (evFile) {
+                if (evFile.size > 2 * 1024 * 1024) {
+                    notify('File too large (max 2MB)', 'error');
+                    setUploading(false);
+                    return;
+                }
+                fileData = {
+                    name: evFile.name,
+                    type: evFile.type,
+                    size: evFile.size,
+                    data: await fileToBase64(evFile)
+                };
+            }
+            setEvidence([...evidence, {
+                description: evDesc,
+                link: evLink,
+                file: fileData,
+                added_at: new Date().toISOString()
+            }]);
+            setEvDesc('');
+            setEvLink('');
+            setEvFile(null);
+            if (fileRef.current) fileRef.current.value = '';
+            notify('Evidence added', 'info');
+        } catch (e) {
+            notify('Error processing file', 'error');
+        }
+        setUploading(false);
+    };
 
     const submit=async()=>{
         if(rated<comps.length){notify('Rate all competencies','error');return;}
@@ -396,7 +455,14 @@ function Assessment({user,notify,onDone}) {
         setBusy(true);
         try{
             const r=await fetch(`${SB}/rest/v1/appraisals`,{method:'POST',headers:HJ,
-                body:JSON.stringify({employee_id:user.id,status:'pending',self_ratings:rate,self_comments:comm,self_overall_comments:overall})});
+                body:JSON.stringify({
+                    employee_id:user.id,
+                    status:'pending',
+                    self_ratings:rate,
+                    self_comments:comm,
+                    self_overall_comments:overall,
+                    employee_evidence:evidence  // MODIFIED: Added evidence
+                })});
             if(r.ok){notify('Assessment submitted!');onDone();}else notify('Failed','error');
         }catch(e){notify('Error','error');}
         setBusy(false);
@@ -474,7 +540,129 @@ function Assessment({user,notify,onDone}) {
             })}</div>
         </div>
 
-        {/* Overall */}
+        {/* NEW: Supporting Evidence Section */}
+        <div className="glass rounded-2xl p-6 mb-6">
+            <h3 className="font-bold mb-3">
+                <i className="fas fa-file-certificate text-blue-600 mr-2"/>
+                Supporting Evidence (Optional)
+            </h3>
+            <p className="text-sm text-gray-500 mb-4">
+                Upload certificates, completion reports, or other documents that support your self-assessment ratings.
+            </p>
+            
+            {evidence.length > 0 && (
+                <div className="space-y-2 mb-4">
+                    {evidence.map((ev, i) => (
+                        <div key={i} className="flex items-center gap-3 bg-blue-50 rounded-xl p-3">
+                            <i className={`fas ${ev.file ? 'fa-file-circle-check text-green-500' : 'fa-link text-blue-500'}`}/>
+                            <div className="flex-1 min-w-0">
+                                <p className="text-sm font-semibold text-gray-800 truncate">{ev.description}</p>
+                                <div className="flex items-center gap-2 mt-0.5">
+                                    {ev.file && (
+                                        <span className="text-xs bg-green-100 text-green-700 px-2 py-0.5 rounded-full font-medium">
+                                            <i className="fas fa-file mr-1"/>{ev.file.name} ({(ev.file.size/1024).toFixed(0)}KB)
+                                        </span>
+                                    )}
+                                    {ev.link && <span className="text-xs text-blue-600 truncate">{ev.link}</span>}
+                                </div>
+                            </div>
+                            <button 
+                                onClick={() => setEvidence(evidence.filter((_, j) => j !== i))} 
+                                className="text-red-400 hover:text-red-600 flex-shrink-0"
+                            >
+                                <i className="fas fa-trash-alt"/>
+                            </button>
+                        </div>
+                    ))}
+                </div>
+            )}
+
+            <div className="space-y-3">
+                <input 
+                    type="text" 
+                    value={evDesc} 
+                    onChange={e => setEvDesc(e.target.value)}
+                    className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl text-sm"
+                    placeholder="Description (e.g., 'Leadership Training Certificate')"
+                />
+                
+                {/* File Upload Area */}
+                <div className="relative">
+                    <label className="block text-xs font-bold text-gray-500 uppercase mb-2">
+                        Upload File (PDF, Image, Document — max 2MB)
+                    </label>
+                    <div 
+                        className={`border-2 border-dashed rounded-xl p-4 text-center cursor-pointer hover:border-green-400 hover:bg-green-50 transition ${
+                            evFile ? 'border-green-400 bg-green-50' : 'border-gray-300'
+                        }`}
+                        onClick={() => fileRef.current && fileRef.current.click()}
+                    >
+                        {evFile ? (
+                            <div className="flex items-center justify-center gap-2">
+                                <i className="fas fa-file-circle-check text-green-600"/>
+                                <span className="text-sm font-semibold text-green-700">{evFile.name}</span>
+                                <span className="text-xs text-gray-500">({(evFile.size/1024).toFixed(0)}KB)</span>
+                                <button 
+                                    onClick={(e) => {
+                                        e.stopPropagation();
+                                        setEvFile(null);
+                                        if (fileRef.current) fileRef.current.value = '';
+                                    }} 
+                                    className="ml-2 text-red-400 hover:text-red-600"
+                                >
+                                    <i className="fas fa-times-circle"/>
+                                </button>
+                            </div>
+                        ) : (
+                            <div>
+                                <i className="fas fa-cloud-arrow-up text-gray-400 text-2xl mb-2"/>
+                                <p className="text-sm text-gray-500">Click to select a file</p>
+                                <p className="text-xs text-gray-400 mt-1">PDF, PNG, JPG, DOC, DOCX</p>
+                            </div>
+                        )}
+                    </div>
+                    <input 
+                        ref={fileRef} 
+                        type="file" 
+                        className="hidden"
+                        accept=".pdf,.png,.jpg,.jpeg,.doc,.docx,.xls,.xlsx"
+                        onChange={e => {
+                            const f = e.target.files[0];
+                            if (f) {
+                                if (f.size > 2 * 1024 * 1024) {
+                                    notify('File too large (max 2MB)', 'error');
+                                    e.target.value = '';
+                                    return;
+                                }
+                                setEvFile(f);
+                            }
+                        }}
+                    />
+                </div>
+
+                <input 
+                    type="text" 
+                    value={evLink} 
+                    onChange={e => setEvLink(e.target.value)}
+                    className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl text-sm"
+                    placeholder="Or paste a link/URL (optional)"
+                />
+                
+                <button 
+                    onClick={addEv} 
+                    disabled={!evDesc.trim() || uploading}
+                    className="px-5 py-2.5 bg-blue-600 text-white rounded-xl font-semibold text-sm disabled:opacity-50 hover:bg-blue-700"
+                >
+                    {uploading ? (
+                        <><i className="fas fa-spinner fa-spin mr-2"/>Processing...</>
+                    ) : (
+                        <><i className="fas fa-plus mr-2"/>Add Evidence</>
+                    )}
+                </button>
+            </div>
+        </div>
+
+        {/* Overall Reflection */}
         <div className="glass rounded-2xl p-6 mb-6">
             <h3 className="font-bold mb-3"><i className="fas fa-comment-alt text-green-600 mr-2"/>Overall Reflection <span className="text-red-500">*</span></h3>
             <textarea value={overall} onChange={e=>setOverall(e.target.value)} rows="6"
