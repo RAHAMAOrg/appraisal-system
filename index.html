@@ -166,11 +166,6 @@ function Login({onLogin}) {
         </div>
     </div>;
 }
-</script>
-</body>
-</html>
-<!-- PART 2: Add this BEFORE the closing </script> tag in Part 1 -->
-<!-- Remove the </script></body></html> from Part 1, paste this, then Part 3 and Part 4 -->
 
 function ChangePw({user,onClose,notify}) {
     const [cur,setCur]=useState('');
@@ -496,8 +491,6 @@ function Assessment({user,notify,onDone}) {
         </div>
     </div></div>;
 }
-                        <!-- PART 3: Employee Review + Evidence Upload + Accept/Reject -->
-
 function EmpReview({appraisal,user,notify,onDone}) {
     const [response,setResponse]=useState(appraisal.employee_review_status==='pending'?'':appraisal.employee_review_status||'');
     const [comments,setComments]=useState(appraisal.employee_review_comments||'');
@@ -725,8 +718,6 @@ function EmpReview({appraisal,user,notify,onDone}) {
         </div>}
     </div></div>;
 }
-    <!-- PART 4: Supervisor Dashboard + Review + Render -->
-
 function SuperDash({user,onLogout,notify}) {
     const [allApps,setAllApps]=useState([]);
     const [selected,setSelected]=useState(null);
@@ -994,3 +985,6 @@ function SupReview({app,name,notify,onDone}) {
 }
 
 ReactDOM.render(<App/>, document.getElementById('root'));
+</script>
+</body>
+</html>
