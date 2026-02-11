@@ -1,0 +1,732 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>RAHAMA Performance Management System</title>
+    <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+        * { font-family: 'Inter', sans-serif; }
+        body { 
+            background-color: #10b981;
+            background-image: url('bg.jpg');
+            background-size: cover;
+            background-position: center;
+            background-repeat: no-repeat;
+            background-attachment: fixed;
+            min-height: 100vh; 
+            margin: 0;
+        }
+        /* Fallback if image doesn't load */
+        body::before {
+            content: '';
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+            z-index: -1;
+        }
+        .glass { background: rgba(255, 255, 255, 0.95); backdrop-filter: blur(10px); box-shadow: 0 8px 32px rgba(31, 38, 135, 0.37); }
+        @keyframes slideIn { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
+        .animate-in { animation: slideIn 0.5s ease-out; }
+    </style>
+</head>
+<body style="background: url('bg.jpg') no-repeat center center fixed; background-size: cover; background-color: #10b981;">
+    <div id="root"></div>
+    <script type="text/babel">
+        const { useState, useEffect } = React;
+        const SUPABASE_URL = 'https://wdondphcmnhdslcypeya.supabase.co';
+        const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Indkb25kcGhjbW5oZHNsY3lwZXlhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Njg5MDA3MDcsImV4cCI6MjA4NDQ3NjcwN30.wIisWHb3w4cSGZIB4f3q0Z6lboidH6SzL7oGToGdnsw';
+
+        const competencies = [
+            { name: 'Job Knowledge & Expertise', desc: 'Technical skills and knowledge' },
+            { name: 'Quality of Work', desc: 'Accuracy and thoroughness' },
+            { name: 'Innovation & Problem Solving', desc: 'Solutions and improvements' },
+            { name: 'Communication Skills', desc: 'Information sharing' },
+            { name: 'Teamwork & Collaboration', desc: 'Cooperative work' },
+            { name: 'Adaptability', desc: 'Adjusts to changes' },
+            { name: 'Initiative & Ownership', desc: 'Proactive action' },
+            { name: 'Time Management', desc: 'Meets deadlines' },
+            { name: 'Professional Development', desc: 'Growth and learning' }
+        ];
+
+        const ratings = [
+            { val: 1, label: 'Needs Improvement' },
+            { val: 2, label: 'Developing' },
+            { val: 3, label: 'Competent' },
+            { val: 4, label: 'Proficient' },
+            { val: 5, label: 'Expert' }
+        ];
+
+        function App() {
+            const [user, setUser] = useState(null);
+            const [view, setView] = useState('login');
+
+            useEffect(() => {
+                const session = localStorage.getItem('rahama_session');
+                if (session) {
+                    const u = JSON.parse(session);
+                    setUser(u);
+                    setView(u.role === 'employee' ? 'dashboard' : 'supervisor');
+                }
+            }, []);
+
+            const login = async (email, password, role) => {
+                try {
+                    const res = await fetch(`${SUPABASE_URL}/rest/v1/users?email=eq.${email}&role=eq.${role}`, {
+                        headers: { 'apikey': SUPABASE_KEY, 'Authorization': `Bearer ${SUPABASE_KEY}` }
+                    });
+                    const users = await res.json();
+                    if (users[0]?.password === password) {
+                        const u = { email, name: users[0].name, role, id: users[0].id };
+                        setUser(u);
+                        localStorage.setItem('rahama_session', JSON.stringify(u));
+                        setView(role === 'employee' ? 'dashboard' : 'supervisor');
+                    } else {
+                        alert('Invalid credentials');
+                    }
+                } catch (e) {
+                    alert('Login failed');
+                }
+            };
+
+            const logout = () => {
+                setUser(null);
+                localStorage.removeItem('rahama_session');
+                setView('login');
+            };
+
+            if (view === 'login') return <Login onLogin={login} />;
+            if (view === 'dashboard') return <Dashboard user={user} onLogout={logout} />;
+            if (view === 'supervisor') return <Supervisor user={user} onLogout={logout} />;
+        }
+
+        function Login({ onLogin }) {
+            const [email, setEmail] = useState('');
+            const [password, setPassword] = useState('');
+            const [role, setRole] = useState('employee');
+            const [show, setShow] = useState(false);
+
+            return (
+                <div className="min-h-screen flex items-center justify-center p-4">
+                    <div className="w-full max-w-md glass rounded-2xl p-8 animate-in">
+                        <div className="text-center mb-8">
+                            <img src="RAHAMA Empowerment Logo Design (3).png" alt="RAHAMA" className="w-24 h-24 mx-auto mb-4 object-contain" />
+                            <h1 className="text-3xl font-bold text-gray-800 mb-2">Performance Management</h1>
+                            <p className="text-gray-600">RAHAMA Initiative Staff Portal</p>
+                        </div>
+                        
+                        <div className="mb-6">
+                            <label className="block text-sm font-semibold text-gray-700 mb-3">Your Role</label>
+                            <div className="grid grid-cols-2 gap-3">
+                                <button onClick={() => setRole('employee')}
+                                    className={`py-3 rounded-xl font-medium transition ${role === 'employee' ? 'bg-green-600 text-white' : 'bg-gray-100 text-gray-700'}`}>
+                                    <i className="fas fa-user mr-2"></i>Employee
+                                </button>
+                                <button onClick={() => setRole('supervisor')}
+                                    className={`py-3 rounded-xl font-medium transition ${role === 'supervisor' ? 'bg-green-600 text-white' : 'bg-gray-100 text-gray-700'}`}>
+                                    <i className="fas fa-user-tie mr-2"></i>Supervisor
+                                </button>
+                            </div>
+                        </div>
+
+                        <div className="mb-4">
+                            <label className="block text-sm font-semibold text-gray-700 mb-2">Email</label>
+                            <input type="email" value={email} onChange={e => setEmail(e.target.value)}
+                                className="w-full px-4 py-3 border rounded-xl focus:ring-2 focus:ring-green-500"
+                                placeholder="your.email@rgcweinigeria.org" />
+                        </div>
+
+                        <div className="mb-6">
+                            <label className="block text-sm font-semibold text-gray-700 mb-2">Password</label>
+                            <div className="relative">
+                                <input type={show ? "text" : "password"} value={password}
+                                    onChange={e => setPassword(e.target.value)}
+                                    onKeyPress={e => e.key === 'Enter' && email && password && onLogin(email, password, role)}
+                                    className="w-full px-4 py-3 border rounded-xl focus:ring-2 focus:ring-green-500"
+                                    placeholder="Enter password" />
+                                <button onClick={() => setShow(!show)} className="absolute right-3 top-3">
+                                    <i className={`fas fa-eye${show ? '-slash' : ''} text-gray-400`}></i>
+                                </button>
+                            </div>
+                        </div>
+
+                        <button onClick={() => email && password && onLogin(email, password, role)}
+                            className="w-full bg-gradient-to-r from-green-600 to-green-700 text-white py-3 rounded-xl font-semibold hover:shadow-lg transition">
+                            <i className="fas fa-sign-in-alt mr-2"></i>Sign In
+                        </button>
+
+                        <p className="text-center text-sm text-gray-600 mt-6">© 2025 RAHAMA Initiative</p>
+                    </div>
+                </div>
+            );
+        }
+
+        function ChangePassword({ user, onClose }) {
+            const [currentPassword, setCurrentPassword] = useState('');
+            const [newPassword, setNewPassword] = useState('');
+            const [confirmPassword, setConfirmPassword] = useState('');
+            const [saving, setSaving] = useState(false);
+
+            const handleSubmit = async () => {
+                if (newPassword !== confirmPassword) {
+                    alert('New passwords do not match');
+                    return;
+                }
+                if (newPassword.length < 6) {
+                    alert('Password must be at least 6 characters');
+                    return;
+                }
+                setSaving(true);
+                try {
+                    // Verify current password
+                    const res = await fetch(`${SUPABASE_URL}/rest/v1/users?id=eq.${user.id}`, {
+                        headers: { 'apikey': SUPABASE_KEY, 'Authorization': `Bearer ${SUPABASE_KEY}` }
+                    });
+                    const users = await res.json();
+                    if (users[0]?.password !== currentPassword) {
+                        alert('Current password is incorrect');
+                        setSaving(false);
+                        return;
+                    }
+                    
+                    // Update password
+                    const updateRes = await fetch(`${SUPABASE_URL}/rest/v1/users?id=eq.${user.id}`, {
+                        method: 'PATCH',
+                        headers: { 
+                            'apikey': SUPABASE_KEY, 
+                            'Authorization': `Bearer ${SUPABASE_KEY}`, 
+                            'Content-Type': 'application/json',
+                            'Prefer': 'return=minimal'
+                        },
+                        body: JSON.stringify({ password: newPassword })
+                    });
+                    
+                    if (updateRes.ok) {
+                        alert('✓ Password changed successfully!');
+                        onClose();
+                    } else {
+                        alert('Failed to update password');
+                    }
+                } catch (e) {
+                    alert('Error changing password');
+                }
+                setSaving(false);
+            };
+
+            return (
+                <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+                    <div className="bg-white rounded-2xl p-6 max-w-md w-full">
+                        <div className="flex justify-between items-center mb-6">
+                            <h2 className="text-2xl font-bold text-gray-800">Change Password</h2>
+                            <button onClick={onClose} className="text-gray-500 hover:text-gray-700">
+                                <i className="fas fa-times text-xl"></i>
+                            </button>
+                        </div>
+                        
+                        <div className="space-y-4">
+                            <div>
+                                <label className="block text-sm font-semibold text-gray-700 mb-2">Current Password</label>
+                                <input 
+                                    type="password" 
+                                    value={currentPassword} 
+                                    onChange={e => setCurrentPassword(e.target.value)}
+                                    className="w-full px-4 py-3 border rounded-xl focus:ring-2 focus:ring-green-500"
+                                    placeholder="Enter current password" 
+                                />
+                            </div>
+                            
+                            <div>
+                                <label className="block text-sm font-semibold text-gray-700 mb-2">New Password</label>
+                                <input 
+                                    type="password" 
+                                    value={newPassword} 
+                                    onChange={e => setNewPassword(e.target.value)}
+                                    className="w-full px-4 py-3 border rounded-xl focus:ring-2 focus:ring-green-500"
+                                    placeholder="Enter new password" 
+                                />
+                            </div>
+                            
+                            <div>
+                                <label className="block text-sm font-semibold text-gray-700 mb-2">Confirm New Password</label>
+                                <input 
+                                    type="password" 
+                                    value={confirmPassword} 
+                                    onChange={e => setConfirmPassword(e.target.value)}
+                                    className="w-full px-4 py-3 border rounded-xl focus:ring-2 focus:ring-green-500"
+                                    placeholder="Confirm new password" 
+                                />
+                            </div>
+                        </div>
+                        
+                        <div className="flex gap-3 mt-6">
+                            <button 
+                                onClick={onClose} 
+                                disabled={saving}
+                                className="flex-1 bg-gray-200 py-3 rounded-xl font-semibold hover:bg-gray-300 transition"
+                            >
+                                Cancel
+                            </button>
+                            <button 
+                                onClick={handleSubmit} 
+                                disabled={saving || !currentPassword || !newPassword || !confirmPassword}
+                                className="flex-1 bg-gradient-to-r from-green-600 to-green-700 text-white py-3 rounded-xl font-semibold disabled:opacity-50 transition"
+                            >
+                                {saving ? 'Changing...' : 'Change Password'}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            );
+        }
+
+        function Dashboard({ user, onLogout }) {
+            const [view, setView] = useState('list');
+            const [showPasswordChange, setShowPasswordChange] = useState(false);
+            const [appraisals, setAppraisals] = useState([]);
+            const [loading, setLoading] = useState(true);
+
+            useEffect(() => {
+                fetch(`${SUPABASE_URL}/rest/v1/appraisals?employee_id=eq.${user.id}&order=created_at.desc`, {
+                    headers: { 'apikey': SUPABASE_KEY, 'Authorization': `Bearer ${SUPABASE_KEY}` }
+                }).then(r => r.json()).then(setAppraisals).finally(() => setLoading(false));
+            }, []);
+
+            if (view === 'create') return <Assessment user={user} onDone={() => { setView('list'); window.location.reload(); }} />;
+
+            const avg = (r) => {
+                const v = Object.values(r || {});
+                return v.length ? (v.reduce((a,b) => a+b, 0) / v.length).toFixed(1) : 0;
+            };
+
+            return (
+                <div className="min-h-screen p-4 md:p-8">
+                    <div className="max-w-6xl mx-auto">
+                        <div className="glass rounded-2xl p-6 mb-6">
+                            <div className="flex justify-between items-center">
+                                <div>
+                                    <h1 className="text-3xl font-bold text-gray-800">My Dashboard</h1>
+                                    <p className="text-gray-600"><i className="fas fa-user-circle mr-2"></i>{user.name}</p>
+                                </div>
+                                <div className="flex gap-2">
+                                    <button onClick={() => setShowPasswordChange(true)} 
+                                        className="px-4 py-2 bg-green-100 text-green-700 hover:bg-green-200 rounded-lg font-medium transition">
+                                        <i className="fas fa-key mr-2"></i>Change Password
+                                    </button>
+                                    <button onClick={onLogout} className="px-4 py-2 text-gray-600 hover:bg-gray-100 rounded-lg">
+                                        <i className="fas fa-sign-out-alt mr-2"></i>Logout
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div className="grid md:grid-cols-3 gap-4 mb-6">
+                            <div className="glass rounded-xl p-6">
+                                <div className="flex justify-between items-center">
+                                    <div>
+                                        <p className="text-sm text-gray-600">Total</p>
+                                        <p className="text-3xl font-bold text-gray-800 mt-1">{appraisals.length}</p>
+                                    </div>
+                                    <div className="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center">
+                                        <i className="fas fa-clipboard-list text-blue-600 text-xl"></i>
+                                    </div>
+                                </div>
+                            </div>
+                            <div className="glass rounded-xl p-6">
+                                <div className="flex justify-between items-center">
+                                    <div>
+                                        <p className="text-sm text-gray-600">Pending</p>
+                                        <p className="text-3xl font-bold text-gray-800 mt-1">{appraisals.filter(a => a.status === 'pending').length}</p>
+                                    </div>
+                                    <div className="w-12 h-12 bg-yellow-100 rounded-lg flex items-center justify-center">
+                                        <i className="fas fa-clock text-yellow-600 text-xl"></i>
+                                    </div>
+                                </div>
+                            </div>
+                            <div className="glass rounded-xl p-6">
+                                <div className="flex justify-between items-center">
+                                    <div>
+                                        <p className="text-sm text-gray-600">Completed</p>
+                                        <p className="text-3xl font-bold text-gray-800 mt-1">{appraisals.filter(a => a.status === 'completed').length}</p>
+                                    </div>
+                                    <div className="w-12 h-12 bg-green-100 rounded-lg flex items-center justify-center">
+                                        <i className="fas fa-check-circle text-green-600 text-xl"></i>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <button onClick={() => setView('create')} className="w-full glass rounded-xl p-6 mb-6 hover:shadow-lg transition group">
+                            <div className="flex items-center justify-center gap-3">
+                                <div className="w-12 h-12 bg-gradient-to-r from-green-600 to-green-700 rounded-lg flex items-center justify-center">
+                                    <i className="fas fa-plus text-white text-xl"></i>
+                                </div>
+                                <div className="text-left">
+                                    <p className="text-lg font-semibold text-gray-800">Start New Assessment</p>
+                                    <p className="text-sm text-gray-600">Complete your evaluation</p>
+                                </div>
+                            </div>
+                        </button>
+
+                        <div className="glass rounded-2xl p-6">
+                            <h2 className="text-xl font-bold mb-4"><i className="fas fa-history mr-2"></i>Assessment History</h2>
+                            {loading ? (
+                                <div className="text-center py-8 text-gray-500">Loading...</div>
+                            ) : appraisals.length === 0 ? (
+                                <div className="text-center py-12 text-gray-500">
+                                    <i className="fas fa-clipboard-list text-4xl mb-3"></i>
+                                    <p className="text-lg font-medium">No assessments yet</p>
+                                    <p className="text-sm mt-1">Click "Start New Assessment" to begin</p>
+                                </div>
+                            ) : (
+                                <div className="space-y-4">
+                                    {appraisals.map(a => (
+                                        <div key={a.id} className="border rounded-xl p-5">
+                                            <div className="flex justify-between items-start">
+                                                <div>
+                                                    <div className="flex items-center gap-2 mb-2">
+                                                        <span className={`px-3 py-1 rounded-full text-sm font-semibold ${
+                                                            a.status === 'completed' ? 'bg-green-100 text-green-700' : 'bg-yellow-100 text-yellow-700'
+                                                        }`}>
+                                                            {a.status === 'completed' ? '✓ Completed' : '⏳ Pending Review'}
+                                                        </span>
+                                                    </div>
+                                                    <p className="text-sm text-gray-600">
+                                                        Submitted: {new Date(a.created_at).toLocaleDateString()}
+                                                    </p>
+                                                    {a.completed_at && (
+                                                        <p className="text-sm text-gray-600">
+                                                            Reviewed: {new Date(a.completed_at).toLocaleDateString()}
+                                                        </p>
+                                                    )}
+                                                </div>
+                                                {a.status === 'completed' && (
+                                                    <div className="text-right">
+                                                        <p className="text-sm text-gray-600">Average Score</p>
+                                                        <p className="text-2xl font-bold text-green-600">{avg(a.supervisor_ratings)}/5</p>
+                                                    </div>
+                                                )}
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
+                        </div>
+
+                        {showPasswordChange && <ChangePassword user={user} onClose={() => setShowPasswordChange(false)} />}
+                    </div>
+                </div>
+            );
+        }
+
+        function Assessment({ user, onDone }) {
+            const [rate, setRate] = useState({});
+            const [comm, setComm] = useState({});
+            const [overall, setOverall] = useState('');
+            const [saving, setSaving] = useState(false);
+            const progress = (Object.keys(rate).length / competencies.length) * 100;
+
+            const submit = async () => {
+                if (Object.keys(rate).length < competencies.length) { alert('Please rate all competencies'); return; }
+                setSaving(true);
+                try {
+                    const res = await fetch(`${SUPABASE_URL}/rest/v1/appraisals`, {
+                        method: 'POST',
+                        headers: { 'apikey': SUPABASE_KEY, 'Authorization': `Bearer ${SUPABASE_KEY}`, 'Content-Type': 'application/json', 'Prefer': 'return=minimal' },
+                        body: JSON.stringify({ employee_id: user.id, status: 'pending', self_ratings: rate, self_comments: comm, self_overall_comments: overall })
+                    });
+                    if (res.ok) { alert('✓ Submitted!'); onDone(); } else alert('Failed');
+                } catch (e) { alert('Error'); }
+                setSaving(false);
+            };
+
+            return (
+                <div className="min-h-screen p-4 md:p-8">
+                    <div className="max-w-5xl mx-auto">
+                        <div className="glass rounded-2xl p-6 mb-6">
+                            <button onClick={onDone} className="text-green-600 mb-3"><i className="fas fa-arrow-left mr-2"></i>Back</button>
+                            <div className="flex justify-between mb-4">
+                                <div>
+                                    <h1 className="text-3xl font-bold text-gray-800">Self-Assessment</h1>
+                                    <p className="text-gray-600">{user.name}</p>
+                                </div>
+                                <div className="text-right">
+                                    <p className="text-sm text-gray-600">Progress</p>
+                                    <p className="text-2xl font-bold text-green-600">{Math.round(progress)}%</p>
+                                </div>
+                            </div>
+                            <div className="w-full bg-gray-200 rounded-full h-3">
+                                <div className="bg-gradient-to-r from-green-600 to-green-700 h-3 rounded-full transition-all" style={{width: `${progress}%`}}></div>
+                            </div>
+                        </div>
+
+                        <div className="glass rounded-xl p-6 mb-6">
+                            <h3 className="font-semibold mb-3"><i className="fas fa-info-circle text-green-600 mr-2"></i>Rating Scale</h3>
+                            <div className="grid md:grid-cols-5 gap-2">
+                                {ratings.map(r => (
+                                    <div key={r.val} className="p-3 rounded-lg border-2 bg-gray-50 border-gray-300">
+                                        <div className="font-semibold text-sm">{r.val} - {r.label}</div>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+
+                        <div className="glass rounded-2xl p-6 mb-6">
+                            <h2 className="text-xl font-bold text-gray-800 mb-6">Competencies</h2>
+                            <div className="space-y-6">
+                                {competencies.map(c => (
+                                    <div key={c.name} className="border rounded-xl p-5">
+                                        <div className="mb-4">
+                                            <h3 className="font-semibold text-gray-800 flex items-center gap-2">
+                                                {c.name}
+                                                {rate[c.name] && <span className="text-sm bg-green-100 text-green-700 px-2 py-1 rounded-full"><i className="fas fa-check mr-1"></i>Rated</span>}
+                                            </h3>
+                                            <p className="text-sm text-gray-600">{c.desc}</p>
+                                        </div>
+                                        <div className="grid grid-cols-5 gap-2 mb-4">
+                                            {ratings.map(r => (
+                                                <button key={r.val} onClick={() => setRate({...rate, [c.name]: r.val})}
+                                                    className={`py-3 rounded-lg border-2 font-medium transition ${rate[c.name] === r.val ? 'bg-green-600 text-white border-green-600' : 'bg-white border-gray-300 hover:border-green-300'}`}>
+                                                    <div className="font-bold text-lg">{r.val}</div>
+                                                    <div className="text-xs">{r.label}</div>
+                                                </button>
+                                            ))}
+                                        </div>
+                                        <textarea placeholder="Comments (optional)" value={comm[c.name] || ''} onChange={e => setComm({...comm, [c.name]: e.target.value})}
+                                            rows="2" className="w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-green-500" />
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+
+                        <div className="glass rounded-2xl p-6 mb-6">
+                            <h3 className="font-semibold mb-3"><i className="fas fa-comment-alt text-green-600 mr-2"></i>Overall Reflection</h3>
+                            <textarea value={overall} onChange={e => setOverall(e.target.value)} rows="6"
+                                className="w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-green-500"
+                                placeholder="Share your achievements, challenges, and development goals..." />
+                        </div>
+
+                        <div className="glass rounded-xl p-6 flex gap-4">
+                            <button onClick={onDone} disabled={saving} className="flex-1 bg-gray-200 py-4 rounded-xl font-semibold hover:bg-gray-300 transition">Cancel</button>
+                            <button onClick={submit} disabled={saving || progress < 100}
+                                className="flex-1 bg-gradient-to-r from-green-600 to-green-700 text-white py-4 rounded-xl font-semibold disabled:opacity-50 transition">
+                                {saving ? 'Submitting...' : progress < 100 ? `Complete All (${Math.round(progress)}%)` : 'Submit Assessment'}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            );
+        }
+
+        function Supervisor({ user, onLogout }) {
+            const [apps, setApps] = useState([]);
+            const [selected, setSelected] = useState(null);
+            const [names, setNames] = useState({});
+            const [showPasswordChange, setShowPasswordChange] = useState(false);
+
+            useEffect(() => {
+                fetch(`${SUPABASE_URL}/rest/v1/appraisals?status=eq.pending&order=created_at.desc`, {
+                    headers: { 'apikey': SUPABASE_KEY, 'Authorization': `Bearer ${SUPABASE_KEY}` }
+                }).then(r => r.json()).then(data => {
+                    setApps(data);
+                    const ids = [...new Set(data.map(a => a.employee_id))];
+                    if (ids.length > 0) {
+                        fetch(`${SUPABASE_URL}/rest/v1/users?id=in.(${ids.join(',')})`, {
+                            headers: { 'apikey': SUPABASE_KEY, 'Authorization': `Bearer ${SUPABASE_KEY}` }
+                        }).then(r => r.json()).then(users => {
+                            const n = {};
+                            users.forEach(u => n[u.id] = u.name);
+                            setNames(n);
+                        });
+                    }
+                });
+            }, []);
+
+            if (selected) return <Review app={selected} name={names[selected.employee_id]} onDone={() => { setSelected(null); window.location.reload(); }} />;
+
+            return (
+                <div className="min-h-screen p-4 md:p-8">
+                    <div className="max-w-6xl mx-auto">
+                        <div className="glass rounded-2xl p-6 mb-6">
+                            <div className="flex justify-between items-center">
+                                <div>
+                                    <h1 className="text-3xl font-bold text-gray-800">Supervisor Dashboard</h1>
+                                    <p className="text-gray-600"><i className="fas fa-user-tie mr-2"></i>{user.name}</p>
+                                </div>
+                                <div className="flex gap-2">
+                                    <button onClick={() => setShowPasswordChange(true)} 
+                                        className="px-4 py-2 bg-green-100 text-green-700 hover:bg-green-200 rounded-lg font-medium transition">
+                                        <i className="fas fa-key mr-2"></i>Change Password
+                                    </button>
+                                    <button onClick={onLogout} className="px-4 py-2 text-gray-600 hover:bg-gray-100 rounded-lg">
+                                        <i className="fas fa-sign-out-alt mr-2"></i>Logout
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div className="glass rounded-2xl p-6">
+                            <h2 className="text-xl font-bold mb-4"><i className="fas fa-tasks mr-2"></i>Pending Reviews ({apps.length})</h2>
+                            {apps.length === 0 ? 
+                                <div className="text-center py-12 text-gray-500">
+                                    <i className="fas fa-check-double text-4xl mb-3 text-green-500"></i>
+                                    <p className="text-lg font-medium">All caught up!</p>
+                                    <p className="text-sm mt-1">No pending appraisals</p>
+                                </div> :
+                                <div className="space-y-4">
+                                    {apps.map(a => (
+                                        <div key={a.id} className="border rounded-xl p-5 hover:border-green-300 cursor-pointer transition" onClick={() => setSelected(a)}>
+                                            <div className="flex justify-between items-center">
+                                                <div>
+                                                    <h3 className="font-semibold text-lg text-gray-800">
+                                                        <i className="fas fa-user-circle text-green-600 mr-2"></i>
+                                                        {names[a.employee_id] || 'Employee'}
+                                                    </h3>
+                                                    <p className="text-sm text-gray-600 mt-1">
+                                                        Submitted: {new Date(a.created_at).toLocaleDateString()}
+                                                    </p>
+                                                </div>
+                                                <button className="bg-gradient-to-r from-green-600 to-green-700 text-white px-6 py-3 rounded-xl font-semibold hover:shadow-lg transition">
+                                                    <i className="fas fa-eye mr-2"></i>Review
+                                                </button>
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            }
+                        </div>
+
+                        {showPasswordChange && <ChangePassword user={user} onClose={() => setShowPasswordChange(false)} />}
+                    </div>
+                </div>
+            );
+        }
+
+        function Review({ app, name, onDone }) {
+            const [rate, setRate] = useState({});
+            const [comm, setComm] = useState({});
+            const [overall, setOverall] = useState('');
+            const [saving, setSaving] = useState(false);
+            const progress = (Object.keys(rate).length / competencies.length) * 100;
+
+            const submit = async () => {
+                if (Object.keys(rate).length < competencies.length) { alert('Please rate all competencies'); return; }
+                setSaving(true);
+                try {
+                    const res = await fetch(`${SUPABASE_URL}/rest/v1/appraisals?id=eq.${app.id}`, {
+                        method: 'PATCH',
+                        headers: { 'apikey': SUPABASE_KEY, 'Authorization': `Bearer ${SUPABASE_KEY}`, 'Content-Type': 'application/json', 'Prefer': 'return=minimal' },
+                        body: JSON.stringify({ status: 'completed', supervisor_ratings: rate, supervisor_comments: comm, supervisor_overall_comments: overall, completed_at: new Date().toISOString() })
+                    });
+                    if (res.ok) { alert('✓ Review completed!'); onDone(); } else alert('Failed');
+                } catch (e) { alert('Error'); }
+                setSaving(false);
+            };
+
+            return (
+                <div className="min-h-screen p-4 md:p-8">
+                    <div className="max-w-5xl mx-auto">
+                        <div className="glass rounded-2xl p-6 mb-6">
+                            <button onClick={onDone} className="text-green-600 mb-3"><i className="fas fa-arrow-left mr-2"></i>Back</button>
+                            <div className="flex justify-between mb-4">
+                                <div>
+                                    <h1 className="text-3xl font-bold text-gray-800">Performance Review</h1>
+                                    <p className="text-gray-600"><i className="fas fa-user-circle mr-2"></i>{name}</p>
+                                </div>
+                                <div className="text-right">
+                                    <p className="text-sm text-gray-600">Progress</p>
+                                    <p className="text-2xl font-bold text-green-600">{Math.round(progress)}%</p>
+                                </div>
+                            </div>
+                            <div className="w-full bg-gray-200 rounded-full h-3">
+                                <div className="bg-gradient-to-r from-green-600 to-green-700 h-3 rounded-full transition-all" style={{width: `${progress}%`}}></div>
+                            </div>
+                        </div>
+
+                        <div className="glass rounded-xl p-6 mb-6">
+                            <h3 className="font-semibold mb-3"><i className="fas fa-info-circle text-green-600 mr-2"></i>Rating Scale</h3>
+                            <div className="grid md:grid-cols-5 gap-2">
+                                {ratings.map(r => (
+                                    <div key={r.val} className="p-3 rounded-lg border-2 bg-gray-50 border-gray-300">
+                                        <div className="font-semibold text-sm">{r.val} - {r.label}</div>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+
+                        <div className="glass rounded-2xl p-6 mb-6">
+                            <h2 className="text-xl font-bold text-gray-800 mb-6">Competency Review</h2>
+                            <div className="space-y-6">
+                                {competencies.map(c => (
+                                    <div key={c.name} className="border rounded-xl p-5">
+                                        <div className="mb-4">
+                                            <h3 className="font-semibold text-gray-800">{c.name}</h3>
+                                            <p className="text-sm text-gray-600">{c.desc}</p>
+                                        </div>
+                                        
+                                        <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-4">
+                                            <p className="text-sm font-semibold text-gray-700 mb-1">Employee Self-Rating</p>
+                                            <p className="text-2xl font-bold text-blue-700">
+                                                {app.self_ratings[c.name] || 'N/A'}/5
+                                            </p>
+                                            {app.self_comments[c.name] && (
+                                                <p className="text-sm text-gray-700 mt-2 italic">"{app.self_comments[c.name]}"</p>
+                                            )}
+                                        </div>
+
+                                        <label className="block text-sm font-semibold text-gray-700 mb-3">Your Assessment</label>
+                                        <div className="grid grid-cols-5 gap-2 mb-4">
+                                            {ratings.map(r => (
+                                                <button key={r.val} onClick={() => setRate({...rate, [c.name]: r.val})}
+                                                    className={`py-3 rounded-lg border-2 font-medium transition ${rate[c.name] === r.val ? 'bg-green-600 text-white border-green-600' : 'bg-white border-gray-300 hover:border-green-300'}`}>
+                                                    <div className="font-bold text-lg">{r.val}</div>
+                                                    <div className="text-xs">{r.label}</div>
+                                                </button>
+                                            ))}
+                                        </div>
+                                        <textarea placeholder="Your feedback and guidance" value={comm[c.name] || ''} 
+                                            onChange={e => setComm({...comm, [c.name]: e.target.value})}
+                                            rows="3" className="w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-green-500" />
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+
+                        <div className="glass rounded-2xl p-6 mb-6">
+                            <h3 className="font-semibold mb-3"><i className="fas fa-comment text-blue-600 mr-2"></i>Employee's Overall Comments</h3>
+                            <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                                <p className="text-gray-700 whitespace-pre-wrap">{app.self_overall_comments || 'No comments provided'}</p>
+                            </div>
+                        </div>
+
+                        <div className="glass rounded-2xl p-6 mb-6">
+                            <h3 className="font-semibold mb-3"><i className="fas fa-award text-green-600 mr-2"></i>Your Overall Assessment</h3>
+                            <textarea value={overall} onChange={e => setOverall(e.target.value)} rows="8"
+                                className="w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-green-500"
+                                placeholder="Provide comprehensive feedback: strengths, areas for improvement, development goals, action items..." />
+                        </div>
+
+                        <div className="glass rounded-xl p-6 flex gap-4">
+                            <button onClick={onDone} disabled={saving} className="flex-1 bg-gray-200 py-4 rounded-xl font-semibold hover:bg-gray-300 transition">Cancel</button>
+                            <button onClick={submit} disabled={saving || progress < 100}
+                                className="flex-1 bg-gradient-to-r from-green-600 to-green-700 text-white py-4 rounded-xl font-semibold disabled:opacity-50 transition">
+                                {saving ? 'Submitting...' : progress < 100 ? `Complete All (${Math.round(progress)}%)` : 'Complete Review'}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            );
+        }
+
+        // Render the app
+        ReactDOM.render(<App />, document.getElementById('root'));
+    </script>
+</body>
+</html>
