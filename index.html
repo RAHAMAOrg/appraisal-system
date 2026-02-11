@@ -12,7 +12,7 @@
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
         * { font-family: 'Inter', sans-serif; }
-        body { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); min-height: 100vh; margin: 0; }
+        body { background: linear-gradient(135deg, #10b981 0%, #059669100%); min-height: 100vh; margin: 0; }
         .glass { background: rgba(255, 255, 255, 0.95); backdrop-filter: blur(10px); box-shadow: 0 8px 32px rgba(31, 38, 135, 0.37); }
         @keyframes slideIn { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
         .animate-in { animation: slideIn 0.5s ease-out; }
@@ -105,11 +105,11 @@
                             <label className="block text-sm font-semibold text-gray-700 mb-3">Your Role</label>
                             <div className="grid grid-cols-2 gap-3">
                                 <button onClick={() => setRole('employee')}
-                                    className={`py-3 rounded-xl font-medium transition ${role === 'employee' ? 'bg-purple-600 text-white' : 'bg-gray-100 text-gray-700'}`}>
+                                    className={`py-3 rounded-xl font-medium transition ${role === 'employee' ? 'bg-green-600 text-white' : 'bg-gray-100 text-gray-700'}`}>
                                     <i className="fas fa-user mr-2"></i>Employee
                                 </button>
                                 <button onClick={() => setRole('supervisor')}
-                                    className={`py-3 rounded-xl font-medium transition ${role === 'supervisor' ? 'bg-purple-600 text-white' : 'bg-gray-100 text-gray-700'}`}>
+                                    className={`py-3 rounded-xl font-medium transition ${role === 'supervisor' ? 'bg-green-600 text-white' : 'bg-gray-100 text-gray-700'}`}>
                                     <i className="fas fa-user-tie mr-2"></i>Supervisor
                                 </button>
                             </div>
@@ -118,7 +118,7 @@
                         <div className="mb-4">
                             <label className="block text-sm font-semibold text-gray-700 mb-2">Email</label>
                             <input type="email" value={email} onChange={e => setEmail(e.target.value)}
-                                className="w-full px-4 py-3 border rounded-xl focus:ring-2 focus:ring-purple-500"
+                                className="w-full px-4 py-3 border rounded-xl focus:ring-2 focus:ring-green-500"
                                 placeholder="your.email@rgcweinigeria.org" />
                         </div>
 
@@ -128,7 +128,7 @@
                                 <input type={show ? "text" : "password"} value={password}
                                     onChange={e => setPassword(e.target.value)}
                                     onKeyPress={e => e.key === 'Enter' && email && password && onLogin(email, password, role)}
-                                    className="w-full px-4 py-3 border rounded-xl focus:ring-2 focus:ring-purple-500"
+                                    className="w-full px-4 py-3 border rounded-xl focus:ring-2 focus:ring-green-500"
                                     placeholder="Enter password" />
                                 <button onClick={() => setShow(!show)} className="absolute right-3 top-3">
                                     <i className={`fas fa-eye${show ? '-slash' : ''} text-gray-400`}></i>
@@ -137,7 +137,7 @@
                         </div>
 
                         <button onClick={() => email && password && onLogin(email, password, role)}
-                            className="w-full bg-gradient-to-r from-purple-600 to-indigo-600 text-white py-3 rounded-xl font-semibold hover:shadow-lg transition">
+                            className="w-full bg-gradient-to-r from-green-600 to-green-700 text-white py-3 rounded-xl font-semibold hover:shadow-lg transition">
                             <i className="fas fa-sign-in-alt mr-2"></i>Sign In
                         </button>
 
@@ -217,7 +217,7 @@
 
                         <button onClick={() => setView('create')} className="w-full glass rounded-xl p-6 mb-6 hover:shadow-lg transition group">
                             <div className="flex items-center justify-center gap-3">
-                                <div className="w-12 h-12 bg-gradient-to-r from-purple-600 to-indigo-600 rounded-lg flex items-center justify-center">
+                                <div className="w-12 h-12 bg-gradient-to-r from-green-600 to-green-700 rounded-lg flex items-center justify-center">
                                     <i className="fas fa-plus text-white text-xl"></i>
                                 </div>
                                 <div className="text-left">
@@ -233,7 +233,7 @@
                              appraisals.length === 0 ? <div className="text-center py-12 text-gray-500"><i className="fas fa-inbox text-4xl mb-3"></i><p>No assessments yet</p></div> :
                              <div className="space-y-4">
                                 {appraisals.map(a => (
-                                    <div key={a.id} className="border rounded-xl p-4 hover:border-purple-300 transition">
+                                    <div key={a.id} className="border rounded-xl p-4 hover:border-green-300 transition">
                                         <div className="flex items-center gap-3 mb-2">
                                             <span className={`px-3 py-1 rounded-full text-sm ${a.status === 'completed' ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'}`}>
                                                 {a.status === 'completed' ? 'Completed' : 'Pending'}
@@ -277,7 +277,7 @@
                 <div className="min-h-screen p-4 md:p-8">
                     <div className="max-w-5xl mx-auto">
                         <div className="glass rounded-2xl p-6 mb-6">
-                            <button onClick={onDone} className="text-purple-600 mb-3"><i className="fas fa-arrow-left mr-2"></i>Back</button>
+                            <button onClick={onDone} className="text-green-600 mb-3"><i className="fas fa-arrow-left mr-2"></i>Back</button>
                             <div className="flex justify-between mb-4">
                                 <div>
                                     <h1 className="text-3xl font-bold text-gray-800">Self-Assessment</h1>
@@ -285,16 +285,16 @@
                                 </div>
                                 <div className="text-right">
                                     <p className="text-sm text-gray-600">Progress</p>
-                                    <p className="text-2xl font-bold text-purple-600">{Math.round(progress)}%</p>
+                                    <p className="text-2xl font-bold text-green-600">{Math.round(progress)}%</p>
                                 </div>
                             </div>
                             <div className="w-full bg-gray-200 rounded-full h-3">
-                                <div className="bg-gradient-to-r from-purple-600 to-indigo-600 h-3 rounded-full transition-all" style={{width: `${progress}%`}}></div>
+                                <div className="bg-gradient-to-r from-green-600 to-green-700 h-3 rounded-full transition-all" style={{width: `${progress}%`}}></div>
                             </div>
                         </div>
 
                         <div className="glass rounded-xl p-6 mb-6">
-                            <h3 className="font-semibold mb-3"><i className="fas fa-info-circle text-purple-600 mr-2"></i>Rating Scale</h3>
+                            <h3 className="font-semibold mb-3"><i className="fas fa-info-circle text-green-600 mr-2"></i>Rating Scale</h3>
                             <div className="grid md:grid-cols-5 gap-2">
                                 {ratings.map(r => (
                                     <div key={r.val} className="p-3 rounded-lg border-2 bg-gray-50 border-gray-300">
@@ -312,37 +312,37 @@
                                         <div className="mb-4">
                                             <h3 className="font-semibold text-gray-800 flex items-center gap-2">
                                                 {c.name}
-                                                {rate[c.name] && <span className="text-sm bg-purple-100 text-purple-700 px-2 py-1 rounded-full"><i className="fas fa-check mr-1"></i>Rated</span>}
+                                                {rate[c.name] && <span className="text-sm bg-green-100 text-green-700 px-2 py-1 rounded-full"><i className="fas fa-check mr-1"></i>Rated</span>}
                                             </h3>
                                             <p className="text-sm text-gray-600">{c.desc}</p>
                                         </div>
                                         <div className="grid grid-cols-5 gap-2 mb-4">
                                             {ratings.map(r => (
                                                 <button key={r.val} onClick={() => setRate({...rate, [c.name]: r.val})}
-                                                    className={`py-3 rounded-lg border-2 font-medium transition ${rate[c.name] === r.val ? 'bg-purple-600 text-white border-purple-600' : 'bg-white border-gray-300 hover:border-purple-300'}`}>
+                                                    className={`py-3 rounded-lg border-2 font-medium transition ${rate[c.name] === r.val ? 'bg-green-600 text-white border-green-600' : 'bg-white border-gray-300 hover:border-green-300'}`}>
                                                     <div className="font-bold text-lg">{r.val}</div>
                                                     <div className="text-xs">{r.label}</div>
                                                 </button>
                                             ))}
                                         </div>
                                         <textarea placeholder="Comments (optional)" value={comm[c.name] || ''} onChange={e => setComm({...comm, [c.name]: e.target.value})}
-                                            rows="2" className="w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-purple-500" />
+                                            rows="2" className="w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-green-500" />
                                     </div>
                                 ))}
                             </div>
                         </div>
 
                         <div className="glass rounded-2xl p-6 mb-6">
-                            <h3 className="font-semibold mb-3"><i className="fas fa-comment-alt text-purple-600 mr-2"></i>Overall Reflection</h3>
+                            <h3 className="font-semibold mb-3"><i className="fas fa-comment-alt text-green-600 mr-2"></i>Overall Reflection</h3>
                             <textarea value={overall} onChange={e => setOverall(e.target.value)} rows="6"
-                                className="w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-purple-500"
+                                className="w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-green-500"
                                 placeholder="Share your achievements, challenges, and development goals..." />
                         </div>
 
                         <div className="glass rounded-xl p-6 flex gap-4">
                             <button onClick={onDone} disabled={saving} className="flex-1 bg-gray-200 py-4 rounded-xl font-semibold hover:bg-gray-300 transition">Cancel</button>
                             <button onClick={submit} disabled={saving || progress < 100}
-                                className="flex-1 bg-gradient-to-r from-purple-600 to-indigo-600 text-white py-4 rounded-xl font-semibold disabled:opacity-50 transition">
+                                className="flex-1 bg-gradient-to-r from-green-600 to-green-700 text-white py-4 rounded-xl font-semibold disabled:opacity-50 transition">
                                 {saving ? 'Submitting...' : progress < 100 ? `Complete All (${Math.round(progress)}%)` : 'Submit Assessment'}
                             </button>
                         </div>
@@ -400,18 +400,18 @@
                                 </div> :
                                 <div className="space-y-4">
                                     {apps.map(a => (
-                                        <div key={a.id} className="border rounded-xl p-5 hover:border-purple-300 cursor-pointer transition" onClick={() => setSelected(a)}>
+                                        <div key={a.id} className="border rounded-xl p-5 hover:border-green-300 cursor-pointer transition" onClick={() => setSelected(a)}>
                                             <div className="flex justify-between items-center">
                                                 <div>
                                                     <h3 className="font-semibold text-lg text-gray-800">
-                                                        <i className="fas fa-user-circle text-purple-600 mr-2"></i>
+                                                        <i className="fas fa-user-circle text-green-600 mr-2"></i>
                                                         {names[a.employee_id] || 'Employee'}
                                                     </h3>
                                                     <p className="text-sm text-gray-600 mt-1">
                                                         Submitted: {new Date(a.created_at).toLocaleDateString()}
                                                     </p>
                                                 </div>
-                                                <button className="bg-gradient-to-r from-purple-600 to-indigo-600 text-white px-6 py-3 rounded-xl font-semibold hover:shadow-lg transition">
+                                                <button className="bg-gradient-to-r from-green-600 to-green-700 text-white px-6 py-3 rounded-xl font-semibold hover:shadow-lg transition">
                                                     <i className="fas fa-eye mr-2"></i>Review
                                                 </button>
                                             </div>
@@ -450,7 +450,7 @@
                 <div className="min-h-screen p-4 md:p-8">
                     <div className="max-w-5xl mx-auto">
                         <div className="glass rounded-2xl p-6 mb-6">
-                            <button onClick={onDone} className="text-purple-600 mb-3"><i className="fas fa-arrow-left mr-2"></i>Back</button>
+                            <button onClick={onDone} className="text-green-600 mb-3"><i className="fas fa-arrow-left mr-2"></i>Back</button>
                             <div className="flex justify-between mb-4">
                                 <div>
                                     <h1 className="text-3xl font-bold text-gray-800">Performance Review</h1>
@@ -458,16 +458,16 @@
                                 </div>
                                 <div className="text-right">
                                     <p className="text-sm text-gray-600">Progress</p>
-                                    <p className="text-2xl font-bold text-purple-600">{Math.round(progress)}%</p>
+                                    <p className="text-2xl font-bold text-green-600">{Math.round(progress)}%</p>
                                 </div>
                             </div>
                             <div className="w-full bg-gray-200 rounded-full h-3">
-                                <div className="bg-gradient-to-r from-purple-600 to-indigo-600 h-3 rounded-full transition-all" style={{width: `${progress}%`}}></div>
+                                <div className="bg-gradient-to-r from-green-600 to-green-700 h-3 rounded-full transition-all" style={{width: `${progress}%`}}></div>
                             </div>
                         </div>
 
                         <div className="glass rounded-xl p-6 mb-6">
-                            <h3 className="font-semibold mb-3"><i className="fas fa-info-circle text-purple-600 mr-2"></i>Rating Scale</h3>
+                            <h3 className="font-semibold mb-3"><i className="fas fa-info-circle text-green-600 mr-2"></i>Rating Scale</h3>
                             <div className="grid md:grid-cols-5 gap-2">
                                 {ratings.map(r => (
                                     <div key={r.val} className="p-3 rounded-lg border-2 bg-gray-50 border-gray-300">
@@ -501,7 +501,7 @@
                                         <div className="grid grid-cols-5 gap-2 mb-4">
                                             {ratings.map(r => (
                                                 <button key={r.val} onClick={() => setRate({...rate, [c.name]: r.val})}
-                                                    className={`py-3 rounded-lg border-2 font-medium transition ${rate[c.name] === r.val ? 'bg-purple-600 text-white border-purple-600' : 'bg-white border-gray-300 hover:border-purple-300'}`}>
+                                                    className={`py-3 rounded-lg border-2 font-medium transition ${rate[c.name] === r.val ? 'bg-green-600 text-white border-green-600' : 'bg-white border-gray-300 hover:border-green-300'}`}>
                                                     <div className="font-bold text-lg">{r.val}</div>
                                                     <div className="text-xs">{r.label}</div>
                                                 </button>
@@ -509,7 +509,7 @@
                                         </div>
                                         <textarea placeholder="Your feedback and guidance" value={comm[c.name] || ''} 
                                             onChange={e => setComm({...comm, [c.name]: e.target.value})}
-                                            rows="3" className="w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-purple-500" />
+                                            rows="3" className="w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-green-500" />
                                     </div>
                                 ))}
                             </div>
@@ -523,16 +523,16 @@
                         </div>
 
                         <div className="glass rounded-2xl p-6 mb-6">
-                            <h3 className="font-semibold mb-3"><i className="fas fa-award text-purple-600 mr-2"></i>Your Overall Assessment</h3>
+                            <h3 className="font-semibold mb-3"><i className="fas fa-award text-green-600 mr-2"></i>Your Overall Assessment</h3>
                             <textarea value={overall} onChange={e => setOverall(e.target.value)} rows="8"
-                                className="w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-purple-500"
+                                className="w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-green-500"
                                 placeholder="Provide comprehensive feedback: strengths, areas for improvement, development goals, action items..." />
                         </div>
 
                         <div className="glass rounded-xl p-6 flex gap-4">
                             <button onClick={onDone} disabled={saving} className="flex-1 bg-gray-200 py-4 rounded-xl font-semibold hover:bg-gray-300 transition">Cancel</button>
                             <button onClick={submit} disabled={saving || progress < 100}
-                                className="flex-1 bg-gradient-to-r from-purple-600 to-indigo-600 text-white py-4 rounded-xl font-semibold disabled:opacity-50 transition">
+                                className="flex-1 bg-gradient-to-r from-green-600 to-green-700 text-white py-4 rounded-xl font-semibold disabled:opacity-50 transition">
                                 {saving ? 'Submitting...' : progress < 100 ? `Complete All (${Math.round(progress)}%)` : 'Complete Review'}
                             </button>
                         </div>
