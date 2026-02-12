@@ -45,7 +45,7 @@
 <body>
 <div id="root"></div>
 <script type="text/babel">
-const { useState, useEffect } = React;
+const { useState, useEffect, useRef } = React;
 const SB = 'https://wdondphcmnhdslcypeya.supabase.co';
 const SK = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Indkb25kcGhjbW5oZHNsY3lwZXlhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Njg5MDA3MDcsImV4cCI6MjA4NDQ3NjcwN30.wIisWHb3w4cSGZIB4f3q0Z6lboidH6SzL7oGToGdnsw';
 const H = {'apikey':SK,'Authorization':`Bearer ${SK}`};
@@ -516,7 +516,7 @@ function EmpReview({appraisal,user,notify,onDone}) {
     const [uploading,setUploading]=useState(false);
     const [busy,setBusy]=useState(false);
     const readOnly=appraisal.employee_review_status&&appraisal.employee_review_status!=='pending';
-    const fileRef=React.createRef();
+    const fileRef=useRef(null);
 
     const selfAvg=avg(appraisal.self_ratings);
     const supAvg=avg(appraisal.supervisor_ratings);
