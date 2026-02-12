@@ -45,7 +45,7 @@
 <body>
 <div id="root"></div>
 <script type="text/babel">
-const { useState, useEffect } = React;
+const { useState, useEffect, useRef } = React;
 const SB = 'https://wdondphcmnhdslcypeya.supabase.co';
 const SK = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Indkb25kcGhjbW5oZHNsY3lwZXlhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Njg5MDA3MDcsImV4cCI6MjA4NDQ3NjcwN30.wIisWHb3w4cSGZIB4f3q0Z6lboidH6SzL7oGToGdnsw';
 const H = {'apikey':SK,'Authorization':`Bearer ${SK}`};
@@ -393,6 +393,8 @@ function Dashboard({user,onLogout,notify}) {
     </div>;
 }
 
+// Then replace your entire Assessment function (around line 391) with this:
+
 function Assessment({user,notify,onDone}) {
     const [rate,setRate]=useState({});
     const [comm,setComm]=useState({});
@@ -403,7 +405,8 @@ function Assessment({user,notify,onDone}) {
     const [evLink,setEvLink]=useState('');
     const [evFile,setEvFile]=useState(null);
     const [uploading,setUploading]=useState(false);
-    const selfFileRef=useRef(null);
+    const fileRef=useRef(null);
+    
     const rated=Object.keys(rate).length;
     const progress=(rated/comps.length)*100;
     const allComm=Object.keys(rate).every(k=>comm[k]&&comm[k].trim().length>=10);
@@ -427,7 +430,7 @@ function Assessment({user,notify,onDone}) {
             }
             setEvidence([...evidence,{description:evDesc,link:evLink,file:fileData,added_at:new Date().toISOString()}]);
             setEvDesc('');setEvLink('');setEvFile(null);
-            if(selfFileRef.current)selfFileRef.current.value='';
+            if(fileRef.current)fileRef.current.value='';
             notify('Evidence added','info');
         }catch(e){notify('Error processing file','error');}
         setUploading(false);
@@ -520,22 +523,14 @@ function Assessment({user,notify,onDone}) {
             })}</div>
         </div>
 
-        {/* Overall */}
+        {/* Supporting Evidence Upload - THIS IS THE NEW SECTION */}
         <div className="glass rounded-2xl p-6 mb-6">
-            <h3 className="font-bold mb-3"><i className="fas fa-comment-alt text-green-600 mr-2"/>Overall Reflection <span className="text-red-500">*</span></h3>
-            <textarea value={overall} onChange={e=>setOverall(e.target.value)} rows="6"
-                className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl text-sm"
-                placeholder="Key achievements, challenges, lessons, and goals..."/>
-        </div>
-
-        {/* Supporting Evidence Upload */}
-        <div className="glass rounded-2xl p-6 mb-6">
-            <h3 className="font-bold mb-2"><i className="fas fa-file-alt text-blue-600 mr-2"/>Supporting Documents (Optional)</h3>
-            <p className="text-sm text-gray-500 mb-4">Upload certificates, project reports, awards, or other evidence to support your self-assessment ratings and justifications.</p>
+            <h3 className="font-bold mb-2"><i className="fas fa-file-certificate text-blue-600 mr-2"/>Supporting Documents (Optional)</h3>
+            <p className="text-sm text-gray-500 mb-4">Upload certificates, training completion reports, awards, project reports, or other evidence that supports your self-assessment ratings.</p>
             
             {evidence.length>0&&<div className="space-y-2 mb-4">{evidence.map((ev,i)=>
                 <div key={i} className="flex items-center gap-3 bg-blue-50 rounded-xl p-3">
-                    <i className={`fas ${ev.file?'fa-file-circle-check text-green-500':'fa-paperclip text-blue-500'}`}/>
+                    <i className={`fas ${ev.file?'fa-file-circle-check text-green-500':'fa-link text-blue-500'}`}/>
                     <div className="flex-1 min-w-0">
                         <p className="text-sm font-semibold text-gray-800 truncate">{ev.description}</p>
                         <div className="flex items-center gap-2 mt-0.5">
@@ -555,17 +550,17 @@ function Assessment({user,notify,onDone}) {
             <div className="space-y-3">
                 <input type="text" value={evDesc} onChange={e=>setEvDesc(e.target.value)}
                     className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl text-sm"
-                    placeholder="Description (e.g. 'PMP Certification', 'Q4 Project Report')"/>
+                    placeholder="Description (e.g., 'PMP Certification', 'Q4 Project Success Report')"/>
                 
                 <div className="relative">
                     <label className="block text-xs font-bold text-gray-500 uppercase mb-2">Upload File (PDF, Image, Document — max 5MB)</label>
                     <div className={`border-2 border-dashed rounded-xl p-4 text-center cursor-pointer hover:border-green-400 hover:bg-green-50 transition ${evFile?'border-green-400 bg-green-50':'border-gray-300'}`}
-                        onClick={()=>selfFileRef.current&&selfFileRef.current.click()}>
+                        onClick={()=>fileRef.current&&fileRef.current.click()}>
                         {evFile?<div className="flex items-center justify-center gap-2">
                             <i className="fas fa-file-circle-check text-green-600"/>
                             <span className="text-sm font-semibold text-green-700">{evFile.name}</span>
                             <span className="text-xs text-gray-500">({(evFile.size/1024).toFixed(0)}KB)</span>
-                            <button onClick={(e)=>{e.stopPropagation();setEvFile(null);if(selfFileRef.current)selfFileRef.current.value='';}} className="ml-2 text-red-400 hover:text-red-600">
+                            <button onClick={(e)=>{e.stopPropagation();setEvFile(null);if(fileRef.current)fileRef.current.value='';}} className="ml-2 text-red-400 hover:text-red-600">
                                 <i className="fas fa-times-circle"/>
                             </button>
                         </div>
@@ -575,7 +570,7 @@ function Assessment({user,notify,onDone}) {
                             <p className="text-xs text-gray-400 mt-1">PDF, PNG, JPG, DOC, DOCX, XLS, XLSX</p>
                         </div>}
                     </div>
-                    <input ref={selfFileRef} type="file" className="hidden"
+                    <input ref={fileRef} type="file" className="hidden"
                         accept=".pdf,.png,.jpg,.jpeg,.doc,.docx,.xls,.xlsx"
                         onChange={e=>{const f=e.target.files[0];if(f){if(f.size>5*1024*1024){notify('File too large (max 5MB)','error');e.target.value='';return;}setEvFile(f);}}}/>
                 </div>
@@ -585,9 +580,17 @@ function Assessment({user,notify,onDone}) {
                     placeholder="Or paste a link/URL (optional)"/>
                 <button onClick={addEv} disabled={!evDesc.trim()||uploading}
                     className="px-5 py-2.5 bg-blue-600 text-white rounded-xl font-semibold text-sm disabled:opacity-50 hover:bg-blue-700">
-                    {uploading?<><i className="fas fa-spinner fa-spin mr-2"/>Uploading...</>:<><i className="fas fa-plus mr-2"/>Add Evidence</>}
+                    {uploading?<><i className="fas fa-spinner fa-spin mr-2"/>Processing...</>:<><i className="fas fa-plus mr-2"/>Add Evidence</>}
                 </button>
             </div>
+        </div>
+
+        {/* Overall */}
+        <div className="glass rounded-2xl p-6 mb-6">
+            <h3 className="font-bold mb-3"><i className="fas fa-comment-alt text-green-600 mr-2"/>Overall Reflection <span className="text-red-500">*</span></h3>
+            <textarea value={overall} onChange={e=>setOverall(e.target.value)} rows="6"
+                className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl text-sm"
+                placeholder="Key achievements, challenges, lessons, and goals..."/>
         </div>
 
         {/* Submit */}
