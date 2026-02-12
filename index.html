@@ -253,12 +253,25 @@ function Dashboard({user,onLogout,notify}) {
     const [apps,setApps]=useState([]);
     const [loading,setLoading]=useState(true);
     const [selApp,setSelApp]=useState(null);
+    const [leaves,setLeaves]=useState([]);
 
     const load=()=>{
-        setLoading(true);
-        fetch(`${SB}/rest/v1/appraisals?employee_id=eq.${user.id}&order=created_at.desc`,{headers:H})
-        .then(r=>r.json()).then(d=>{setApps(d);setLoading(false);}).catch(()=>setLoading(false));
-    };
+    setLoading(true);
+
+    // Load appraisals
+    fetch(`${SB}/rest/v1/appraisals?employee_id=eq.${user.id}&order=created_at.desc`,{headers:H})
+    .then(r=>r.json())
+    .then(d=>{setApps(d);})
+    .catch(()=>{});
+
+    // Load leave requests
+    fetch(`${SB}/rest/v1/leave_requests?employee_id=eq.${user.id}&order=created_at.desc`,{headers:H})
+    .then(r=>r.json())
+    .then(d=>setLeaves(d||[]))
+    .catch(()=>setLeaves([]));
+
+    setLoading(false);
+};
     useEffect(()=>{load();},[]);
 
     if(view==='create') return <Assessment user={user} notify={notify} onDone={()=>{setView('list');load();}}/>;
@@ -407,6 +420,42 @@ function Dashboard({user,onLogout,notify}) {
         </div>
     </div>;
 }
+{/* Leave History */}
+<div className="glass rounded-2xl p-6 mt-6">
+    <h2 className="text-lg font-bold mb-4">
+        <i className="fas fa-plane-departure text-blue-600 mr-2"/>
+        My Leave Requests
+    </h2>
+
+    {leaves.length===0?
+        <div className="text-center py-8 text-gray-400">
+            <i className="fas fa-calendar-xmark text-3xl mb-2"/>
+            <p className="font-semibold">No leave applications yet</p>
+        </div>
+    :
+    <div className="space-y-3">
+        {leaves.map(l=>
+            <div key={l.id} className="border-2 border-gray-100 rounded-xl p-4 flex justify-between items-center">
+                <div>
+                    <p className="font-semibold text-gray-800">{l.leave_type}</p>
+                    <p className="text-sm text-gray-500">
+                        {new Date(l.start_date).toLocaleDateString()} → {new Date(l.end_date).toLocaleDateString()}
+                    </p>
+                    {l.reason&&<p className="text-xs text-gray-400 mt-1">{l.reason}</p>}
+                </div>
+
+                <div>
+                    <span className={`px-3 py-1 rounded-full text-xs font-bold
+                        ${l.status==='approved'?'bg-green-100 text-green-700':
+                          l.status==='rejected'?'bg-red-100 text-red-700':
+                          'bg-amber-100 text-amber-700'}`}>
+                        {l.status||'pending'}
+                    </span>
+                </div>
+            </div>
+        )}
+    </div>}
+</div>
 
 // Then replace your entire Assessment function (around line 391) with this:
 
