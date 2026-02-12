@@ -416,11 +416,7 @@ function Dashboard({user,onLogout,notify}) {
                     </div>
                 </div>)}</div>}
             </div>
-            {showPw&&<ChangePw user={user} onClose={()=>setShowPw(false)} notify={notify}/>}
-        </div>
-    </div>;
-}
-{/* Leave History */}
+            {/* Leave History */}
 <div className="glass rounded-2xl p-6 mt-6">
     <h2 className="text-lg font-bold mb-4">
         <i className="fas fa-plane-departure text-blue-600 mr-2"/>
@@ -456,7 +452,10 @@ function Dashboard({user,onLogout,notify}) {
         )}
     </div>}
 </div>
-
+            {showPw&&<ChangePw user={user} onClose={()=>setShowPw(false)} notify={notify}/>}
+        </div>
+    </div>;
+}
 // Then replace your entire Assessment function (around line 391) with this:
 
 function Assessment({user,notify,onDone}) {
@@ -1394,7 +1393,6 @@ function SuperDash({user,onLogout,notify}) {
     useEffect(()=>{load();},[]);
 
     if(showAttendance) return <AttendanceAdmin notify={notify} onBack={()=>setShowAttendance(false)}/>;
-    if(showLeave) return <LeaveApproval notify={notify} onBack={()=>setShowLeave(false)}/>;
     if(selected) return <SupReview app={selected} name={names[selected.employee_id]} notify={notify} onDone={()=>{setSelected(null);load();}}/>;
     if(showLeave) return <LeaveAdmin notify={notify} onBack={()=>setShowLeave(false)}/>;
 
