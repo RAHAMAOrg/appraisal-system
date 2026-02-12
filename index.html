@@ -1396,6 +1396,7 @@ function SuperDash({user,onLogout,notify}) {
     if(showAttendance) return <AttendanceAdmin notify={notify} onBack={()=>setShowAttendance(false)}/>;
     if(showLeave) return <LeaveApproval notify={notify} onBack={()=>setShowLeave(false)}/>;
     if(selected) return <SupReview app={selected} name={names[selected.employee_id]} notify={notify} onDone={()=>{setSelected(null);load();}}/>;
+    if(showLeave) return <LeaveAdmin notify={notify} onBack={()=>setShowLeave(false)}/>;
 
     const pending=allApps.filter(a=>a.status==='pending');
     const completed=allApps.filter(a=>a.status==='completed');
@@ -1453,6 +1454,18 @@ function SuperDash({user,onLogout,notify}) {
                 <i className="fas fa-arrow-right text-gray-300 ml-auto group-hover:text-blue-600 transition"/>
             </div>
         </button>
+        <button onClick={()=>setShowLeave(true)} className="w-full glass rounded-2xl p-5 mb-6 hover:shadow-xl stat group">
+    <div className="flex items-center gap-4">
+        <div className="w-14 h-14 rounded-xl flex items-center justify-center shadow-lg" style={{background:'linear-gradient(135deg,#8b5cf6,#6d28d9)'}}>
+            <i className="fas fa-plane text-white text-xl"/>
+        </div>
+        <div className="text-left">
+            <p className="text-lg font-bold text-gray-800">Leave Management</p>
+            <p className="text-sm text-gray-500">Approve or reject leave applications</p>
+        </div>
+        <i className="fas fa-arrow-right text-gray-300 ml-auto group-hover:text-purple-600 transition"/>
+    </div>
+</button>
 {/* Leave Approvals */}
 <button onClick={()=>setShowLeave(true)} className="w-full glass rounded-2xl p-5 mb-6 hover:shadow-xl stat group">
     <div className="flex items-center gap-4">
@@ -1847,6 +1860,116 @@ function LeaveApproval({notify,onBack}) {
                     </div>
                 </div>
             )}</div>}
+        </div>
+    </div>;
+}
+    function LeaveAdmin({notify,onBack}) {
+    const [list,setList]=useState([]);
+    const [names,setNames]=useState({});
+    const [selected,setSelected]=useState(null);
+
+    const load=()=>{
+        fetch(`${SB}/rest/v1/leave_requests?order=created_at.desc`,{headers:H})
+        .then(r=>r.json()).then(d=>{
+            setList(d||[]);
+            const ids=[...new Set(d.map(a=>a.employee_id))];
+            if(ids.length>0)
+                fetch(`${SB}/rest/v1/users?id=in.(${ids.join(',')})`,{headers:H})
+                .then(r=>r.json()).then(us=>{
+                    const n={};us.forEach(u=>n[u.id]=u.name);setNames(n);
+                });
+        });
+    };
+    useEffect(()=>{load();},[]);
+
+    if(selected) return <LeaveReview req={selected} name={names[selected.employee_id]} notify={notify} onDone={()=>{setSelected(null);load();}}/>;
+
+    return <div className="min-h-screen p-4 md:p-8">
+        <div className="max-w-5xl mx-auto">
+            <div className="glass rounded-2xl p-6 mb-6">
+                <button onClick={onBack} className="text-green-600 font-semibold text-sm mb-3 hover:underline">
+                    <i className="fas fa-arrow-left mr-2"/>Back
+                </button>
+                <h1 className="text-2xl font-extrabold">Leave Requests</h1>
+            </div>
+
+            {list.length===0?
+                <div className="glass p-10 text-center text-gray-400">No leave requests</div>
+            :
+            <div className="space-y-3">
+                {list.map(l=>
+                    <div key={l.id} className="glass p-4 rounded-xl flex justify-between items-center cursor-pointer hover:shadow"
+                        onClick={()=>setSelected(l)}>
+                        <div>
+                            <p className="font-bold">{names[l.employee_id]||'Employee'}</p>
+                            <p className="text-sm text-gray-500">
+                                {new Date(l.start_date).toLocaleDateString()} → {new Date(l.end_date).toLocaleDateString()}
+                            </p>
+                        </div>
+                        <span className={`px-3 py-1 rounded-full text-xs font-bold
+                            ${l.status==='approved'?'bg-green-100 text-green-700':
+                              l.status==='rejected'?'bg-red-100 text-red-700':
+                              'bg-amber-100 text-amber-700'}`}>
+                            {l.status||'pending'}
+                        </span>
+                    </div>
+                )}
+            </div>}
+        </div>
+    </div>;
+}
+    function LeaveReview({req,name,notify,onDone}) {
+    const [decision,setDecision]=useState(req.status||'');
+    const [comment,setComment]=useState(req.supervisor_comment||'');
+    const [busy,setBusy]=useState(false);
+
+    const save=async()=>{
+        if(!decision){notify('Choose approve or reject','error');return;}
+        setBusy(true);
+        const r=await fetch(`${SB}/rest/v1/leave_requests?id=eq.${req.id}`,{
+            method:'PATCH',
+            headers:HJ,
+            body:JSON.stringify({status:decision,supervisor_comment:comment})
+        });
+        if(r.ok){notify('Decision saved');onDone();}
+        else notify('Failed','error');
+        setBusy(false);
+    };
+
+    return <div className="min-h-screen p-4 md:p-8">
+        <div className="max-w-3xl mx-auto">
+            <div className="glass rounded-2xl p-6 mb-6">
+                <button onClick={onDone} className="text-green-600 font-semibold text-sm mb-3 hover:underline">
+                    <i className="fas fa-arrow-left mr-2"/>Back
+                </button>
+                <h1 className="text-2xl font-extrabold">{name}</h1>
+                <p className="text-gray-500">
+                    {new Date(req.start_date).toLocaleDateString()} → {new Date(req.end_date).toLocaleDateString()}
+                </p>
+                {req.reason&&<p className="mt-2 text-sm">{req.reason}</p>}
+            </div>
+
+            <div className="glass rounded-2xl p-6 mb-6">
+                <h3 className="font-bold mb-3">Decision</h3>
+                <div className="flex gap-3 mb-4">
+                    <button onClick={()=>setDecision('approved')}
+                        className={`px-4 py-2 rounded-xl ${decision==='approved'?'bg-green-600 text-white':'bg-gray-100'}`}>
+                        Approve
+                    </button>
+                    <button onClick={()=>setDecision('rejected')}
+                        className={`px-4 py-2 rounded-xl ${decision==='rejected'?'bg-red-600 text-white':'bg-gray-100'}`}>
+                        Reject
+                    </button>
+                </div>
+                <textarea value={comment} onChange={e=>setComment(e.target.value)}
+                    placeholder="Supervisor comment..."
+                    className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl text-sm"/>
+            </div>
+
+            <button onClick={save} disabled={busy}
+                className="w-full btn-green text-white py-4 rounded-xl font-bold disabled:opacity-50">
+                {busy?'Saving...':'Save Decision'}
+            </button>
         </div>
     </div>;
 }
