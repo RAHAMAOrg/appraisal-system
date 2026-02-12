@@ -2122,6 +2122,73 @@ function HRAdmin({notify,onBack}) {
         </div>
     </div>;
 }
+    function HRProfileEdit({staff,profile,notify,onDone}) {
+    const [position,setPosition]=useState(profile?.position||'');
+    const [department,setDepartment]=useState(profile?.department||'');
+    const [phone,setPhone]=useState(profile?.phone||'');
+    const [supervisor,setSupervisor]=useState(profile?.supervisor_name||'');
+    const [busy,setBusy]=useState(false);
+
+    const save=async()=>{
+        setBusy(true);
+        try{
+            const payload={
+                user_id:staff.id,
+                position,
+                department,
+                phone,
+                supervisor_name:supervisor
+            };
+
+            let r;
+            if(profile){
+                r=await fetch(`${SB}/rest/v1/staff_profiles?user_id=eq.${staff.id}`,{
+                    method:'PATCH',headers:HJ,body:JSON.stringify(payload)});
+            } else {
+                r=await fetch(`${SB}/rest/v1/staff_profiles`,{
+                    method:'POST',headers:HJ,body:JSON.stringify(payload)});
+            }
+
+            if(r.ok){notify('Profile saved');onDone();}
+            else notify('Failed','error');
+        }catch(e){notify('Error','error');}
+        setBusy(false);
+    };
+
+    return <div className="min-h-screen p-4 md:p-8">
+        <div className="max-w-3xl mx-auto">
+            <div className="glass rounded-2xl p-6 mb-6">
+                <button onClick={onDone} className="text-blue-600 font-semibold text-sm mb-3 hover:underline">
+                    <i className="fas fa-arrow-left mr-2"/>Back
+                </button>
+                <h1 className="text-2xl font-extrabold">{staff.name}</h1>
+            </div>
+
+            <div className="glass rounded-2xl p-6 space-y-4">
+                <input value={position} onChange={e=>setPosition(e.target.value)}
+                    placeholder="Position"
+                    className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl"/>
+
+                <input value={department} onChange={e=>setDepartment(e.target.value)}
+                    placeholder="Department"
+                    className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl"/>
+
+                <input value={phone} onChange={e=>setPhone(e.target.value)}
+                    placeholder="Phone number"
+                    className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl"/>
+
+                <input value={supervisor} onChange={e=>setSupervisor(e.target.value)}
+                    placeholder="Supervisor"
+                    className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl"/>
+            </div>
+
+            <button onClick={save} disabled={busy}
+                className="w-full btn-green text-white py-4 rounded-xl font-bold mt-4 disabled:opacity-50">
+                {busy?'Saving...':'Save Profile'}
+            </button>
+        </div>
+    </div>;
+}
 ReactDOM.render(<App/>, document.getElementById('root'));
 </script>
 </body>
