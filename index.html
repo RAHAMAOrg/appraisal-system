@@ -277,6 +277,7 @@ function Dashboard({user,onLogout,notify}) {
     if(view==='create') return <Assessment user={user} notify={notify} onDone={()=>{setView('list');load();}}/>;
     if(view==='review') return <EmpReview appraisal={selApp} user={user} notify={notify} onDone={()=>{setView('list');load();}}/>;
     if(view==='attendance') return <Attendance user={user} notify={notify} onBack={()=>setView('list')}/>;
+    if(view==='directory') return <Directory user={user} notify={notify} onBack={()=>setView('list')}/>;
     if(view==='leave') return <LeaveRequest user={user} notify={notify} onBack={()=>setView('list')}/>;
     const pending=apps.filter(a=>a.status==='pending');
     const completed=apps.filter(a=>a.status==='completed');
@@ -362,6 +363,20 @@ function Dashboard({user,onLogout,notify}) {
                     <i className="fas fa-arrow-right text-gray-300 ml-auto group-hover:text-blue-600 transition"/>
                 </div>
             </button>
+            {/* Staff Directory */}
+<button onClick={()=>setView('directory')} className="w-full glass rounded-2xl p-5 mb-6 hover:shadow-xl stat group">
+    <div className="flex items-center gap-4">
+        <div className="w-14 h-14 rounded-xl flex items-center justify-center shadow-lg"
+             style={{background:'linear-gradient(135deg,#0ea5e9,#0369a1)'}}>
+            <i className="fas fa-address-book text-white text-xl"/>
+        </div>
+        <div className="text-left">
+            <p className="text-lg font-bold text-gray-800">Staff Directory</p>
+            <p className="text-sm text-gray-500">Find and contact colleagues</p>
+        </div>
+        <i className="fas fa-arrow-right text-gray-300 ml-auto group-hover:text-blue-600 transition"/>
+    </div>
+</button>
             {/* Leave Request */}
 <button onClick={()=>setView('leave')} className="w-full glass rounded-2xl p-5 mb-6 hover:shadow-xl stat group">
     <div className="flex items-center gap-4">
@@ -1380,6 +1395,7 @@ function SuperDash({user,onLogout,notify}) {
 
     const [showAttendance,setShowAttendance]=useState(false);
     const [showLeave,setShowLeave]=useState(false);
+    const [showHR,setShowHR]=useState(false);
     const load=()=>{
         fetch(`${SB}/rest/v1/appraisals?order=created_at.desc`,{headers:H})
         .then(r=>r.json()).then(data=>{
@@ -1395,6 +1411,7 @@ function SuperDash({user,onLogout,notify}) {
     if(showAttendance) return <AttendanceAdmin notify={notify} onBack={()=>setShowAttendance(false)}/>;
     if(selected) return <SupReview app={selected} name={names[selected.employee_id]} notify={notify} onDone={()=>{setSelected(null);load();}}/>;
     if(showLeave) return <LeaveAdmin notify={notify} onBack={()=>setShowLeave(false)}/>;
+    if(showHR) return <HRAdmin notify={notify} onBack={()=>setShowHR(false)}/>;
 
     const pending=allApps.filter(a=>a.status==='pending');
     const completed=allApps.filter(a=>a.status==='completed');
@@ -1462,6 +1479,19 @@ function SuperDash({user,onLogout,notify}) {
             <p className="text-sm text-gray-500">Approve or reject leave applications</p>
         </div>
         <i className="fas fa-arrow-right text-gray-300 ml-auto group-hover:text-purple-600 transition"/>
+    </div>
+</button>
+        <button onClick={()=>setShowHR(true)} className="w-full glass rounded-2xl p-5 mb-6 hover:shadow-xl stat group">
+    <div className="flex items-center gap-4">
+        <div className="w-14 h-14 rounded-xl flex items-center justify-center shadow-lg"
+             style={{background:'linear-gradient(135deg,#0ea5e9,#0369a1)'}}>
+            <i className="fas fa-id-badge text-white text-xl"/>
+        </div>
+        <div className="text-left">
+            <p className="text-lg font-bold text-gray-800">HR Staff Profiles</p>
+            <p className="text-sm text-gray-500">Add or edit personnel information</p>
+        </div>
+        <i className="fas fa-arrow-right text-gray-300 ml-auto"/>
     </div>
 </button>
 {/* Leave Approvals */}
@@ -1968,6 +1998,127 @@ function LeaveApproval({notify,onBack}) {
                 className="w-full btn-green text-white py-4 rounded-xl font-bold disabled:opacity-50">
                 {busy?'Saving...':'Save Decision'}
             </button>
+        </div>
+    </div>;
+}
+    function Directory({user,notify,onBack}) {
+    const [staff,setStaff]=useState([]);
+    const [loading,setLoading]=useState(true);
+    const [search,setSearch]=useState('');
+
+    const load=async()=>{
+        setLoading(true);
+        try{
+            const u=await fetch(`${SB}/rest/v1/users`,{headers:H}).then(r=>r.json());
+            const p=await fetch(`${SB}/rest/v1/staff_profiles`,{headers:H}).then(r=>r.json());
+
+            const merged=u.map(x=>{
+                const prof=p.find(pp=>pp.user_id===x.id)||{};
+                return {...x,...prof};
+            });
+            setStaff(merged);
+        }catch(e){}
+        setLoading(false);
+    };
+
+    useEffect(()=>{load();},[]);
+
+    const list=staff.filter(s=>
+        (s.name||'').toLowerCase().includes(search.toLowerCase())||
+        (s.department||'').toLowerCase().includes(search.toLowerCase())||
+        (s.position||'').toLowerCase().includes(search.toLowerCase())
+    );
+
+    return <div className="min-h-screen p-4 md:p-8">
+        <div className="max-w-5xl mx-auto">
+
+            <div className="glass rounded-2xl p-6 mb-6">
+                <button onClick={onBack} className="text-green-600 font-semibold text-sm mb-3 hover:underline">
+                    <i className="fas fa-arrow-left mr-2"/>Back
+                </button>
+                <h1 className="text-2xl font-extrabold">Staff Directory</h1>
+                <p className="text-gray-500">Contact information for RAHAMA staff</p>
+            </div>
+
+            <div className="glass rounded-xl p-4 mb-6">
+                <input value={search} onChange={e=>setSearch(e.target.value)}
+                    placeholder="Search name, department, position..."
+                    className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl"/>
+            </div>
+
+            {loading?
+                <div className="text-center py-10 text-gray-400"><i className="fas fa-spinner fa-spin"/></div>
+            :
+                <div className="space-y-3">
+                    {list.map(s=>
+                        <div key={s.id} className="glass rounded-xl p-4">
+                            <h3 className="font-bold text-gray-800">{s.name}</h3>
+                            <p className="text-sm text-gray-500">{s.position||'—'} · {s.department||'—'}</p>
+                            {s.phone&&<a href={`tel:${s.phone}`} className="text-indigo-600 text-sm font-semibold"><i className="fas fa-phone mr-1"/>Call</a>}
+                            <div>
+                                <a href={`mailto:${s.email}`} className="text-blue-600 text-sm"><i className="fas fa-envelope mr-1"/>Email</a>
+                            </div>
+                        </div>
+                    )}
+                    {list.length===0&&<p className="text-center text-gray-400 py-6">No staff found</p>}
+                </div>
+            }
+        </div>
+    </div>;
+}
+    /* ==================== HR ADMIN ==================== */
+function HRAdmin({notify,onBack}) {
+    const [staff,setStaff]=useState([]);
+    const [profiles,setProfiles]=useState({});
+    const [selected,setSelected]=useState(null);
+    const [loading,setLoading]=useState(true);
+
+    const load=async()=>{
+        setLoading(true);
+        try{
+            const r=await fetch(`${SB}/rest/v1/users?role=eq.employee`,{headers:H});
+            const u=await r.json();
+            setStaff(u||[]);
+
+            const ids=u.map(x=>x.id);
+            if(ids.length>0){
+                const pr=await fetch(`${SB}/rest/v1/staff_profiles?user_id=in.(${ids.join(',')})`,{headers:H});
+                const pd=await pr.json();
+                const map={};
+                pd.forEach(p=>map[p.user_id]=p);
+                setProfiles(map);
+            }
+        }catch(e){}
+        setLoading(false);
+    };
+    useEffect(()=>{load();},[]);
+
+    if(selected) return <HRProfileEdit staff={selected} profile={profiles[selected.id]} notify={notify} onDone={()=>{setSelected(null);load();}}/>;
+
+    return <div className="min-h-screen p-4 md:p-8">
+        <div className="max-w-5xl mx-auto">
+            <div className="glass rounded-2xl p-6 mb-6">
+                <button onClick={onBack} className="text-blue-600 font-semibold text-sm mb-3 hover:underline">
+                    <i className="fas fa-arrow-left mr-2"/>Back
+                </button>
+                <h1 className="text-2xl font-extrabold">HR Staff Profiles</h1>
+            </div>
+
+            {loading?
+                <div className="text-center py-10"><i className="fas fa-spinner fa-spin"/></div>
+            :
+            <div className="space-y-3">
+                {staff.map(s=>
+                    <div key={s.id} className="glass rounded-xl p-4 flex justify-between items-center cursor-pointer hover:shadow"
+                        onClick={()=>setSelected(s)}>
+                        <div>
+                            <p className="font-bold">{s.name}</p>
+                            <p className="text-xs text-gray-500">{profiles[s.id]?.position||'No profile yet'}</p>
+                        </div>
+                        <i className="fas fa-pen text-blue-600"/>
+                    </div>
+                )}
+            </div>}
         </div>
     </div>;
 }
