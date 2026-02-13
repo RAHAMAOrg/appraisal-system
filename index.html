@@ -396,6 +396,21 @@ function Dashboard({user,onLogout,notify}) {
         <i className="fas fa-arrow-right text-gray-300 ml-auto group-hover:text-purple-600 transition"/>
     </div>
 </button>
+            {/* Financial System */}
+<button onClick={()=>window.open('https://rahamaorg.github.io/rahamafms/','_blank')}
+    className="w-full glass rounded-2xl p-5 mb-6 hover:shadow-xl stat group">
+    <div className="flex items-center gap-4">
+        <div className="w-14 h-14 rounded-xl flex items-center justify-center shadow-lg"
+             style={{background:'linear-gradient(135deg,#16a34a,#166534)'}}>
+            <i className="fas fa-coins text-white text-xl"/>
+        </div>
+        <div className="text-left">
+            <p className="text-lg font-bold text-gray-800">Financial Management System</p>
+            <p className="text-sm text-gray-500">Budgets, payments & approvals</p>
+        </div>
+        <i className="fas fa-arrow-right text-gray-300 ml-auto group-hover:text-green-600 transition"/>
+    </div>
+</button>
 
             {/* History */}
             <div className="glass rounded-2xl p-6">
@@ -1513,6 +1528,21 @@ function SuperDash({user,onLogout,notify}) {
         <i className="fas fa-arrow-right text-gray-300 ml-auto group-hover:text-purple-600 transition"/>
     </div>
 </button>
+        {/* Financial System */}
+<button onClick={()=>window.open('https://rahamaorg.github.io/rahamafms/','_blank')}
+    className="w-full glass rounded-2xl p-5 mb-6 hover:shadow-xl stat group">
+    <div className="flex items-center gap-4">
+        <div className="w-14 h-14 rounded-xl flex items-center justify-center shadow-lg"
+             style={{background:'linear-gradient(135deg,#16a34a,#166534)'}}>
+            <i className="fas fa-coins text-white text-xl"/>
+        </div>
+        <div className="text-left">
+            <p className="text-lg font-bold text-gray-800">Financial Management System</p>
+            <p className="text-sm text-gray-500">Budgets, payments & approvals</p>
+        </div>
+        <i className="fas fa-arrow-right text-gray-300 ml-auto group-hover:text-green-600 transition"/>
+    </div>
+</button>
         {/* Tabs + List */}
         <div className="glass rounded-2xl p-6">
             <div className="flex gap-2 mb-6 border-b pb-4">
@@ -1811,21 +1841,6 @@ function LeaveRequest({user,notify,onBack}) {
         </div>
     </div>;
 }
-    {/* Financial System */}
-<button onClick={()=>window.open('https://rahamaorg.github.io/rahamafms/','_blank')}
-    className="w-full glass rounded-2xl p-5 mb-6 hover:shadow-xl stat group">
-    <div className="flex items-center gap-4">
-        <div className="w-14 h-14 rounded-xl flex items-center justify-center shadow-lg"
-             style={{background:'linear-gradient(135deg,#16a34a,#166534)'}}>
-            <i className="fas fa-coins text-white text-xl"/>
-        </div>
-        <div className="text-left">
-            <p className="text-lg font-bold text-gray-800">Financial Management System</p>
-            <p className="text-sm text-gray-500">Budgets, payments & approvals</p>
-        </div>
-        <i className="fas fa-arrow-right text-gray-300 ml-auto group-hover:text-green-600 transition"/>
-    </div>
-</button>
     /* ==================== LEAVE APPROVAL ==================== */
 function LeaveApproval({notify,onBack}) {
     const [list,setList]=useState([]);
@@ -2086,12 +2101,6 @@ function LeaveApproval({notify,onBack}) {
         </div>
     </div>;
 }
-<a href="https://rahamaorg.github.io/rahamafms/" target="_blank"
-   style="display:inline-flex;align-items:center;gap:8px;padding:12px 24px;
-   background:#2e9d2e;color:white;border-radius:10px;font-weight:600;
-   text-decoration:none;font-size:14px;">
-  🛡️ Financial Management System
-</a>
     /* ==================== HR ADMIN ==================== */
 function HRAdmin({notify,onBack}) {
     const [staff,setStaff]=useState([]);
