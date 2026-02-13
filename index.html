@@ -397,7 +397,16 @@ function Dashboard({user,onLogout,notify}) {
     </div>
 </button>
             {/* Financial System */}
-<button onClick={()=>window.open('https://rahamaorg.github.io/rahamafms/','_blank')}
+{/* Financial System */}
+<button onClick={()=>{
+    const u = localStorage.getItem('pms_user');
+    if(!u){
+        alert('Session expired. Please login again.');
+        return;
+    }
+    const url = 'https://rahamaorg.github.io/rahamafms/?session=' + encodeURIComponent(u);
+    window.open(url,'_blank');
+}}
     className="w-full glass rounded-2xl p-5 mb-6 hover:shadow-xl stat group">
     <div className="flex items-center gap-4">
         <div className="w-14 h-14 rounded-xl flex items-center justify-center shadow-lg"
