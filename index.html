@@ -1017,12 +1017,12 @@ async function checkOfficeNetwork(){
         const r=await fetch('https://ipapi.co/json/',{signal:AbortSignal.timeout(5000)});
         if(!r.ok)return{ok:false,reason:'Could not verify network'};
         const d=await r.json();
-        // Check if IP is from Kano area (approximate)
-    const city=(d.city||'').toLowerCase();
+        const city=(d.city||'').toLowerCase();
         const region=(d.region||'').toLowerCase();
         if(city.includes('kano')||city.includes('katsina')||region.includes('kano')||region.includes('katsina'))
             return{ok:true,method:'network',ip:d.ip,city:d.city||d.region};
         return{ok:false,reason:`Network location: ${d.city||d.region||'Unknown'} — not office area`};
+    }catch(e){return{ok:false,reason:'Network check failed'};}
 }
 
 // Check GPS location
