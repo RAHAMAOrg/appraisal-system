@@ -1066,12 +1066,18 @@ function Attendance({user,notify,onBack}) {
             const td=await tr.json();
             if(Array.isArray(td)){setToday(td.length>0?td[0]:null);}else{setToday(null);}
 
-            // Get history for selected month
-            const startDate=month+'-01';
-            const endDate=month+'-31';
-            const hr=await fetch(`${SB}/rest/v1/attendance?employee_id=eq.${user.id}&date=gte.${startDate}&date=lte.${endDate}&order=date.desc`,{headers:H});
-            const hd=await hr.json();
-            if(Array.isArray(hd)){setHistory(hd);}else{setHistory([]);}
+            const hr = await fetch(
+  `${SB}/rest/v1/attendance?employee_id=eq.${user.id}&order=date.desc`,
+  { headers: H }
+);
+const hd = await hr.json();
+
+if (Array.isArray(hd)) {
+  const filtered = hd.filter(r => r.date && r.date.startsWith(month));
+  setHistory(filtered);
+} else {
+  setHistory([]);
+}
         }catch(e){console.error(e);}
         setLoading(false);
     };
