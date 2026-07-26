@@ -7,6 +7,7 @@
    <script crossorigin src="https://unpkg.com/react@18.3.1/umd/react.production.min.js"></script>
 <script crossorigin src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.production.min.js"></script>
     <script src="https://unpkg.com/@babel/standalone@7.23.6/babel.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
     <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
     <link rel="icon" type="image/png" href="RAHAMA Empowerment Logo Design (3).png">
@@ -129,7 +130,7 @@ function App() {
             }catch(e){}
 
             if(u.length>0&&u[0].password===pw){
-                const d={email,name:u[0].name,role,id:u[0].id};
+                const d={email,name:u[0].name,role,id:u[0].id,is_mne:!!u[0].is_mne};
                 setUser(d);
                 localStorage.setItem('rahama_session',JSON.stringify(d));
                 localStorage.setItem('pms_user',JSON.stringify(d));
@@ -368,6 +369,727 @@ function LoginLogs({notify,onBack}) {
     </div></div>;
 }
 
+/* ==================== MONITORING & EVALUATION ====================
+   Tracks project activity DELIVERY against the approved work plan.
+   Deliberately independent of finance — bulk procurements and multi-month
+   activities make spend a poor proxy for delivery. Grading uses RAHAMA's
+   existing scale: <0.70 Unacceptable · 0.70–0.94 Meets Standard · ≥0.95 Outstanding
+================================================================= */
+const WP_STATUSES=['Not Started','On-Hold','Incomplete','Ongoing (Routine)','Ongoing (One-Off Activity)','Completed','Completed For Period','Delayed'];
+const wpStatusColour=s=>({'Completed':'#059669','Completed For Period':'#10b981','Ongoing (Routine)':'#0284c7','Ongoing (One-Off Activity)':'#0284c7','Delayed':'#dc2626','Incomplete':'#e65100','On-Hold':'#7b1fa2','Not Started':'#6b7280'}[s]||'#6b7280');
+const wpGrade=score=>{
+    if(score>=0.95) return {label:'Outstanding',   colour:'#059669', cls:'bg-green-100 text-green-800'};
+    if(score>=0.70) return {label:'Meets Standard',colour:'#e65100', cls:'bg-amber-100 text-amber-800'};
+    return               {label:'Unacceptable', colour:'#dc2626', cls:'bg-red-100 text-red-700'};
+};
+
+/* Parse the uploaded workbook: locate the sheet + header row, forward-fill
+   merged hierarchy cells, and read month markers into a planned-months array. */
+function parseWorkPlanWorkbook(wb){
+    const MONTHS=['JAN','FEB','MAR','APR','MAY','JUN','JUL','AUG','SEP','OCT','NOV','DEC'];
+    const norm=v=>String(v==null?'':v).replace(/\s+/g,' ').trim();
+    let best={rows:[],sheetName:null};
+    for(const sheetName of wb.SheetNames){
+        const grid=XLSX.utils.sheet_to_json(wb.Sheets[sheetName],{header:1,defval:null,raw:true});
+        let headerIdx=-1;
+        for(let i=0;i<Math.min(grid.length,25);i++){
+            const joined=(grid[i]||[]).map(norm).join('|').toLowerCase();
+            if(joined.includes('sub-activit')&&joined.includes('type of activity')){headerIdx=i;break;}
+        }
+        if(headerIdx===-1) continue;
+        const hdr=(grid[headerIdx]||[]).map(norm);
+        const findCol=(...needles)=>hdr.findIndex(h=>{const l=h.toLowerCase();return needles.some(n=>l.includes(n));});
+        const H={stage:findCol('project stage'),milestone:findCol('milestone','deliverable'),keyAct:findCol('key activit'),
+                 subAct:findCol('sub-activit','sub activit'),type:findCol('type of activity'),totalMon:findCol('total month'),
+                 dri:findCol('dri'),budget:hdr.findIndex(h=>h.toLowerCase()==='budget'),year:findCol('year'),months:{}};
+        hdr.forEach((h,i)=>{const u=h.toUpperCase();if(MONTHS.includes(u))H.months[u]=i;});
+        const rows=[];let curStage='',curMile='',curKey='';
+        for(let i=headerIdx+1;i<grid.length;i++){
+            const r=grid[i]||[];
+            const val=c=>(c!=null&&c>=0)?norm(r[c]):'';
+            const stage=val(H.stage),mile=val(H.milestone),key=val(H.keyAct);
+            if(stage)curStage=stage; if(mile)curMile=mile; if(key)curKey=key;
+            const sub=val(H.subAct),typ=val(H.type);
+            if(!sub&&!typ) continue;
+            if(!sub&&!curKey) continue;
+            const planned=Object.keys(H.months).filter(m=>{const v=r[H.months[m]];return v!=null&&String(v).trim()!=='';});
+            const budgetRaw=H.budget>=0?r[H.budget]:null;
+            rows.push({stage:curStage,milestone:curMile,keyActivity:curKey,subActivity:sub||curKey,
+                activityType:typ||'One off',dri:val(H.dri),
+                totalMonths:(()=>{const n=parseInt(val(H.totalMon));return isNaN(n)?(planned.length||1):n;})(),
+                plannedMonths:planned,
+                budgetRef:(typeof budgetRaw==='number')?budgetRaw:null,
+                budgetNote:(typeof budgetRaw==='string')?norm(budgetRaw):'',
+                year:val(H.year),include:true});
+        }
+        if(rows.length>best.rows.length) best={rows,sheetName};
+    }
+    return best;
+}
+
+function MandE({user,notify,onBack}) {
+    const [view,setView]=useState('register');
+    const [plans,setPlans]=useState([]);
+    const [loading,setLoading]=useState(true);
+    const [err,setErr]=useState(null);
+    const [counts,setCounts]=useState({});
+    const [selPlan,setSelPlan]=useState(null);
+
+    const load=async()=>{setLoading(true);setErr(null);
+        try{
+            const r=await fetch(`${SB}/rest/v1/work_plans?order=created_at.desc`,{headers:H});
+            if(!r.ok) throw new Error('Work plan tables not found — run the SQL setup first.');
+            const d=await r.json();
+            if(!Array.isArray(d)) throw new Error('Unexpected response from database.');
+            setPlans(d);
+            const a=await fetch(`${SB}/rest/v1/work_plan_activities?select=work_plan_id`,{headers:H});
+            const ad=await a.json();
+            const c={};(Array.isArray(ad)?ad:[]).forEach(x=>{c[x.work_plan_id]=(c[x.work_plan_id]||0)+1;});
+            setCounts(c);
+        }catch(e){setErr(e.message);}
+        setLoading(false);};
+    useEffect(()=>{load();},[]);
+
+    if(view==='import')   return <WorkPlanImport user={user} notify={notify} onDone={()=>{setView('register');load();}}/>;
+    if(view==='activities')return <WorkPlanActivities plan={selPlan} user={user} notify={notify} onBack={()=>{setView('register');load();}}/>;
+    if(view==='assign')   return <WorkPlanAssign plan={selPlan} user={user} notify={notify} onDone={()=>{setView('register');load();}}/>;
+
+    const publish=async(p)=>{
+        if(!confirm('Publish this work plan?\n\nIt becomes the approved baseline that delivery is measured against.')) return;
+        const r=await fetch(`${SB}/rest/v1/work_plans?id=eq.${p.id}`,{method:'PATCH',headers:HJ,
+            body:JSON.stringify({status:'active',approved_by:user.name,approved_at:new Date().toISOString()})});
+        if(r.ok){notify('Work plan published');load();}else notify('Failed to publish','error');
+    };
+
+    const badge=s=>{const m={draft:'bg-gray-100 text-gray-700',active:'bg-green-100 text-green-700',closed:'bg-purple-100 text-purple-700'};
+        return <span className={`px-2 py-1 rounded-full text-xs font-bold uppercase ${m[s]||m.draft}`}>{s||'draft'}</span>;};
+
+    return <div className="min-h-screen p-4 md:p-8"><div className="max-w-6xl mx-auto">
+        <div className="glass rounded-2xl p-6 mb-6 animate-in">
+            <button onClick={onBack} className="text-green-600 font-semibold text-sm mb-3 hover:underline"><i className="fas fa-arrow-left mr-2"/>Back to Dashboard</button>
+            <div className="flex flex-wrap justify-between items-center gap-4">
+                <div><h1 className="text-2xl md:text-3xl font-extrabold text-gray-800">Monitoring &amp; Evaluation</h1>
+                    <p className="text-gray-500 mt-1">Project work plans and delivery tracking</p></div>
+                <button onClick={()=>setView('import')} className="btn-green text-white px-5 py-3 rounded-xl font-bold text-sm"><i className="fas fa-upload mr-2"/>Import Work Plan</button>
+            </div>
+        </div>
+
+        {err&&<div className="bg-amber-50 border-2 border-amber-200 rounded-2xl p-5 mb-6">
+            <h3 className="font-bold text-amber-800 mb-1"><i className="fas fa-triangle-exclamation mr-2"/>Setup required</h3>
+            <p className="text-sm text-amber-700">{err}</p></div>}
+
+        {loading?<div className="glass rounded-2xl p-12 text-center text-gray-400"><i className="fas fa-spinner fa-spin text-2xl"/></div>
+        :plans.length===0&&!err?<div className="glass rounded-2xl p-12 text-center text-gray-400">
+            <i className="fas fa-clipboard-list text-4xl mb-3"/><p className="font-semibold">No work plans yet</p>
+            <p className="text-sm mt-1">Import a work plan from Excel to get started.</p></div>
+        :<div className="space-y-3">{plans.map(p=>
+            <div key={p.id} className="glass rounded-2xl p-5">
+                <div className="flex flex-wrap justify-between items-start gap-4">
+                    <div className="min-w-0">
+                        <div className="flex flex-wrap items-center gap-2 mb-1">
+                            <h3 className="font-bold text-gray-800">{p.plan_name}</h3>{badge(p.status)}
+                        </div>
+                        <p className="text-sm text-gray-500">{p.project_code} · {counts[p.id]||0} activities</p>
+                        <p className="text-xs text-gray-400 mt-1">Created by {p.created_by||'—'}{p.start_date?` · ${p.start_date} → ${p.end_date||'—'}`:''}</p>
+                    </div>
+                    <div className="flex flex-wrap gap-2">
+                        <button onClick={()=>{setSelPlan(p);setView('activities');}} className="px-4 py-2 bg-blue-50 text-blue-700 hover:bg-blue-100 rounded-xl font-semibold text-sm"><i className="fas fa-list mr-2"/>Activities</button>
+                        <button onClick={()=>{setSelPlan(p);setView('assign');}} className="px-4 py-2 bg-indigo-50 text-indigo-700 hover:bg-indigo-100 rounded-xl font-semibold text-sm"><i className="fas fa-users mr-2"/>Assign</button>
+                        {(p.status||'draft')==='draft'&&<button onClick={()=>publish(p)} className="btn-green text-white px-4 py-2 rounded-xl font-semibold text-sm"><i className="fas fa-check mr-2"/>Publish</button>}
+                    </div>
+                </div>
+            </div>)}</div>}
+    </div></div>;
+}
+
+function WorkPlanImport({user,notify,onDone}) {
+    const [parsed,setParsed]=useState(null);
+    const [fileName,setFileName]=useState('');
+    const [projectCode,setProjectCode]=useState('');
+    const [planName,setPlanName]=useState('');
+    const [startDate,setStartDate]=useState('');
+    const [endDate,setEndDate]=useState('');
+    const [busy,setBusy]=useState(false);
+    const fileRef=useRef(null);
+
+    const onFile=async(e)=>{
+        const f=e.target.files[0]; if(!f) return;
+        setFileName(f.name);
+        try{
+            const buf=await f.arrayBuffer();
+            const wb=XLSX.read(buf,{type:'array'});
+            const p=parseWorkPlanWorkbook(wb);
+            if(!p.rows.length){notify('No activity rows found — check the sheet has "Sub-Activities" and "Type of activity" headings','error');setParsed(null);return;}
+            setParsed(p); notify(`${p.rows.length} activities found in "${p.sheetName}"`,'info');
+        }catch(ex){notify('Could not read file: '+ex.message,'error');}
+    };
+
+    const toggle=(i,val)=>{const c={...parsed};c.rows=[...c.rows];c.rows[i]={...c.rows[i],include:val};setParsed(c);};
+    const toggleAll=val=>{const c={...parsed};c.rows=c.rows.map(r=>({...r,include:val}));setParsed(c);};
+
+    const save=async()=>{
+        if(!projectCode.trim()){notify('Enter the project code','error');return;}
+        if(!planName.trim()){notify('Give the work plan a name','error');return;}
+        const rows=parsed.rows.filter(r=>r.include);
+        if(!rows.length){notify('No activities selected','error');return;}
+        setBusy(true);
+        try{
+            const r=await fetch(`${SB}/rest/v1/work_plans`,{method:'POST',
+                headers:{...H,'Content-Type':'application/json','Prefer':'return=representation'},
+                body:JSON.stringify({project_code:projectCode.trim(),plan_name:planName.trim(),
+                    start_date:startDate||null,end_date:endDate||null,status:'draft',
+                    source_sheet:parsed.sheetName,activity_count:rows.length,created_by:user.name})});
+            if(!r.ok) throw new Error(await r.text());
+            const plan=(await r.json())[0];
+
+            // Re-use any saved DRI → owner mapping for this project
+            let driMap={};
+            try{
+                const m=await fetch(`${SB}/rest/v1/work_plan_dri_map?project_code=eq.${encodeURIComponent(projectCode.trim())}`,{headers:H});
+                const md=await m.json();
+                (Array.isArray(md)?md:[]).forEach(x=>{driMap[x.dri]=x.staff_email;});
+            }catch(e){}
+
+            const payload=rows.map((x,i)=>({work_plan_id:plan.id,project_code:projectCode.trim(),
+                stage:x.stage||null,milestone:x.milestone||null,key_activity:x.keyActivity||null,
+                sub_activity:x.subActivity,activity_type:x.activityType,dri:x.dri||null,
+                assigned_to:driMap[(x.dri||'').trim()]||null,
+                total_months:x.totalMonths,planned_months:JSON.stringify(x.plannedMonths),
+                budget_ref:x.budgetRef,budget_note:x.budgetNote||null,year:x.year||null,
+                sort_order:i,current_status:'Not Started'}));
+            for(let i=0;i<payload.length;i+=100){
+                const br=await fetch(`${SB}/rest/v1/work_plan_activities`,{method:'POST',headers:HJ,body:JSON.stringify(payload.slice(i,i+100))});
+                if(!br.ok) throw new Error(await br.text());
+            }
+            notify(`Work plan saved — ${rows.length} activities imported`);
+            onDone();
+        }catch(e){notify('Save failed: '+String(e.message).slice(0,120),'error');}
+        setBusy(false);
+    };
+
+    const sel=parsed?parsed.rows.filter(r=>r.include).length:0;
+    const totalBudget=parsed?parsed.rows.reduce((s,r)=>s+(r.budgetRef||0),0):0;
+
+    return <div className="min-h-screen p-4 md:p-8"><div className="max-w-6xl mx-auto">
+        <div className="glass rounded-2xl p-6 mb-6 animate-in">
+            <button onClick={onDone} className="text-green-600 font-semibold text-sm mb-3 hover:underline"><i className="fas fa-arrow-left mr-2"/>Back</button>
+            <h1 className="text-2xl md:text-3xl font-extrabold text-gray-800">Import Work Plan</h1>
+            <p className="text-gray-500 mt-1">Upload the Excel work plan — activities are extracted for review before saving</p>
+        </div>
+
+        <div className="glass rounded-2xl p-6 mb-6 space-y-4">
+            <div className="grid md:grid-cols-2 gap-4">
+                <div><label className="block text-xs font-bold text-gray-500 uppercase mb-2">Project Code *</label>
+                    <input value={projectCode} onChange={e=>setProjectCode(e.target.value)} placeholder="e.g. CBA101" className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl"/></div>
+                <div><label className="block text-xs font-bold text-gray-500 uppercase mb-2">Work Plan Name *</label>
+                    <input value={planName} onChange={e=>setPlanName(e.target.value)} placeholder="e.g. ECHO HIP Work Plan 2026" className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl"/></div>
+                <div><label className="block text-xs font-bold text-gray-500 uppercase mb-2">Start Date</label>
+                    <input type="date" value={startDate} onChange={e=>setStartDate(e.target.value)} className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl"/></div>
+                <div><label className="block text-xs font-bold text-gray-500 uppercase mb-2">End Date</label>
+                    <input type="date" value={endDate} onChange={e=>setEndDate(e.target.value)} className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl"/></div>
+            </div>
+            <div>
+                <label className="block text-xs font-bold text-gray-500 uppercase mb-2">Excel File *</label>
+                <div onClick={()=>fileRef.current&&fileRef.current.click()}
+                    className={`border-2 border-dashed rounded-xl p-6 text-center cursor-pointer transition ${fileName?'border-green-400 bg-green-50':'border-gray-300 hover:border-green-400 hover:bg-green-50'}`}>
+                    {fileName?<div><i className="fas fa-file-excel text-green-600 text-2xl mb-2"/><p className="text-sm font-semibold text-green-700">{fileName}</p>
+                        {parsed&&<p className="text-xs text-gray-500 mt-1">{parsed.rows.length} activities · sheet "{parsed.sheetName}"</p>}</div>
+                    :<div><i className="fas fa-cloud-arrow-up text-gray-400 text-2xl mb-2"/><p className="text-sm text-gray-500">Click to select the work plan (.xlsx)</p>
+                        <p className="text-xs text-gray-400 mt-1">The sheet with the master schedule is detected automatically</p></div>}
+                </div>
+                <input ref={fileRef} type="file" accept=".xlsx,.xlsm,.xls" className="hidden" onChange={onFile}/>
+            </div>
+        </div>
+
+        {parsed&&<>
+            <div className="glass rounded-2xl p-5 mb-4">
+                <div className="flex flex-wrap gap-6 items-center">
+                    <div><p className="text-xs font-bold text-gray-400 uppercase">Selected</p><p className="text-2xl font-extrabold text-green-600">{sel}<span className="text-sm text-gray-400">/{parsed.rows.length}</span></p></div>
+                    <div><p className="text-xs font-bold text-gray-400 uppercase">Budget Reference</p><p className="text-lg font-bold text-gray-700">₦{totalBudget.toLocaleString()}</p></div>
+                    <div className="flex gap-2 ml-auto">
+                        <button onClick={()=>toggleAll(true)} className="px-3 py-2 bg-gray-100 hover:bg-gray-200 rounded-xl text-xs font-bold">Select All</button>
+                        <button onClick={()=>toggleAll(false)} className="px-3 py-2 bg-gray-100 hover:bg-gray-200 rounded-xl text-xs font-bold">Clear All</button>
+                    </div>
+                </div>
+                <p className="text-xs text-gray-400 mt-3 italic">Budget is stored as reference only — delivery tracking never derives from spend.</p>
+            </div>
+
+            <div className="glass rounded-2xl p-4 mb-6 overflow-auto" style={{maxHeight:'520px'}}>
+                <table className="w-full text-xs">
+                    <thead><tr className="border-b-2 border-gray-100 sticky top-0 bg-white">
+                        <th className="py-2 px-2 w-8"></th>
+                        <th className="text-left py-2 px-2 font-bold text-gray-500 uppercase">Stage</th>
+                        <th className="text-left py-2 px-2 font-bold text-gray-500 uppercase">Sub-Activity</th>
+                        <th className="text-left py-2 px-2 font-bold text-gray-500 uppercase">Type</th>
+                        <th className="text-left py-2 px-2 font-bold text-gray-500 uppercase">DRI</th>
+                        <th className="text-left py-2 px-2 font-bold text-gray-500 uppercase">Mo</th>
+                        <th className="text-left py-2 px-2 font-bold text-gray-500 uppercase">Planned</th>
+                        <th className="text-right py-2 px-2 font-bold text-gray-500 uppercase">Budget Ref</th>
+                    </tr></thead>
+                    <tbody>{parsed.rows.map((r,i)=><tr key={i} className={`border-b border-gray-50 ${r.include?'':'opacity-40'}`}>
+                        <td className="py-2 px-2"><input type="checkbox" checked={r.include} onChange={e=>toggle(i,e.target.checked)}/></td>
+                        <td className="py-2 px-2 text-gray-500">{r.stage||'—'}</td>
+                        <td className="py-2 px-2 text-gray-800 font-medium" style={{maxWidth:'320px'}}>{r.subActivity}</td>
+                        <td className="py-2 px-2 text-gray-500 whitespace-nowrap">{r.activityType}</td>
+                        <td className="py-2 px-2 text-gray-500">{r.dri||'—'}</td>
+                        <td className="py-2 px-2 text-center text-gray-600">{r.totalMonths}</td>
+                        <td className="py-2 px-2 text-gray-400" style={{fontSize:'10px'}}>{r.plannedMonths.join(', ')||'—'}</td>
+                        <td className="py-2 px-2 text-right text-gray-600">{r.budgetRef?'₦'+r.budgetRef.toLocaleString():(r.budgetNote||'—')}</td>
+                    </tr>)}</tbody>
+                </table>
+            </div>
+
+            <div className="glass rounded-xl p-6 flex gap-4">
+                <button onClick={onDone} disabled={busy} className="flex-1 bg-gray-100 py-4 rounded-xl font-bold hover:bg-gray-200">Cancel</button>
+                <button onClick={save} disabled={busy||!sel} className="flex-1 btn-green text-white py-4 rounded-xl font-bold disabled:opacity-50">
+                    {busy?<><i className="fas fa-spinner fa-spin mr-2"/>Saving…</>:`Save Work Plan (${sel} activities)`}</button>
+            </div>
+        </>}
+    </div></div>;
+}
+
+function WorkPlanAssign({plan,user,notify,onDone}) {
+    const [acts,setActs]=useState([]);
+    const [loading,setLoading]=useState(true);
+    const [driMap,setDriMap]=useState({});
+    const [owners,setOwners]=useState({});
+    const [staff,setStaff]=useState([]);
+    const [busy,setBusy]=useState(false);
+
+    useEffect(()=>{(async()=>{
+        try{
+            const u=await fetch(`${SB}/rest/v1/users?order=name.asc`,{headers:H}).then(r=>r.json());
+            setStaff(Array.isArray(u)?u:[]);
+            const a=await fetch(`${SB}/rest/v1/work_plan_activities?work_plan_id=eq.${plan.id}&order=sort_order.asc`,{headers:H}).then(r=>r.json());
+            const rows=Array.isArray(a)?a:[];
+            setActs(rows);
+            const o={};rows.forEach(x=>{if(x.assigned_to)o[x.id]=x.assigned_to;});setOwners(o);
+            const m=await fetch(`${SB}/rest/v1/work_plan_dri_map?project_code=eq.${encodeURIComponent(plan.project_code)}`,{headers:H}).then(r=>r.json());
+            const dm={};(Array.isArray(m)?m:[]).forEach(x=>{dm[x.dri]=x.staff_email;});setDriMap(dm);
+        }catch(e){}
+        setLoading(false);
+    })();},[]);
+
+    const dris=[...new Set(acts.map(a=>(a.dri||'').trim()).filter(Boolean))].sort();
+
+    const applyMap=()=>{
+        const o={...owners};let n=0;
+        acts.forEach(a=>{const d=(a.dri||'').trim();if(driMap[d]){o[a.id]=driMap[d];n++;}});
+        setOwners(o);
+        notify(`Applied to ${n} activities — review and override below`,'info');
+    };
+
+    const save=async()=>{
+        const assigned=Object.values(owners).filter(Boolean).length;
+        if(!assigned){notify('No owners selected','error');return;}
+        setBusy(true);
+        try{
+            for(const a of acts){
+                const val=owners[a.id]||null;
+                if(val===(a.assigned_to||null)) continue;
+                await fetch(`${SB}/rest/v1/work_plan_activities?id=eq.${a.id}`,{method:'PATCH',headers:HJ,body:JSON.stringify({assigned_to:val})});
+            }
+            for(const [dri,name] of Object.entries(driMap)){
+                if(!name) continue;
+                await fetch(`${SB}/rest/v1/work_plan_dri_map?project_code=eq.${encodeURIComponent(plan.project_code)}&dri=eq.${encodeURIComponent(dri)}`,{method:'DELETE',headers:H});
+                await fetch(`${SB}/rest/v1/work_plan_dri_map`,{method:'POST',headers:HJ,
+                    body:JSON.stringify({project_code:plan.project_code,dri,staff_email:name,updated_by:user.name})});
+            }
+            notify(`Saved — ${assigned} of ${acts.length} activities have an owner`);
+            onDone();
+        }catch(e){notify('Save failed','error');}
+        setBusy(false);
+    };
+
+    const unassigned=acts.filter(a=>!owners[a.id]).length;
+
+    return <div className="min-h-screen p-4 md:p-8"><div className="max-w-6xl mx-auto">
+        <div className="glass rounded-2xl p-6 mb-6 animate-in">
+            <button onClick={onDone} className="text-green-600 font-semibold text-sm mb-3 hover:underline"><i className="fas fa-arrow-left mr-2"/>Back</button>
+            <h1 className="text-2xl md:text-3xl font-extrabold text-gray-800">Assign Activity Owners</h1>
+            <p className="text-gray-500 mt-1">{plan.plan_name} · {acts.length} activities{unassigned>0&&<span className="text-amber-600 font-semibold"> · {unassigned} unassigned</span>}</p>
+        </div>
+
+        {loading?<div className="glass rounded-2xl p-12 text-center text-gray-400"><i className="fas fa-spinner fa-spin text-2xl"/></div>:<>
+            <div className="glass rounded-2xl p-6 mb-6">
+                <h3 className="font-bold text-gray-800 mb-1"><i className="fas fa-diagram-project text-indigo-600 mr-2"/>Step 1 — Map each DRI label to a person</h3>
+                <p className="text-sm text-gray-500 mb-4">The Excel records responsibility at unit level. Choose the single accountable owner for each label.</p>
+                <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-3">
+                    {dris.map(d=><div key={d} className="border-2 border-gray-100 rounded-xl p-3">
+                        <p className="text-xs font-bold text-indigo-700 mb-2">{d} <span className="text-gray-400 font-normal">({acts.filter(a=>(a.dri||'').trim()===d).length})</span></p>
+                        <select value={driMap[d]||''} onChange={e=>setDriMap({...driMap,[d]:e.target.value})}
+                            className="w-full px-3 py-2 border-2 border-gray-200 rounded-lg text-sm">
+                            <option value="">— Select owner —</option>
+                            {staff.map(s=><option key={s.id} value={s.email}>{s.name}</option>)}
+                        </select>
+                    </div>)}
+                </div>
+                <button onClick={applyMap} className="mt-4 btn-green text-white px-5 py-3 rounded-xl font-bold text-sm"><i className="fas fa-arrow-down mr-2"/>Apply to Matching Activities</button>
+            </div>
+
+            <div className="glass rounded-2xl p-4 mb-6 overflow-auto" style={{maxHeight:'520px'}}>
+                <h3 className="font-bold text-gray-800 mb-3 px-2"><i className="fas fa-user-check text-green-600 mr-2"/>Step 2 — Review &amp; override</h3>
+                <table className="w-full text-xs">
+                    <thead><tr className="border-b-2 border-gray-100 sticky top-0 bg-white">
+                        <th className="text-left py-2 px-2 font-bold text-gray-500 uppercase">#</th>
+                        <th className="text-left py-2 px-2 font-bold text-gray-500 uppercase">Sub-Activity</th>
+                        <th className="text-left py-2 px-2 font-bold text-gray-500 uppercase">DRI</th>
+                        <th className="text-left py-2 px-2 font-bold text-gray-500 uppercase" style={{minWidth:'190px'}}>Accountable Owner</th>
+                    </tr></thead>
+                    <tbody>{acts.map((a,i)=><tr key={a.id} className="border-b border-gray-50">
+                        <td className="py-2 px-2 text-gray-400">{i+1}</td>
+                        <td className="py-2 px-2 text-gray-800" style={{maxWidth:'340px'}}>{a.sub_activity}</td>
+                        <td className="py-2 px-2 text-indigo-600 font-semibold">{a.dri||'—'}</td>
+                        <td className="py-2 px-2"><select value={owners[a.id]||''} onChange={e=>setOwners({...owners,[a.id]:e.target.value})}
+                            className="w-full px-2 py-1.5 border-2 border-gray-200 rounded-lg text-xs">
+                            <option value="">— Unassigned —</option>
+                            {staff.map(s=><option key={s.id} value={s.email}>{s.name}</option>)}
+                        </select></td>
+                    </tr>)}</tbody>
+                </table>
+            </div>
+
+            <div className="glass rounded-xl p-6 flex gap-4">
+                <button onClick={onDone} disabled={busy} className="flex-1 bg-gray-100 py-4 rounded-xl font-bold hover:bg-gray-200">Cancel</button>
+                <button onClick={save} disabled={busy} className="flex-1 btn-green text-white py-4 rounded-xl font-bold disabled:opacity-50">
+                    {busy?<><i className="fas fa-spinner fa-spin mr-2"/>Saving…</>:'Save Assignments'}</button>
+            </div>
+        </>}
+    </div></div>;
+}
+
+function WorkPlanActivities({plan,user,notify,onBack}) {
+    const [acts,setActs]=useState([]);
+    const [loading,setLoading]=useState(true);
+    const [filter,setFilter]=useState('all');
+    const [nameByEmail,setNameByEmail]=useState({});
+    const [sel,setSel]=useState(null);
+
+    const load=async()=>{setLoading(true);
+        try{
+            const a=await fetch(`${SB}/rest/v1/work_plan_activities?work_plan_id=eq.${plan.id}&order=sort_order.asc`,{headers:H}).then(r=>r.json());
+            setActs(Array.isArray(a)?a:[]);
+            const u=await fetch(`${SB}/rest/v1/users`,{headers:H}).then(r=>r.json());
+            const m={};(Array.isArray(u)?u:[]).forEach(x=>{m[x.email]=x.name;});setNameByEmail(m);
+        }catch(e){}
+        setLoading(false);};
+    useEffect(()=>{load();},[]);
+
+    const verify=async(a,ok,note)=>{
+        const body=ok
+            ? {verification_status:'verified',mne_verified_by:user.name,mne_verified_at:new Date().toISOString(),mne_note:note||null}
+            : {verification_status:'rejected',mne_verified_by:user.name,mne_verified_at:new Date().toISOString(),mne_note:note||null};
+        const r=await fetch(`${SB}/rest/v1/work_plan_activities?id=eq.${a.id}`,{method:'PATCH',headers:HJ,body:JSON.stringify(body)});
+        if(r.ok){notify(ok?'Activity verified':'Sent back to owner');setSel(null);load();}
+        else notify('Failed','error');
+    };
+
+    const setStatus=async(a,status)=>{
+        const r=await fetch(`${SB}/rest/v1/work_plan_activities?id=eq.${a.id}`,{method:'PATCH',headers:HJ,
+            body:JSON.stringify({current_status:status,status_updated_by:user.name,status_updated_at:new Date().toISOString()})});
+        if(r.ok){setActs(acts.map(x=>x.id===a.id?{...x,current_status:status}:x));notify('Status updated','info');}
+        else notify('Update failed','error');
+    };
+
+    const byStatus={};acts.forEach(a=>{const s=a.current_status||'Not Started';byStatus[s]=(byStatus[s]||0)+1;});
+    // Only M&E-verified deliveries count toward the completion rate
+    const done=acts.filter(a=>['Completed','Completed For Period'].includes(a.current_status)&&a.verification_status==='verified').length;
+    const awaiting=acts.filter(a=>a.verification_status==='submitted').length;
+    const score=acts.length?done/acts.length:0;
+    const grade=wpGrade(score);
+    const list=filter==='all'?acts:acts.filter(a=>(a.current_status||'Not Started')===filter);
+
+    return <div className="min-h-screen p-4 md:p-8"><div className="max-w-6xl mx-auto">
+        <div className="glass rounded-2xl p-6 mb-6 animate-in">
+            <button onClick={onBack} className="text-green-600 font-semibold text-sm mb-3 hover:underline"><i className="fas fa-arrow-left mr-2"/>Back</button>
+            <h1 className="text-2xl md:text-3xl font-extrabold text-gray-800">{plan.plan_name}</h1>
+            <p className="text-gray-500 mt-1">{plan.project_code} · {acts.length} activities · {plan.status||'draft'}</p>
+        </div>
+
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+            <div className="glass rounded-xl p-5 stat"><p className="text-xs font-bold text-gray-400 uppercase">Activities</p><p className="text-3xl font-extrabold text-gray-800 mt-1">{acts.length}</p></div>
+            <div className="glass rounded-xl p-5 stat"><p className="text-xs font-bold text-gray-400 uppercase">Verified</p><p className="text-3xl font-extrabold text-green-600 mt-1">{done}</p>{awaiting>0&&<p className="text-xs text-amber-600 font-semibold mt-1">{awaiting} awaiting review</p>}</div>
+            <div className="glass rounded-xl p-5 stat"><p className="text-xs font-bold text-gray-400 uppercase">Completion</p><p className="text-3xl font-extrabold text-blue-600 mt-1">{Math.round(score*100)}%</p></div>
+            <div className="glass rounded-xl p-5 stat"><p className="text-xs font-bold text-gray-400 uppercase">Grade</p>
+                <p className="text-lg font-extrabold mt-2" style={{color:grade.colour}}>{grade.label}</p>
+                <p className="text-xs text-gray-400">Score {score.toFixed(2)}</p></div>
+        </div>
+
+        <div className="glass rounded-xl p-4 mb-6">
+            <div className="cbar mb-3"><div className="cbar-fill" style={{width:`${score*100}%`,background:grade.colour}}/></div>
+            <div className="flex flex-wrap gap-2">
+                <button onClick={()=>setFilter('all')} className={`px-3 py-1.5 rounded-lg text-xs font-bold ${filter==='all'?'btn-green text-white':'bg-gray-100 text-gray-600'}`}>All ({acts.length})</button>
+                {WP_STATUSES.filter(s=>byStatus[s]).map(s=>
+                    <button key={s} onClick={()=>setFilter(s)}
+                        className="px-3 py-1.5 rounded-lg text-xs font-bold"
+                        style={filter===s?{background:wpStatusColour(s),color:'#fff'}:{background:wpStatusColour(s)+'20',color:wpStatusColour(s)}}>
+                        {s} ({byStatus[s]})</button>)}
+            </div>
+        </div>
+
+        {loading?<div className="glass rounded-2xl p-12 text-center text-gray-400"><i className="fas fa-spinner fa-spin text-2xl"/></div>
+        :<div className="glass rounded-2xl p-4 overflow-auto">
+            <table className="w-full text-xs">
+                <thead><tr className="border-b-2 border-gray-100">
+                    <th className="text-left py-2 px-2 font-bold text-gray-500 uppercase">#</th>
+                    <th className="text-left py-2 px-2 font-bold text-gray-500 uppercase">Stage</th>
+                    <th className="text-left py-2 px-2 font-bold text-gray-500 uppercase">Sub-Activity</th>
+                    <th className="text-left py-2 px-2 font-bold text-gray-500 uppercase">Type</th>
+                    <th className="text-left py-2 px-2 font-bold text-gray-500 uppercase">Owner</th>
+                    <th className="text-left py-2 px-2 font-bold text-gray-500 uppercase" style={{minWidth:'190px'}}>Status</th>
+                    <th className="text-left py-2 px-2 font-bold text-gray-500 uppercase">Verification</th>
+                </tr></thead>
+                <tbody>{list.map((a,i)=><tr key={a.id} className="border-b border-gray-50 hover:bg-gray-50">
+                    <td className="py-2 px-2 text-gray-400">{i+1}</td>
+                    <td className="py-2 px-2 text-gray-500">{a.stage||'—'}</td>
+                    <td className="py-2 px-2 text-gray-800 font-medium" style={{maxWidth:'320px'}}>{a.sub_activity}</td>
+                    <td className="py-2 px-2 text-gray-500 whitespace-nowrap">{a.activity_type||'—'}</td>
+                    <td className={`py-2 px-2 font-semibold ${a.assigned_to?'text-indigo-600':'text-red-500'}`}>{a.assigned_to?(nameByEmail[a.assigned_to]||a.assigned_to):'Unassigned'}</td>
+                    <td className="py-2 px-2">
+                        <select value={a.current_status||'Not Started'} onChange={e=>setStatus(a,e.target.value)}
+                            className="w-full px-2 py-1.5 border-2 rounded-lg text-xs font-semibold"
+                            style={{borderColor:wpStatusColour(a.current_status)+'55',color:wpStatusColour(a.current_status)}}>
+                            {WP_STATUSES.map(s=><option key={s} value={s}>{s}</option>)}
+                        </select>
+                    </td>
+                    <td className="py-2 px-2">
+                        {a.verification_status==='submitted'
+                            ? <button onClick={()=>setSel(a)} className="px-3 py-1.5 bg-amber-100 text-amber-700 hover:bg-amber-200 rounded-lg font-bold whitespace-nowrap"><i className="fas fa-clipboard-check mr-1"/>Review</button>
+                            : a.verification_status==='verified'
+                            ? <span className="text-green-600 font-bold whitespace-nowrap"><i className="fas fa-check-circle mr-1"/>Verified</span>
+                            : a.verification_status==='rejected'
+                            ? <button onClick={()=>setSel(a)} className="px-3 py-1.5 bg-red-100 text-red-700 hover:bg-red-200 rounded-lg font-bold whitespace-nowrap"><i className="fas fa-rotate-left mr-1"/>Returned</button>
+                            : <span className="text-gray-300">—</span>}
+                    </td>
+                </tr>)}</tbody>
+            </table>
+            {list.length===0&&<p className="text-center text-gray-400 py-8 font-semibold">No activities match this filter</p>}
+        </div>}
+
+        {sel&&<VerifyModal act={sel} nameByEmail={nameByEmail} onClose={()=>setSel(null)} onDecide={verify}/>}
+    </div></div>;
+}
+
+function VerifyModal({act,nameByEmail,onClose,onDecide}) {
+    const [note,setNote]=useState(act.mne_note||'');
+    return <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50 overflow-auto">
+        <div className="bg-white rounded-2xl p-6 max-w-2xl w-full animate-in my-8">
+            <div className="flex justify-between items-start mb-5">
+                <div><h2 className="text-xl font-bold text-gray-800"><i className="fas fa-clipboard-check text-amber-600 mr-2"/>Verify Delivery</h2>
+                    <p className="text-sm text-gray-500 mt-1">{act.sub_activity}</p></div>
+                <button onClick={onClose} className="w-8 h-8 rounded-full bg-gray-100 hover:bg-gray-200 flex items-center justify-center flex-shrink-0"><i className="fas fa-times text-gray-500"/></button>
+            </div>
+
+            <div className="grid grid-cols-2 gap-3 mb-4">
+                <div className="bg-gray-50 rounded-xl p-3"><p className="text-xs font-bold text-gray-400 uppercase">Owner</p><p className="text-sm font-semibold text-gray-800">{nameByEmail[act.assigned_to]||act.assigned_to||'—'}</p></div>
+                <div className="bg-gray-50 rounded-xl p-3"><p className="text-xs font-bold text-gray-400 uppercase">Reported Status</p><p className="text-sm font-semibold" style={{color:wpStatusColour(act.current_status)}}>{act.current_status}</p></div>
+            </div>
+
+            {act.submitted_at&&<p className="text-xs text-gray-400 mb-4">Submitted {new Date(act.submitted_at).toLocaleString()}</p>}
+
+            <div className="mb-4">
+                <p className="text-xs font-bold text-gray-500 uppercase mb-2">Narrative from Owner</p>
+                <div className="bg-blue-50 border border-blue-200 rounded-xl p-4">
+                    <p className="text-sm text-gray-700 whitespace-pre-wrap">{act.narrative||<span className="text-gray-400 italic">No narrative provided</span>}</p>
+                </div>
+            </div>
+
+            <div className="mb-4">
+                <p className="text-xs font-bold text-gray-500 uppercase mb-2">Means of Verification</p>
+                {act.mov_file_url
+                    ? <a href={act.mov_file_url} download={act.mov_file_name||'mov'} className="flex items-center gap-3 bg-green-50 border border-green-200 rounded-xl p-3 hover:bg-green-100">
+                        <i className="fas fa-file-circle-check text-green-600 text-lg"/>
+                        <div className="flex-1 min-w-0"><p className="text-sm font-semibold text-gray-800 truncate">{act.mov_file_name||'Attachment'}</p></div>
+                        <i className="fas fa-download text-green-600"/></a>
+                    : <div className="bg-amber-50 border border-amber-200 rounded-xl p-3"><p className="text-sm text-amber-700"><i className="fas fa-triangle-exclamation mr-2"/>No MoV attached</p></div>}
+            </div>
+
+            <div className="mb-5">
+                <label className="block text-xs font-bold text-gray-500 uppercase mb-2">M&amp;E Note</label>
+                <textarea value={note} onChange={e=>setNote(e.target.value)} rows="3"
+                    className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl text-sm"
+                    placeholder="Optional for verify — required when sending back"/>
+            </div>
+
+            <div className="flex gap-3">
+                <button onClick={()=>{if(!note.trim()){alert('Add a note explaining what needs fixing');return;}onDecide(act,false,note);}}
+                    className="flex-1 bg-red-600 hover:bg-red-700 text-white py-3 rounded-xl font-bold"><i className="fas fa-rotate-left mr-2"/>Send Back</button>
+                <button onClick={()=>onDecide(act,true,note)}
+                    className="flex-1 btn-green text-white py-3 rounded-xl font-bold"><i className="fas fa-check mr-2"/>Verify Delivery</button>
+            </div>
+        </div>
+    </div>;
+}
+
+/* Owner-facing view — every staff member sees only the activities assigned to them */
+function MyActivities({user,notify,onBack}) {
+    const [acts,setActs]=useState([]);
+    const [plans,setPlans]=useState({});
+    const [loading,setLoading]=useState(true);
+    const [sel,setSel]=useState(null);
+
+    const load=async()=>{setLoading(true);
+        try{
+            const a=await fetch(`${SB}/rest/v1/work_plan_activities?assigned_to=eq.${encodeURIComponent(user.email)}&order=sort_order.asc`,{headers:H}).then(r=>r.json());
+            const rows=Array.isArray(a)?a:[];
+            setActs(rows);
+            const ids=[...new Set(rows.map(x=>x.work_plan_id))];
+            if(ids.length){
+                const p=await fetch(`${SB}/rest/v1/work_plans?id=in.(${ids.join(',')})`,{headers:H}).then(r=>r.json());
+                const m={};(Array.isArray(p)?p:[]).forEach(x=>{m[x.id]=x;});setPlans(m);
+            }
+        }catch(e){}
+        setLoading(false);};
+    useEffect(()=>{load();},[]);
+
+    if(sel) return <ReportActivity act={sel} user={user} notify={notify} onDone={()=>{setSel(null);load();}}/>;
+
+    const pending=acts.filter(a=>!a.verification_status||a.verification_status==='not_submitted'||a.verification_status==='rejected').length;
+    const submitted=acts.filter(a=>a.verification_status==='submitted').length;
+    const verified=acts.filter(a=>a.verification_status==='verified').length;
+
+    const vBadge=a=>{
+        const v=a.verification_status;
+        if(v==='verified')  return <span className="px-2 py-1 rounded-full text-xs font-bold bg-green-100 text-green-700"><i className="fas fa-check-circle mr-1"/>Verified</span>;
+        if(v==='submitted') return <span className="px-2 py-1 rounded-full text-xs font-bold bg-amber-100 text-amber-700"><i className="fas fa-hourglass-half mr-1"/>Awaiting M&amp;E</span>;
+        if(v==='rejected')  return <span className="px-2 py-1 rounded-full text-xs font-bold bg-red-100 text-red-700"><i className="fas fa-rotate-left mr-1"/>Returned</span>;
+        return <span className="px-2 py-1 rounded-full text-xs font-bold bg-gray-100 text-gray-600">Not reported</span>;
+    };
+
+    return <div className="min-h-screen p-4 md:p-8"><div className="max-w-5xl mx-auto">
+        <div className="glass rounded-2xl p-6 mb-6 animate-in">
+            <button onClick={onBack} className="text-green-600 font-semibold text-sm mb-3 hover:underline"><i className="fas fa-arrow-left mr-2"/>Back to Dashboard</button>
+            <h1 className="text-2xl md:text-3xl font-extrabold text-gray-800">My Work Plan Activities</h1>
+            <p className="text-gray-500 mt-1">Activities you are accountable for delivering</p>
+        </div>
+
+        <div className="grid grid-cols-3 gap-4 mb-6">
+            <div className="glass rounded-xl p-5 stat"><p className="text-xs font-bold text-gray-400 uppercase">To Report</p><p className="text-3xl font-extrabold text-amber-600 mt-1">{pending}</p></div>
+            <div className="glass rounded-xl p-5 stat"><p className="text-xs font-bold text-gray-400 uppercase">Awaiting M&amp;E</p><p className="text-3xl font-extrabold text-blue-600 mt-1">{submitted}</p></div>
+            <div className="glass rounded-xl p-5 stat"><p className="text-xs font-bold text-gray-400 uppercase">Verified</p><p className="text-3xl font-extrabold text-green-600 mt-1">{verified}</p></div>
+        </div>
+
+        {loading?<div className="glass rounded-2xl p-12 text-center text-gray-400"><i className="fas fa-spinner fa-spin text-2xl"/></div>
+        :acts.length===0?<div className="glass rounded-2xl p-12 text-center text-gray-400">
+            <i className="fas fa-clipboard-list text-4xl mb-3"/><p className="font-semibold">No activities assigned to you</p>
+            <p className="text-sm mt-1">M&amp;E will assign work plan activities to you.</p></div>
+        :<div className="space-y-3">{acts.map(a=>
+            <div key={a.id} className={`glass rounded-2xl p-5 ${a.verification_status==='rejected'?'border-2 border-red-200':''}`}>
+                <div className="flex flex-wrap justify-between items-start gap-3">
+                    <div className="min-w-0 flex-1">
+                        <div className="flex flex-wrap items-center gap-2 mb-1">
+                            {vBadge(a)}
+                            <span className="px-2 py-1 rounded-full text-xs font-bold" style={{background:wpStatusColour(a.current_status)+'20',color:wpStatusColour(a.current_status)}}>{a.current_status||'Not Started'}</span>
+                        </div>
+                        <p className="font-semibold text-gray-800 mt-1">{a.sub_activity}</p>
+                        <p className="text-xs text-gray-400 mt-1">{plans[a.work_plan_id]?.plan_name||''} · {a.stage||'—'} · {a.activity_type||'—'}
+                            {a.planned_months&&(()=>{try{const m=JSON.parse(a.planned_months);return m.length?' · Planned: '+m.join(', '):'';}catch(e){return '';}})()}</p>
+                        {a.verification_status==='rejected'&&a.mne_note&&
+                            <div className="bg-red-50 border border-red-200 rounded-lg p-3 mt-3">
+                                <p className="text-xs font-bold text-red-600 mb-1">M&amp;E sent this back:</p>
+                                <p className="text-sm text-red-700">{a.mne_note}</p></div>}
+                    </div>
+                    {a.verification_status!=='verified'&&a.verification_status!=='submitted'&&
+                        <button onClick={()=>setSel(a)} className="btn-green text-white px-5 py-2.5 rounded-xl font-semibold text-sm whitespace-nowrap"><i className="fas fa-pen mr-2"/>Report</button>}
+                    {a.verification_status==='submitted'&&
+                        <button onClick={()=>setSel(a)} className="bg-gray-100 hover:bg-gray-200 text-gray-600 px-5 py-2.5 rounded-xl font-semibold text-sm whitespace-nowrap"><i className="fas fa-eye mr-2"/>View</button>}
+                </div>
+            </div>)}</div>}
+    </div></div>;
+}
+
+function ReportActivity({act,user,notify,onDone}) {
+    const readOnly=act.verification_status==='submitted'||act.verification_status==='verified';
+    const [status,setStatus]=useState(act.current_status||'Not Started');
+    const [narrative,setNarrative]=useState(act.narrative||'');
+    const [file,setFile]=useState(null);
+    const [busy,setBusy]=useState(false);
+    const fileRef=useRef(null);
+    const toB64=f=>new Promise((res,rej)=>{const r=new FileReader();r.onload=()=>res(r.result);r.onerror=rej;r.readAsDataURL(f);});
+
+    const submit=async()=>{
+        if(narrative.trim().length<10){notify('Describe what was done (min 10 characters)','error');return;}
+        setBusy(true);
+        try{
+            const body={current_status:status,narrative,verification_status:'submitted',
+                submitted_by:user.name,submitted_at:new Date().toISOString(),
+                status_updated_by:user.name,status_updated_at:new Date().toISOString(),mne_note:null};
+            if(file){
+                if(file.size>5*1024*1024){notify('File too large (max 5MB)','error');setBusy(false);return;}
+                body.mov_file_url=await toB64(file); body.mov_file_name=file.name;
+            }
+            const r=await fetch(`${SB}/rest/v1/work_plan_activities?id=eq.${act.id}`,{method:'PATCH',headers:HJ,body:JSON.stringify(body)});
+            if(r.ok){notify('Submitted to M&E for verification');onDone();}
+            else notify('Submission failed','error');
+        }catch(e){notify('Error submitting','error');}
+        setBusy(false);
+    };
+
+    return <div className="min-h-screen p-4 md:p-8"><div className="max-w-3xl mx-auto">
+        <div className="glass rounded-2xl p-6 mb-6 animate-in">
+            <button onClick={onDone} className="text-green-600 font-semibold text-sm mb-3 hover:underline"><i className="fas fa-arrow-left mr-2"/>Back</button>
+            <h1 className="text-2xl font-extrabold text-gray-800">{readOnly?'Activity Report':'Report on Activity'}</h1>
+            <p className="text-gray-500 mt-1">{act.sub_activity}</p>
+            <p className="text-xs text-gray-400 mt-2">{act.stage||'—'} · {act.activity_type||'—'} · DRI: {act.dri||'—'}</p>
+        </div>
+
+        {act.verification_status==='rejected'&&act.mne_note&&
+            <div className="bg-red-50 border-2 border-red-200 rounded-2xl p-5 mb-6">
+                <h3 className="font-bold text-red-800 mb-1"><i className="fas fa-rotate-left mr-2"/>Sent back by M&amp;E</h3>
+                <p className="text-sm text-red-700">{act.mne_note}</p></div>}
+
+        {readOnly&&<div className="bg-blue-50 border-2 border-blue-200 rounded-2xl p-4 mb-6">
+            <p className="text-sm text-blue-700 font-semibold">
+                <i className={`fas ${act.verification_status==='verified'?'fa-check-circle':'fa-hourglass-half'} mr-2`}/>
+                {act.verification_status==='verified'?'Verified by M&E — no further action needed':'Submitted and awaiting M&E verification'}</p></div>}
+
+        <div className="glass rounded-2xl p-6 mb-6 space-y-5">
+            <div>
+                <label className="block text-xs font-bold text-gray-500 uppercase mb-2">Delivery Status *</label>
+                <select value={status} onChange={e=>setStatus(e.target.value)} disabled={readOnly}
+                    className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl disabled:bg-gray-50">
+                    {WP_STATUSES.map(s=><option key={s} value={s}>{s}</option>)}
+                </select>
+            </div>
+            <div>
+                <label className="block text-xs font-bold text-gray-500 uppercase mb-2">What was done? *</label>
+                <textarea value={narrative} onChange={e=>setNarrative(e.target.value)} rows="6" disabled={readOnly}
+                    className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl text-sm disabled:bg-gray-50"
+                    placeholder="Describe the activity carried out, where, when, who participated, and any issues encountered..."/>
+                {!readOnly&&narrative.trim().length<10&&<p className="text-amber-600 text-xs mt-1"><i className="fas fa-exclamation-circle mr-1"/>Min 10 characters</p>}
+            </div>
+            <div>
+                <label className="block text-xs font-bold text-gray-500 uppercase mb-2">Means of Verification (MoV)</label>
+                {act.mov_file_url&&!file&&
+                    <a href={act.mov_file_url} download={act.mov_file_name||'mov'} className="flex items-center gap-3 bg-green-50 border border-green-200 rounded-xl p-3 mb-3 hover:bg-green-100">
+                        <i className="fas fa-file-circle-check text-green-600"/>
+                        <span className="text-sm font-semibold text-gray-800 flex-1 truncate">{act.mov_file_name||'Attachment'}</span>
+                        <i className="fas fa-download text-green-600"/></a>}
+                {!readOnly&&<>
+                    <div onClick={()=>fileRef.current&&fileRef.current.click()}
+                        className={`border-2 border-dashed rounded-xl p-4 text-center cursor-pointer transition ${file?'border-green-400 bg-green-50':'border-gray-300 hover:border-green-400 hover:bg-green-50'}`}>
+                        {file?<div className="flex items-center justify-center gap-2"><i className="fas fa-file-circle-check text-green-600"/>
+                            <span className="text-sm font-semibold text-green-700">{file.name}</span>
+                            <span className="text-xs text-gray-500">({(file.size/1024).toFixed(0)}KB)</span>
+                            <button onClick={e=>{e.stopPropagation();setFile(null);if(fileRef.current)fileRef.current.value='';}} className="ml-2 text-red-400"><i className="fas fa-times-circle"/></button></div>
+                        :<div><i className="fas fa-cloud-arrow-up text-gray-400 text-2xl mb-2"/>
+                            <p className="text-sm text-gray-500">{act.mov_file_url?'Replace attachment':'Attach evidence'}</p>
+                            <p className="text-xs text-gray-400 mt-1">Attendance sheet, photo, report — PDF, JPG, PNG, DOC (max 5MB)</p></div>}
+                    </div>
+                    <input ref={fileRef} type="file" className="hidden" accept=".pdf,.png,.jpg,.jpeg,.doc,.docx,.xls,.xlsx"
+                        onChange={e=>{const f=e.target.files[0];if(f){if(f.size>5*1024*1024){notify('File too large (max 5MB)','error');e.target.value='';return;}setFile(f);}}}/>
+                </>}
+            </div>
+        </div>
+
+        {!readOnly&&<div className="glass rounded-xl p-6 flex gap-4">
+            <button onClick={onDone} disabled={busy} className="flex-1 bg-gray-100 py-4 rounded-xl font-bold hover:bg-gray-200">Cancel</button>
+            <button onClick={submit} disabled={busy||narrative.trim().length<10} className="flex-1 btn-green text-white py-4 rounded-xl font-bold disabled:opacity-50">
+                {busy?<><i className="fas fa-spinner fa-spin mr-2"/>Submitting…</>:'Submit to M&E'}</button>
+        </div>}
+    </div></div>;
+}
+
 function Dashboard({user,onLogout,notify}) {
     const [view,setView]=useState('list');const [showPw,setShowPw]=useState(false);const [apps,setApps]=useState([]);const [loading,setLoading]=useState(true);const [selApp,setSelApp]=useState(null);const [leaves,setLeaves]=useState([]);
     const load=()=>{setLoading(true);
@@ -380,6 +1102,8 @@ function Dashboard({user,onLogout,notify}) {
     if(view==='attendance') return <Attendance user={user} notify={notify} onBack={()=>setView('list')}/>;
     if(view==='directory') return <Directory user={user} notify={notify} onBack={()=>setView('list')}/>;
     if(view==='leave') return <LeaveRequest user={user} notify={notify} onBack={()=>setView('list')}/>;
+    if(view==='mande') return <MandE user={user} notify={notify} onBack={()=>setView('list')}/>;
+    if(view==='myacts') return <MyActivities user={user} notify={notify} onBack={()=>setView('list')}/>;
     const pending=apps.filter(a=>a.status==='pending');const completed=apps.filter(a=>a.status==='completed');const needsResponse=apps.filter(a=>a.status==='completed'&&(!a.employee_review_status||a.employee_review_status==='pending'));
     return <div className="min-h-screen p-4 md:p-8"><div className="max-w-6xl mx-auto">
         <div className="glass rounded-2xl p-6 mb-6 animate-in">
@@ -399,7 +1123,9 @@ function Dashboard({user,onLogout,notify}) {
         {[{v:'create',icon:'fa-plus',bg:'btn-green',bgStyle:null,title:'Start New Self-Assessment',sub:'Rate yourself across 9 competencies',hov:'text-green-600'},
           {v:'attendance',icon:'fa-clock',bg:'',bgStyle:{background:'linear-gradient(135deg,#3b82f6,#1d4ed8)'},title:'Attendance & Time Tracking',sub:'Clock in, clock out, and view your history',hov:'text-blue-600'},
           {v:'directory',icon:'fa-address-book',bg:'',bgStyle:{background:'linear-gradient(135deg,#0ea5e9,#0369a1)'},title:'Staff Directory',sub:'Find and contact colleagues',hov:'text-blue-600'},
-          {v:'leave',icon:'fa-plane-departure',bg:'',bgStyle:{background:'linear-gradient(135deg,#8b5cf6,#6d28d9)'},title:'Request Leave / Permission',sub:'Submit absence or time-off request',hov:'text-purple-600'}
+          {v:'leave',icon:'fa-plane-departure',bg:'',bgStyle:{background:'linear-gradient(135deg,#8b5cf6,#6d28d9)'},title:'Request Leave / Permission',sub:'Submit absence or time-off request',hov:'text-purple-600'},
+          {v:'myacts',icon:'fa-list-check',bg:'',bgStyle:{background:'linear-gradient(135deg,#0891b2,#0e7490)'},title:'My Work Plan Activities',sub:'Report on activities assigned to you',hov:'text-cyan-600'},
+          ...(user.is_mne?[{v:'mande',icon:'fa-chart-pie',bg:'',bgStyle:{background:'linear-gradient(135deg,#0891b2,#0e7490)'},title:'Monitoring & Evaluation',sub:'Work plans, activity delivery & completion rates',hov:'text-cyan-600'}]:[])
         ].map((b,i)=><button key={i} onClick={()=>setView(b.v)} className="w-full glass rounded-2xl p-5 mb-4 hover:shadow-xl stat group">
             <div className="flex items-center gap-4">
                 <div className={`w-14 h-14 rounded-xl flex items-center justify-center shadow-lg ${b.bg}`} style={b.bgStyle||{}}><i className={`fas ${b.icon} text-white text-xl`}/></div>
@@ -718,7 +1444,7 @@ function AttendanceAdmin({notify,onBack}) {
 /* ==================== SUPERVISOR DASHBOARD — with Login Logs button ==================== */
 function SuperDash({user,onLogout,notify}) {
     const [allApps,setAllApps]=useState([]);const [selected,setSelected]=useState(null);const [names,setNames]=useState({});const [showPw,setShowPw]=useState(false);const [tab,setTab]=useState('pending');
-    const [showAttendance,setShowAttendance]=useState(false);const [showLeave,setShowLeave]=useState(false);const [showHR,setShowHR]=useState(false);const [showLoginLogs,setShowLoginLogs]=useState(false);
+    const [showAttendance,setShowAttendance]=useState(false);const [showLeave,setShowLeave]=useState(false);const [showHR,setShowHR]=useState(false);const [showLoginLogs,setShowLoginLogs]=useState(false);const [showMandE,setShowMandE]=useState(false);const [showMyActs,setShowMyActs]=useState(false);
     const load=()=>{fetch(`${SB}/rest/v1/appraisals?order=created_at.desc`,{headers:H}).then(r=>r.json()).then(data=>{setAllApps(data);const ids=[...new Set(data.map(a=>a.employee_id))];if(ids.length>0)fetch(`${SB}/rest/v1/users?id=in.(${ids.join(',')})`,{headers:H}).then(r=>r.json()).then(users=>{const n={};users.forEach(u=>n[u.id]=u.name);setNames(n);});});};
     useEffect(()=>{load();},[]);
     if(showAttendance) return <AttendanceAdmin notify={notify} onBack={()=>setShowAttendance(false)}/>;
@@ -726,6 +1452,8 @@ function SuperDash({user,onLogout,notify}) {
     if(showLeave) return <LeaveAdmin notify={notify} onBack={()=>setShowLeave(false)}/>;
     if(showHR) return <HRAdmin notify={notify} onBack={()=>setShowHR(false)}/>;
     if(showLoginLogs) return <LoginLogs notify={notify} onBack={()=>setShowLoginLogs(false)}/>;
+    if(showMandE) return <MandE user={user} notify={notify} onBack={()=>setShowMandE(false)}/>;
+    if(showMyActs) return <MyActivities user={user} notify={notify} onBack={()=>setShowMyActs(false)}/>;
     const pending=allApps.filter(a=>a.status==='pending'),completed=allApps.filter(a=>a.status==='completed'),disputed=allApps.filter(a=>a.employee_review_status==='rejected');const list=tab==='pending'?pending:tab==='completed'?completed:disputed;
     return <div className="min-h-screen p-4 md:p-8"><div className="max-w-6xl mx-auto">
         <div className="glass rounded-2xl p-6 mb-6 animate-in">
@@ -743,6 +1471,8 @@ function SuperDash({user,onLogout,notify}) {
           {fn:()=>setShowLeave(true),icon:'fa-plane',bg:'linear-gradient(135deg,#8b5cf6,#6d28d9)',title:'Leave Management',sub:'Approve or reject leave applications',hov:'text-purple-600'},
           {fn:()=>setShowHR(true),icon:'fa-id-badge',bg:'linear-gradient(135deg,#0ea5e9,#0369a1)',title:'HR Staff Profiles',sub:'Add or edit personnel information',hov:'text-blue-600'},
           {fn:()=>setShowLoginLogs(true),icon:'fa-shield-halved',bg:'linear-gradient(135deg,#dc2626,#991b1b)',title:'Login Activity Logs',sub:'View login history, devices & failed attempts',hov:'text-red-600'},
+          {fn:()=>setShowMyActs(true),icon:'fa-list-check',bg:'linear-gradient(135deg,#0891b2,#0e7490)',title:'My Work Plan Activities',sub:'Report on activities assigned to you',hov:'text-cyan-600'},
+          ...(user.is_mne?[{fn:()=>setShowMandE(true),icon:'fa-chart-pie',bg:'linear-gradient(135deg,#0891b2,#0e7490)',title:'Monitoring & Evaluation',sub:'Work plans, activity delivery & completion rates',hov:'text-cyan-600'}]:[]),
           {fn:()=>window.open('https://rahamaorg.github.io/rahamafms/','_blank'),icon:'fa-coins',bg:'linear-gradient(135deg,#16a34a,#166534)',title:'Financial Management System',sub:'Budgets, payments & approvals',hov:'text-green-600'}
         ].map((b,i)=><button key={i} onClick={b.fn} className="w-full glass rounded-2xl p-5 mb-4 hover:shadow-xl stat group">
             <div className="flex items-center gap-4">
