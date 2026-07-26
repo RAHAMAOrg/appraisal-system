@@ -91,6 +91,9 @@ const gradeFromScore = (score) => {
 const getBrowser=ua=>{if(ua.includes('Chrome')&&!ua.includes('Edg'))return'Chrome';if(ua.includes('Firefox'))return'Firefox';if(ua.includes('Safari')&&!ua.includes('Chrome'))return'Safari';if(ua.includes('Edg'))return'Edge';if(ua.includes('OPR')||ua.includes('Opera'))return'Opera';return'Unknown';};
 const getOS=ua=>{if(ua.includes('Windows'))return'Windows';if(ua.includes('Mac'))return'MacOS';if(ua.includes('Android'))return'Android';if(ua.includes('iPhone')||ua.includes('iPad'))return'iOS';if(ua.includes('Linux'))return'Linux';return'Unknown';};
 const getDevice=ua=>{if(/Mobi|Android|iPhone|iPad/i.test(ua))return'Mobile';if(/Tablet|iPad/i.test(ua))return'Tablet';return'Desktop';};
+    const MONTHS=['JAN','FEB','MAR','APR','MAY','JUN','JUL','AUG','SEP','OCT','NOV','DEC'];
+const currentPeriod=()=>{const d=new Date();return {month:MONTHS[d.getMonth()],year:String(d.getFullYear())};};
+const isRoutine=a=>a.activity_type==='Ongoing (Routine)';
 
 function Toast({message,type,onClose}) {
     useEffect(()=>{const t=setTimeout(onClose,3500);return()=>clearTimeout(t);},[]);
@@ -1039,6 +1042,7 @@ function MyActivities({user,notify,onBack}) {
     const [plans,setPlans]=useState({});
     const [loading,setLoading]=useState(true);
     const [sel,setSel]=useState(null);
+    const [periodReports,setPeriodReports]=useState({});
 
     const load=async()=>{setLoading(true);
         try{
@@ -1049,6 +1053,13 @@ function MyActivities({user,notify,onBack}) {
             if(ids.length){
                 const p=await fetch(`${SB}/rest/v1/work_plans?id=in.(${ids.join(',')})`,{headers:H}).then(r=>r.json());
                 const m={};(Array.isArray(p)?p:[]).forEach(x=>{m[x.id]=x;});setPlans(m);
+            }
+            const routineIds=rows.filter(isRoutine).map(x=>x.id);
+            if(routineIds.length){
+                const {month,year}=currentPeriod();
+                const pr=await fetch(`${SB}/rest/v1/activity_period_reports?activity_id=in.(${routineIds.join(',')})&period_month=eq.${month}&period_year=eq.${year}`,{headers:H}).then(r=>r.json());
+                const pm={};(Array.isArray(pr)?pr:[]).forEach(x=>{pm[x.activity_id]=x;});
+                setPeriodReports(pm);
             }
         }catch(e){}
         setLoading(false);};
