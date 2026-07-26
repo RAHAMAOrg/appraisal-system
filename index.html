@@ -673,9 +673,22 @@ function METool({tool,user,notify,onBack,readOnlyView}) {
     const [indicators,setIndicators]=useState([]);
     const [rows,setRows]=useState([]);
     const [loading,setLoading]=useState(true);
+    const [wpStats,setWpStats]=useState(null);
 
     const load=async()=>{setLoading(true);
         try{
+            // Delivery side: work plan progress for this project, shown beside reach
+            try{
+                const wp=await fetch(`${SB}/rest/v1/work_plans?select=id&project_code=eq.${encodeURIComponent(tool.project_code)}`,{headers:H}).then(r=>r.json());
+                if(Array.isArray(wp)&&wp.length){
+                    const ids=wp.map(x=>x.id).join(',');
+                    const acts=await fetch(`${SB}/rest/v1/work_plan_activities?select=current_status,verification_status&work_plan_id=in.(${ids})`,{headers:H}).then(r=>r.json());
+                    const a=Array.isArray(acts)?acts:[];
+                    setWpStats({total:a.length,
+                        verified:a.filter(x=>['Completed','Completed For Period'].includes(x.current_status)&&x.verification_status==='verified').length,
+                        awaiting:a.filter(x=>x.verification_status==='submitted').length});
+                }
+            }catch(e){}
             const d=await fetch(`${SB}/rest/v1/me_datasets?tool_id=eq.${tool.id}&order=period_label.desc`,{headers:H}).then(r=>r.json());
             const ds=Array.isArray(d)?d:[];
             setDatasets(ds);
@@ -688,7 +701,7 @@ function METool({tool,user,notify,onBack,readOnlyView}) {
         setLoading(false);};
     useEffect(()=>{load();},[tool.id]);
 
-    const tabs=[['dashboard','Dashboard','fa-chart-pie'],['data','Data','fa-table'],['indicators','Indicators','fa-bullseye'],['uploads','Uploads','fa-upload']];
+    const tabs=[['dashboard','Dashboard','fa-chart-pie'],['quality','Data Quality','fa-shield-halved'],['data','Data','fa-table'],['indicators','Indicators','fa-bullseye'],['uploads','Uploads','fa-upload']];
 
     return <div className="min-h-screen p-4 md:p-8"><div className="max-w-6xl mx-auto">
         <div className="glass rounded-2xl p-6 mb-6 animate-in">
@@ -703,7 +716,8 @@ function METool({tool,user,notify,onBack,readOnlyView}) {
         </div>
 
         {loading?<div className="glass rounded-2xl p-12 text-center text-gray-400"><i className="fas fa-spinner fa-spin text-2xl"/></div>:<>
-            {tab==='dashboard'  && <MEDashboard rows={rows} indicators={indicators} datasets={datasets}/>}
+            {tab==='dashboard'  && <MEDashboard rows={rows} indicators={indicators} datasets={datasets} tool={tool} notify={notify} wpStats={wpStats}/>}
+            {tab==='quality'    && <MEQuality rows={rows} indicators={indicators} datasets={datasets}/>}
             {tab==='data'       && <MEDataTable rows={rows} datasets={datasets} notify={notify} onSaved={load} readOnlyView={readOnlyView}/>}
             {tab==='indicators' && <MEIndicators tool={tool} indicators={indicators} rows={rows} user={user} notify={notify} onSaved={load} readOnlyView={readOnlyView}/>}
             {tab==='uploads'    && <MEUploads tool={tool} datasets={datasets} user={user} notify={notify} onSaved={load} readOnlyView={readOnlyView}/>}
@@ -756,114 +770,543 @@ function GroupedChart({title, type, items}) {
         <div style={{height:'260px'}}><canvas ref={canvasRef}/></div>
     </div>;
 }
-function MEDashboard({rows,indicators,datasets}) {
+function periodProgress(tool){
+    if(!tool||!tool.period_start||!tool.period_end) return null;
+    const s=new Date(tool.period_start).getTime(), e=new Date(tool.period_end).getTime(), n=Date.now();
+    if(!(e>s)) return null;
+    return Math.max(0,Math.min(1,(n-s)/(e-s)));
+}
+
+/* Automated data quality checks. These are the errors that quietly
+   ruin an M&E report: columns that imported empty, indicators that
+   compute to zero, duplicate submissions, and extreme outliers. */
+function runQualityChecks(rows,indicators,datasets){
+    const issues=[];
+    if(!rows.length) return issues;
+    const prof=profileColumns(rows);
+
+    // Columns that are entirely empty
+    prof.filter(col=>!col.name.startsWith('__')&&col.filled===0).forEach(col=>{
+        issues.push({sev:'high',type:'Empty column',
+            msg:`"${col.name}" has no values in any of the ${rows.length} rows.`,
+            fix:'Either the export dropped it or the form field was never filled. Untick it on upload, or fix the form.'});
+    });
+
+    // Columns mostly empty
+    prof.filter(col=>!col.name.startsWith('__')&&col.filled>0&&col.filled/rows.length<0.25).forEach(col=>{
+        issues.push({sev:'low',type:'Sparse column',
+            msg:`"${col.name}" is filled in only ${col.filled} of ${rows.length} rows (${Math.round(col.filled/rows.length*100)}%).`,
+            fix:'Expected if the question is conditional. Otherwise field officers may be skipping it.'});
+    });
+
+    // Indicators computing to zero
+    indicators.forEach(ind=>{
+        const v=computeIndicator(ind,rows);
+        if(v===0) issues.push({sev:'high',type:'Indicator reads zero',
+            msg:`"${ind.indicator_name}" computes to 0 from column "${ind.source_column||'(rows)'}".`,
+            fix:'Often a calculated field that exported blank. Check the source column in the Data tab and repoint the indicator if needed.'});
+    });
+
+    // Numeric outliers — more than 3 standard deviations from the mean
+    prof.filter(col=>col.kind==='numeric'&&!col.name.startsWith('__')&&col.filled>8).forEach(col=>{
+        const vals=rows.map(r=>meNum(r[col.name])).filter(v=>v!==0);
+        if(vals.length<8) return;
+        const mean=vals.reduce((a,b)=>a+b,0)/vals.length;
+        const sd=Math.sqrt(vals.reduce((a,b)=>a+Math.pow(b-mean,2),0)/vals.length);
+        if(sd===0) return;
+        const out=vals.filter(v=>Math.abs(v-mean)>3*sd);
+        if(out.length) issues.push({sev:'medium',type:'Possible outlier',
+            msg:`"${col.name}" has ${out.length} value${out.length!==1?'s':''} far outside the normal range (highest ${Math.max(...out).toLocaleString()}, typical ${Math.round(mean).toLocaleString()}).`,
+            fix:'Usually a typo — an extra digit. Check those rows in the Data tab.'});
+    });
+
+    // Duplicate submissions
+    const keys={};
+    rows.forEach(r=>{
+        const k=Object.keys(r).filter(x=>!x.startsWith('__')).map(x=>String(r[x]??'')).join('|');
+        keys[k]=(keys[k]||0)+1;
+    });
+    const dupes=Object.values(keys).filter(n=>n>1).reduce((a,b)=>a+(b-1),0);
+    if(dupes) issues.push({sev:'high',type:'Duplicate rows',
+        msg:`${dupes} row${dupes!==1?'s appear':' appears'} to be an exact duplicate of another.`,
+        fix:'Often a form submitted twice on a poor connection. Delete the copies in the Data tab.'});
+
+    // Same period uploaded more than once
+    const per={};
+    (datasets||[]).forEach(d=>{per[d.period_label]=(per[d.period_label]||0)+1;});
+    Object.entries(per).filter(([,n])=>n>1).forEach(([lbl,n])=>{
+        issues.push({sev:'medium',type:'Period uploaded twice',
+            msg:`${n} datasets are labelled "${lbl}", so its figures are counted more than once.`,
+            fix:'Delete the older upload on the Uploads tab unless they are genuinely different forms.'});
+    });
+
+    return issues;
+}
+
+const ME_SERIES=['#285B3C','#C9A227','#4E9A5F','#8A6D0F','#7FBF8C','#E0B84D','#1B3F29','#A88618'];
+
+/* Chart.js canvas that cleans up after itself on re-render */
+function MEChart({type,labels,data,colors,height,horizontal,stacked}){
+    const ref=useRef(null); const inst=useRef(null);
+    useEffect(()=>{
+        if(!ref.current||typeof Chart==='undefined') return;
+        if(inst.current){inst.current.destroy();inst.current=null;}
+        const ds=Array.isArray(data[0])&&typeof data[0]==='object'&&data[0].label!==undefined
+            ? data
+            : [{data,backgroundColor:colors||ME_SERIES,borderRadius:type==='doughnut'?0:4,maxBarThickness:24,
+                borderWidth:type==='doughnut'?2:0,borderColor:'#fff'}];
+        inst.current=new Chart(ref.current,{
+            type,
+            data:{labels,datasets:ds},
+            options:{responsive:true,maintainAspectRatio:false,
+                cutout:type==='doughnut'?'62%':undefined,
+                indexAxis:horizontal?'y':'x',
+                plugins:{legend:{display:false}},
+                scales:type==='doughnut'?{}:{
+                    x:{stacked:!!stacked,grid:{display:horizontal},ticks:{color:'#8a8a85',font:{size:11},autoSkip:false,maxRotation:25}},
+                    y:{stacked:!!stacked,beginAtZero:true,grid:{display:!horizontal},ticks:{color:'#8a8a85',font:{size:11}}}
+                }}
+        });
+        return ()=>{if(inst.current){inst.current.destroy();inst.current=null;}};
+    });
+    return <div style={{position:'relative',width:'100%',height:(height||190)+'px'}}><canvas ref={ref} role="img" aria-label="chart"/></div>;
+}
+
+function MELegend({labels,values,colors,total}){
+    return <div className="flex flex-wrap gap-3 mt-3">
+        {labels.map((l,i)=><span key={l} className="flex items-center gap-1.5 text-xs text-gray-500">
+            <span style={{width:'10px',height:'10px',borderRadius:'2px',background:(colors||ME_SERIES)[i%8]}}/>
+            {l} {total>0?`${Math.round(values[i]/total*100)}%`:values[i].toLocaleString()}
+        </span>)}
+    </div>;
+}
+
+function scanQuality(rows,indicators,datasets){
+    const issues=[];
+    if(!rows.length) return issues;
+    const cols=Object.keys(rows[0]).filter(k=>!k.startsWith('__'));
+
+    // Empty / near-empty columns
+    cols.forEach(cn=>{
+        const filled=rows.filter(r=>String(r[cn]??'').trim()!=='').length;
+        const pct=Math.round(filled/rows.length*100);
+        if(filled===0) issues.push({sev:'high',type:'Empty column',detail:`"${cn}" has no values in any of the ${rows.length} rows`,fix:'Untick this column on future uploads, or check the form logic.'});
+        else if(pct<10) issues.push({sev:'low',type:'Sparse column',detail:`"${cn}" is filled in only ${pct}% of rows (${filled}/${rows.length})`,fix:'Expected if conditional; otherwise check skip logic.'});
+    });
+
+    // Indicators computing to zero — usually a calculated column that didn't export
+    indicators.forEach(i=>{
+        const v=computeIndicator(i,rows);
+        if(v===0) issues.push({sev:'high',type:'Indicator is zero',detail:`"${i.indicator_name}" computes to 0 from column "${i.source_column||'rows'}"`,fix:'Often a calculated field that exported blank. Check the source column in the Data tab.'});
+    });
+
+    // Duplicate submissions
+    const seen={},dupes=[];
+    rows.forEach((r,idx)=>{
+        const key=cols.slice(0,8).map(cn=>String(r[cn]??'')).join('|');
+        if(seen[key]!==undefined) dupes.push(idx+1); else seen[key]=idx;
+    });
+    if(dupes.length) issues.push({sev:'high',type:'Duplicate rows',detail:`${dupes.length} row${dupes.length!==1?'s appear':' appears'} to duplicate an earlier submission (rows ${dupes.slice(0,8).join(', ')}${dupes.length>8?'…':''})`,fix:'Check for double submission in the field, then delete duplicates in the Data tab.'});
+
+    // Numeric outliers
+    cols.forEach(cn=>{
+        const nums=rows.map(r=>r[cn]).filter(v=>v!==null&&v!==''&&!isNaN(parseFloat(v))).map(v=>parseFloat(v));
+        if(nums.length<8) return;
+        const mean=nums.reduce((a,b)=>a+b,0)/nums.length;
+        const sd=Math.sqrt(nums.reduce((s,n)=>s+Math.pow(n-mean,2),0)/nums.length);
+        if(sd===0) return;
+        const out=nums.filter(n=>Math.abs(n-mean)>3*sd);
+        if(out.length) issues.push({sev:'medium',type:'Possible outlier',detail:`"${cn}" has ${out.length} value${out.length!==1?'s':''} far outside the normal range (${out.slice(0,4).map(n=>n.toLocaleString()).join(', ')}${out.length>4?'…':''}; typical is around ${Math.round(mean).toLocaleString()})`,fix:'Often a typing error — an extra digit. Verify against the paper record.'});
+    });
+
+    // Negative values where they make no sense
+    cols.forEach(cn=>{
+        const neg=rows.filter(r=>{const n=parseFloat(r[cn]);return !isNaN(n)&&n<0;}).length;
+        if(neg) issues.push({sev:'high',type:'Negative value',detail:`"${cn}" contains ${neg} negative value${neg!==1?'s':''}`,fix:'Counts should never be negative. Correct in the Data tab.'});
+    });
+
+    // Datasets never cleaned
+    (datasets||[]).forEach(d=>{
+        if(!d.cleaned) issues.push({sev:'low',type:'Not yet reviewed',detail:`Dataset "${d.file_name}" (${d.period_label}) has not been through data cleaning`,fix:'Open the Data tab and review before reporting.'});
+    });
+
+    return issues;
+}
+
+function MEQuality({rows,indicators,datasets}) {
+    const issues=useMemo(()=>scanQuality(rows,indicators,datasets),[rows,indicators,datasets]);
+    const [filter,setFilter]=useState('all');
+    if(!rows.length) return <div className="glass rounded-2xl p-12 text-center text-gray-400">
+        <i className="fas fa-shield-halved text-4xl mb-3"/><p className="font-semibold">No data to check yet</p></div>;
+
+    const counts={high:issues.filter(i=>i.sev==='high').length,medium:issues.filter(i=>i.sev==='medium').length,low:issues.filter(i=>i.sev==='low').length};
+    const shown=filter==='all'?issues:issues.filter(i=>i.sev===filter);
+    const sevStyle={high:{bg:'#FEF2F2',bd:'#FECACA',fg:'#B91C1C',ic:'fa-circle-exclamation',lbl:'Must fix'},
+                    medium:{bg:'#FFFBEB',bd:'#FDE68A',fg:'#B45309',ic:'fa-triangle-exclamation',lbl:'Check'},
+                    low:{bg:'#F8FAFC',bd:'#E2E8F0',fg:'#64748B',ic:'fa-circle-info',lbl:'Note'}};
+
+    // A simple confidence score so M&E can see the direction of travel
+    const score=Math.max(0,100-(counts.high*12+counts.medium*5+counts.low*2));
+
+    return <div className="space-y-4">
+        <div className="glass rounded-2xl p-5">
+            <div className="flex flex-wrap items-center gap-5">
+                <div>
+                    <p className="text-xs font-bold text-gray-400 uppercase">Data confidence</p>
+                    <p className="text-4xl font-extrabold mt-1" style={{color:score>=80?'#059669':score>=55?'#C9A227':'#B91C1C'}}>{score}<span className="text-lg text-gray-300">/100</span></p>
+                </div>
+                <div className="flex-1 min-w-0">
+                    <div className="cbar"><div className="cbar-fill" style={{width:`${score}%`,background:score>=80?'#059669':score>=55?'#C9A227':'#B91C1C'}}/></div>
+                    <p className="text-xs text-gray-400 mt-2">{issues.length} issue{issues.length!==1?'s':''} found across {rows.length} rows. Fix the red ones before reporting to a donor.</p>
+                </div>
+            </div>
+        </div>
+
+        <div className="flex flex-wrap gap-2">
+            {[['all','All',issues.length],['high','Must fix',counts.high],['medium','Check',counts.medium],['low','Notes',counts.low]].map(([k,l,n])=>
+                <button key={k} onClick={()=>setFilter(k)}
+                    className={`px-4 py-2 rounded-xl text-sm font-bold ${filter===k?'btn-green text-white':'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}>{l} ({n})</button>)}
+        </div>
+
+        {shown.length===0?<div className="glass rounded-2xl p-10 text-center">
+            <i className="fas fa-circle-check text-4xl mb-3" style={{color:'#059669'}}/>
+            <p className="font-bold text-gray-700">Nothing flagged here</p>
+            <p className="text-sm text-gray-400 mt-1">These checks are mechanical — they can't catch every problem, so still read the data.</p></div>
+        :<div className="space-y-2">{shown.map((iss,i)=>{const s=sevStyle[iss.sev];
+            return <div key={i} style={{background:s.bg,border:`1px solid ${s.bd}`}} className="rounded-xl p-4">
+                <div className="flex items-start gap-3">
+                    <i className={`fas ${s.ic} mt-0.5`} style={{color:s.fg}}/>
+                    <div className="min-w-0 flex-1">
+                        <div className="flex flex-wrap items-center gap-2">
+                            <span className="text-xs font-bold uppercase" style={{color:s.fg}}>{iss.type}</span>
+                            <span className="text-[10px] font-bold px-2 py-0.5 rounded-full" style={{background:s.fg,color:'#fff'}}>{s.lbl}</span>
+                        </div>
+                        <p className="text-sm text-gray-700 mt-1">{iss.detail}</p>
+                        <p className="text-xs text-gray-500 mt-1.5"><i className="fas fa-lightbulb mr-1"/>{iss.fix}</p>
+                    </div>
+                </div>
+            </div>;})}</div>}
+    </div>;
+}
+
+function downloadIndicatorReport({tool,computed,filtered,disagg,g1,elapsed,periodFilter}){
+    const esc=s=>String(s==null?'':s).replace(/[&<>]/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[m]));
+    const rowsFor=g=>filtered.filter(r=>String(r[disagg]??'—')===g);
+    const html=`<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Indicator Report</title>
+<style>@media print{body{margin:18px}.no-print{display:none}}
+body{font-family:Arial,sans-serif;margin:38px;color:#111;font-size:13px}
+h1{color:#285B3C;font-size:20px;margin:0}
+h2{font-size:13px;border-bottom:2px solid #C9A227;padding-bottom:5px;margin-top:26px;color:#285B3C;text-transform:uppercase;letter-spacing:.5px}
+table{width:100%;border-collapse:collapse;margin-top:10px;font-size:12px}
+th{background:#285B3C;color:#fff;padding:8px 10px;text-align:left;font-size:11px;text-transform:uppercase}
+td{padding:7px 10px;border-bottom:1px solid #e5e5e5}
+tr:nth-child(even) td{background:#fafaf8}
+.lbl{font-size:10px;color:#777;text-transform:uppercase;letter-spacing:.5px}</style></head><body>
+<button class="no-print" onclick="window.print()" style="margin-bottom:18px;padding:10px 22px;background:#285B3C;color:#fff;border:none;border-radius:6px;cursor:pointer;font-weight:600">🖨 Print / Save as PDF</button>
+<div style="display:flex;justify-content:space-between;align-items:flex-start;border-bottom:3px solid #285B3C;padding-bottom:14px;margin-bottom:16px">
+ <div style="display:flex;align-items:center;gap:14px">
+  <img src="RAHAMA Empowerment Logo Design (3).png" style="width:58px;height:58px;object-fit:contain" onerror="this.style.display='none'">
+  <div><h1>INDICATOR PERFORMANCE REPORT</h1>
+  <div style="font-size:12px;color:#555;margin-top:3px">RAHAMA Girl Child &amp; Women Empowerment Initiative</div></div>
+ </div>
+ <div style="text-align:right;font-size:11px;color:#777"><div class="lbl">Generated</div>
+  <b>${new Date().toLocaleDateString('en-NG',{day:'numeric',month:'long',year:'numeric'})}</b></div>
+</div>
+<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:6px">
+ <div><div class="lbl">Tool</div><b>${esc(tool?tool.tool_name:'—')}</b></div>
+ <div><div class="lbl">Project</div><b>${esc(tool?tool.project_code:'—')}</b></div>
+ <div><div class="lbl">Period</div><b>${esc(periodFilter==='all'?'All periods':periodFilter)}</b></div>
+ <div><div class="lbl">Submissions</div><b>${filtered.length}</b></div>
+</div>
+${elapsed!==null?`<p style="font-size:12px;color:#555;margin-top:10px">Reporting period is <b>${Math.round(elapsed*100)}%</b> elapsed (${esc(tool.period_start)} → ${esc(tool.period_end)}). Targets below are assessed against expected pace.</p>`:''}
+<h2>Indicator Performance</h2>
+<table><thead><tr><th>Indicator</th><th style="text-align:right">Achieved</th><th style="text-align:right">Target</th>
+${elapsed!==null?'<th style="text-align:right">Expected by now</th>':''}<th style="text-align:right">% of target</th><th>Status</th></tr></thead><tbody>
+${computed.map(i=>{
+  const st=!i.target?'No target':(i.phased?(i.onTrackPct>=100?'On track':i.onTrackPct>=80?'Slightly behind':'Behind pace'):(i.pct>=95?'Achieved':i.pct>=70?'In progress':'Low'));
+  const col=st==='On track'||st==='Achieved'?'#285B3C':st==='No target'?'#999':st.indexOf('Behind')>=0||st==='Low'?'#B45309':'#C9A227';
+  return `<tr><td><b>${esc(i.indicator_name)}</b></td>
+   <td style="text-align:right"><b>${i.value.toLocaleString()}</b></td>
+   <td style="text-align:right">${i.target?Number(i.target).toLocaleString():'—'}</td>
+   ${elapsed!==null?`<td style="text-align:right;color:#777">${i.expected!=null?i.expected.toLocaleString():'—'}</td>`:''}
+   <td style="text-align:right">${i.pct!=null?i.pct+'%':'—'}</td>
+   <td style="color:${col};font-weight:700">${st}</td></tr>`;}).join('')}
+</tbody></table>
+${disagg&&g1&&g1.length?`<h2>Breakdown by ${esc(disagg)}</h2>
+<table><thead><tr><th>${esc(disagg)}</th><th style="text-align:right">Rows</th>
+${computed.map(i=>`<th style="text-align:right">${esc(i.indicator_name)}</th>`).join('')}</tr></thead><tbody>
+${g1.map(g=>{const gr=rowsFor(g);return `<tr><td><b>${esc(g)}</b></td><td style="text-align:right">${gr.length}</td>
+ ${computed.map(i=>`<td style="text-align:right">${computeIndicator(i,gr).toLocaleString()}</td>`).join('')}</tr>`;}).join('')}
+</tbody></table>`:''}
+<h2>Notes</h2>
+<div style="border:1px solid #ddd;border-radius:6px;min-height:90px;padding:12px;color:#999;font-size:12px">Space for M&amp;E commentary — key achievements, challenges and actions for the next period.</div>
+<div style="margin-top:40px;display:grid;grid-template-columns:1fr 1fr;gap:30px">
+ <div><div class="lbl">Prepared by (M&amp;E)</div><div style="height:44px;border-bottom:1px solid #333;margin-top:6px"></div></div>
+ <div><div class="lbl">Reviewed by</div><div style="height:44px;border-bottom:1px solid #333;margin-top:6px"></div></div>
+</div>
+<div style="margin-top:30px;border-top:1px solid #eee;padding-top:10px;font-size:10px;color:#999">RAHAMA M&amp;E — Indicator Performance Report — Confidential</div>
+</body></html>`;
+    const b=new Blob([html],{type:'text/html'});
+    const u=URL.createObjectURL(b);
+    const a=document.createElement('a');
+    a.href=u;a.download=`Indicator_Report_${(tool?tool.tool_name:'tool').slice(0,30).replace(/[^a-z0-9]/gi,'_')}.html`;
+    document.body.appendChild(a);a.click();document.body.removeChild(a);URL.revokeObjectURL(u);
+}
+
+/* ---- Data quality scanner ----
+   Generic checks only — the system can't know clinical logic, but it can
+   flag the mechanical faults that silently corrupt reporting: columns that
+   never got filled, indicators that compute to zero, duplicate submissions,
+   and values far outside the normal range. */
+function MEDashboard({rows,indicators,datasets,tool,notify,wpStats}) {
     const [disagg,setDisagg]=useState('');
+    const [disagg2,setDisagg2]=useState('');
     const [periodFilter,setPeriodFilter]=useState('all');
     const periods=[...new Set(datasets.map(d=>d.period_label))].sort().reverse();
     const filtered=periodFilter==='all'?rows:rows.filter(r=>r.__period===periodFilter);
+    const elapsed=periodProgress(tool);
 
     if(!indicators.length) return <div className="glass rounded-2xl p-12 text-center text-gray-400">
         <i className="fas fa-bullseye text-4xl mb-3"/><p className="font-semibold">No indicators defined yet</p>
         <p className="text-sm mt-1">Go to the Indicators tab to map columns from your data to indicators.</p></div>;
 
-    const catCols=(()=>{
-        if(!filtered.length) return [];
-        return profileColumns(filtered.slice(0,300)).filter(c=>c.kind==='category'&&!c.name.startsWith('__')).map(c=>c.name);
-    })();
+    const catCols=filtered.length?profileColumns(filtered.slice(0,300)).filter(c=>c.kind==='category'&&!c.name.startsWith('__')).map(c=>c.name):[];
 
     const computed=indicators.map(ind=>{
         const value=computeIndicator(ind,filtered);
         const target=ind.target?Number(ind.target):null;
-        const pct=target?Math.min(100,Math.round(value/target*100)):null;
-        return {...ind,value,target,pct};
+        const pct=target?Math.round(value/target*100):null;
+        // Time-phased: what SHOULD have been achieved by now
+        const phased=(target&&elapsed!==null&&ind.timephased!==false);
+        const expected=phased?Math.round(target*elapsed):null;
+        const onTrackPct=phased&&expected>0?Math.round(value/expected*100):null;
+        return {...ind,value,target,pct,expected,onTrackPct,phased};
     });
+    const grandTotal=computed.reduce((s,i)=>s+i.value,0);
 
-    const chartGroups={}; const cardIndicators=[];
-    computed.forEach(ind=>{
-        if(ind.chart_type==='donut'||ind.chart_type==='bar'){
-            const key=ind.chart_group||ind.indicator_name;
-            (chartGroups[key]=chartGroups[key]||{type:ind.chart_type,items:[]}).items.push(ind);
-        } else cardIndicators.push(ind);
-    });
+    const groups={};
+    computed.forEach(i=>{ if(i.chart_group){(groups[i.chart_group]=groups[i.chart_group]||[]).push(i);} });
+    const donutGroups=Object.entries(groups).filter(([,v])=>v.length>1);
 
-    // Trend across periods
     const trend=periods.slice().reverse().map(p=>{
         const pr=rows.filter(r=>r.__period===p);
         return {period:p, values:indicators.map(i=>computeIndicator(i,pr))};
     });
 
-   return <div className="space-y-6">
-        <div className="rounded-2xl p-6 flex items-center gap-4" style={{background:'linear-gradient(135deg,#065f46,#059669 60%,#34d399)'}}>
-            <img src="RAHAMA Empowerment Logo Design (3).png" alt="RAHAMA" className="w-12 h-12 object-contain bg-white rounded-xl p-1.5" onError={e=>{e.target.style.display='none';}}/>
-            <div><h2 className="text-white font-extrabold text-lg tracking-wide">RAHAMA MONITORING &amp; EVALUATION</h2>
-                <p className="text-green-50 text-sm opacity-90">Live indicator dashboard</p></div>
-        </div>
-        <div className="glass rounded-xl p-4 flex flex-wrap items-center gap-3">
-            <select value={periodFilter} onChange={e=>setPeriodFilter(e.target.value)} className="px-3 py-2 border-2 border-gray-200 rounded-xl text-sm font-medium">
-                <option value="all">All Periods</option>
-                {periods.map(p=><option key={p} value={p}>{p}</option>)}
-            </select>
-            <select value={disagg} onChange={e=>setDisagg(e.target.value)} className="px-3 py-2 border-2 border-gray-200 rounded-xl text-sm font-medium">
-                <option value="">No disaggregation</option>
-                {catCols.map(cn=><option key={cn} value={cn}>By {cn}</option>)}
-            </select>
-            <span className="ml-auto text-sm text-gray-500 font-semibold">{filtered.length} rows</span>
-        </div>
+    const g1=disagg?[...new Set(filtered.map(r=>String(r[disagg]??'—')))].sort():[];
+    const g2=disagg2?[...new Set(filtered.map(r=>String(r[disagg2]??'—')))].sort():[];
 
-{cardIndicators.length>0&&<div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            {cardIndicators.map(ind=><div key={ind.id} className="glass rounded-2xl p-5 stat">
-                <p className="text-xs font-bold text-gray-400 uppercase">{ind.indicator_name}</p>
-                <p className="text-3xl font-extrabold text-gray-800 mt-1">{ind.value.toLocaleString()}<span className="text-sm text-gray-400 font-medium ml-1">{ind.unit||''}</span></p>
-                {ind.target?<>
-                    <div className="cbar mt-3"><div className="cbar-fill" style={{width:`${ind.pct}%`,background:ind.pct>=100?'#059669':ind.pct>=70?'#0891b2':'#e65100'}}/></div>
-                    <p className="text-xs text-gray-400 mt-1">{ind.pct}% of target {Number(ind.target).toLocaleString()}</p>
-               </>:<p className="text-xs text-gray-300 mt-2">No target set</p>}
-            </div>)}
-        </div>}
+    // Status colour driven by pace, not raw percentage
+    const statusOf=i=>{
+        if(!i.target) return {c:'#9CA3AF',l:'No target'};
+        if(i.phased){
+            if(i.onTrackPct>=100) return {c:ME_GREEN,l:'On track'};
+            if(i.onTrackPct>=80)  return {c:ME_GOLD, l:'Slightly behind'};
+            return {c:'#B45309',l:'Behind pace'};
+        }
+        if(i.pct>=95) return {c:ME_GREEN,l:'Achieved'};
+        if(i.pct>=70) return {c:ME_GOLD, l:'In progress'};
+        return {c:'#B45309',l:'Low'};
+    };
 
-        {Object.keys(chartGroups).length>0&&<div className="grid md:grid-cols-2 gap-6">
-            {Object.entries(chartGroups).map(([key,g])=><GroupedChart key={key} title={key} type={g.type} items={g.items}/>)}
-        </div>}
-
-        {disagg&&<div className="glass rounded-2xl p-6">
-            <h3 className="font-bold text-gray-800 mb-4"><i className="fas fa-layer-group text-cyan-600 mr-2"/>Disaggregated by {disagg}</h3>
-            <div className="overflow-auto">
-                <table className="w-full text-xs">
-                    <thead><tr className="border-b-2 border-gray-100">
-                        <th className="text-left py-2 px-2 font-bold text-gray-500 uppercase">{disagg}</th>
-                        <th className="text-right py-2 px-2 font-bold text-gray-500 uppercase">Rows</th>
-                        {indicators.map(i=><th key={i.id} className="text-right py-2 px-2 font-bold text-gray-500 uppercase">{i.indicator_name}</th>)}
-                    </tr></thead>
-                    <tbody>{[...new Set(filtered.map(r=>String(r[disagg]??'—')))].sort().map(g=>{
-                        const gr=filtered.filter(r=>String(r[disagg]??'—')===g);
-                        return <tr key={g} className="border-b border-gray-50 hover:bg-gray-50">
-                            <td className="py-2 px-2 font-semibold text-gray-800">{g}</td>
-                            <td className="py-2 px-2 text-right text-gray-500">{gr.length}</td>
-                            {indicators.map(i=><td key={i.id} className="py-2 px-2 text-right font-bold text-gray-700">{computeIndicator(i,gr).toLocaleString()}</td>)}
-                        </tr>;})}</tbody>
-                </table>
+    return <div className="space-y-5">
+        <div style={{background:ME_GREEN}} className="rounded-2xl p-5 flex flex-wrap items-center gap-4">
+            <img src="RAHAMA Empowerment Logo Design (3).png" alt="" style={{width:'46px',height:'46px',objectFit:'contain',background:'#fff',borderRadius:'10px',padding:'4px'}}
+                 onError={e=>{e.target.style.display='none';}}/>
+            <div className="flex-1 min-w-0">
+                <p className="text-white font-bold">{tool?tool.tool_name:'Indicator dashboard'}</p>
+                <p className="text-xs" style={{color:'#C8E0CE'}}>{tool?tool.project_code+' · ':''}{filtered.length} rows · {indicators.length} indicators
+                    {elapsed!==null?` · ${Math.round(elapsed*100)}% through the period`:''}</p>
             </div>
-        </div>}
+            <div className="flex flex-wrap gap-2">
+                <button onClick={()=>downloadIndicatorReport({tool,computed,filtered,disagg,g1,elapsed,periodFilter})}
+                    className="px-4 py-2 rounded-xl text-sm font-bold" style={{background:ME_GOLD,color:'#3A2A00'}}>
+                    <i className="fas fa-file-arrow-down mr-2"/>Report</button>
+                <select value={periodFilter} onChange={e=>setPeriodFilter(e.target.value)}
+                    className="px-3 py-2 rounded-xl text-sm font-semibold border-0" style={{background:'#ffffff22',color:'#fff'}}>
+                    <option value="all" style={{color:'#111'}}>All periods</option>
+                    {periods.map(p=><option key={p} value={p} style={{color:'#111'}}>{p}</option>)}
+                </select>
+            </div>
+        </div>
 
-        {trend.length>1&&<div className="glass rounded-2xl p-6">
-            <h3 className="font-bold text-gray-800 mb-4"><i className="fas fa-chart-column text-indigo-600 mr-2"/>Trend by Period</h3>
-            {indicators.slice(0,4).map((ind,ii)=>{
-                const series=trend.map(t=>t.values[ii]);
-                const mx=Math.max(1,...series);
-                return <div key={ind.id} className="mb-5">
-                    <p className="text-xs font-bold text-gray-600 mb-2">{ind.indicator_name}</p>
-                    <div className="flex items-end gap-2" style={{height:'90px'}}>
-                        {trend.map((t,i)=><div key={t.period} className="flex-1 flex flex-col items-center justify-end h-full">
-                            <span className="text-[10px] font-bold text-gray-600 mb-1">{series[i].toLocaleString()}</span>
-                            <div className="w-full rounded-t bg-gradient-to-t from-cyan-600 to-cyan-400" style={{height:`${Math.max(4,(series[i]/mx)*62)}px`}}/>
-                            <span className="text-[9px] text-gray-400 mt-1 whitespace-nowrap">{t.period}</span>
+        {elapsed===null&&computed.some(i=>i.target)&&
+            <div className="bg-amber-50 border-2 border-amber-200 rounded-xl p-4">
+                <p className="text-sm text-amber-800"><i className="fas fa-clock mr-2"/><strong>Targets aren't time-phased.</strong> Set a start and end date on the Settings tab and the dashboard will show whether you're on pace, not just the raw percentage.</p>
+            </div>}
+
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+            {computed.map((ind,i)=>{const st=statusOf(ind);return <div key={ind.id} className="glass rounded-xl p-4 stat"
+                style={{borderLeft:`3px solid ${st.c}`}}>
+                <p className="text-xs text-gray-500 truncate" title={ind.indicator_name}>{ind.indicator_name}</p>
+                <p className="text-2xl font-extrabold text-gray-800 mt-1">{ind.value.toLocaleString()}
+                    {ind.unit&&<span className="text-xs text-gray-400 font-medium ml-1">{ind.unit}</span>}</p>
+                {ind.target?<>
+                    <div className="cbar mt-2" style={{position:'relative'}}>
+                        <div className="cbar-fill" style={{width:`${Math.min(100,ind.pct)}%`,background:st.c}}/>
+                        {ind.phased&&<div style={{position:'absolute',top:'-2px',bottom:'-2px',left:`${Math.min(100,Math.round(elapsed*100))}%`,width:'2px',background:'#374151'}} title="Expected pace"/>}
+                    </div>
+                    <p className="text-xs mt-1" style={{color:st.c,fontWeight:600}}>{st.l}</p>
+                    <p className="text-xs text-gray-400">{ind.pct}% of {Number(ind.target).toLocaleString()}
+                        {ind.phased?` · expected ${ind.expected.toLocaleString()} by now`:''}</p>
+                </>:<p className="text-xs text-gray-300 mt-2">No target</p>}
+            </div>;})}
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="glass rounded-2xl p-5">
+                <p className="font-bold text-gray-800 text-sm mb-1">Indicator share</p>
+                <p className="text-xs text-gray-400 mb-3">{grandTotal.toLocaleString()} across all indicators</p>
+                <MEChart type="doughnut" labels={computed.map(i=>i.indicator_name)} data={computed.map(i=>i.value)} height={190}/>
+                <MELegend labels={computed.map(i=>i.indicator_name)} values={computed.map(i=>i.value)} total={grandTotal}/>
+            </div>
+
+            <div className="glass rounded-2xl p-5">
+                <p className="font-bold text-gray-800 text-sm mb-1">{elapsed!==null?'Achieved vs expected by now':'Progress against target'}</p>
+                <p className="text-xs text-gray-400 mb-3">{elapsed!==null?'Grey bar is the pace you should be at':'Percent achieved per indicator'}</p>
+                {computed.some(i=>i.target)?
+                    (elapsed!==null
+                    ? <MEChart type="bar"
+                        labels={computed.filter(i=>i.target).map(i=>i.indicator_name)}
+                        data={[
+                            {label:'Achieved',data:computed.filter(i=>i.target).map(i=>i.value),backgroundColor:ME_GREEN,borderRadius:4,maxBarThickness:18},
+                            {label:'Expected by now',data:computed.filter(i=>i.target).map(i=>i.expected??0),backgroundColor:'#D1D5DB',borderRadius:4,maxBarThickness:18}
+                        ]}
+                        height={Math.max(170,computed.filter(i=>i.target).length*44+40)} horizontal={true}/>
+                    : <MEChart type="bar" horizontal={true}
+                        labels={computed.filter(i=>i.target).map(i=>i.indicator_name)}
+                        data={computed.filter(i=>i.target).map(i=>i.pct)}
+                        colors={computed.filter(i=>i.target).map(i=>statusOf(i).c)}
+                        height={Math.max(160,computed.filter(i=>i.target).length*38+40)}/>)
+                :<p className="text-center text-gray-300 text-xs py-6">Set targets on your indicators to see this chart</p>}
+            </div>
+        </div>
+
+        {donutGroups.map(([g,list])=>{
+            const tot=list.reduce((s,i)=>s+i.value,0);
+            const ctype=list[0].chart_type==='bar'?'bar':'donut';
+            return <div key={g} className="glass rounded-2xl p-5">
+                <p className="font-bold text-gray-800 text-sm mb-1">{g}</p>
+                <p className="text-xs text-gray-400 mb-3">{tot.toLocaleString()} total</p>
+                <div className="grid md:grid-cols-2 gap-4 items-center">
+                    <GroupedChart title={g} type={ctype} items={list}/>
+                    <div>
+                        {list.map((i,ix)=><div key={i.id} className="flex justify-between items-center py-2 border-b border-gray-100">
+                            <span className="flex items-center gap-2 text-sm text-gray-600">
+                                <span style={{width:'10px',height:'10px',borderRadius:'2px',background:ME_SERIES[ix%8]}}/>{i.indicator_name}</span>
+                            <span className="font-bold text-gray-800">{i.value.toLocaleString()} <span className="text-xs text-gray-400">({tot?Math.round(i.value/tot*100):0}%)</span></span>
                         </div>)}
                     </div>
-                </div>;})}
+                </div>
+            </div>;})}
+
+        <div className="glass rounded-2xl p-5">
+            <div className="flex flex-wrap items-center gap-3 mb-4">
+                <p className="font-bold text-gray-800 text-sm flex-1">Disaggregation</p>
+                <select value={disagg} onChange={e=>{setDisagg(e.target.value);setDisagg2('');}}
+                    className="px-3 py-2 border-2 border-gray-200 rounded-xl text-sm font-medium">
+                    <option value="">Select a breakdown…</option>
+                    {catCols.map(cn=><option key={cn} value={cn}>{cn.slice(0,34)}</option>)}
+                </select>
+                {disagg&&<><span className="text-xs text-gray-400 font-bold">×</span>
+                <select value={disagg2} onChange={e=>setDisagg2(e.target.value)}
+                    className="px-3 py-2 border-2 border-gray-200 rounded-xl text-sm font-medium">
+                    <option value="">(no second dimension)</option>
+                    {catCols.filter(x=>x!==disagg).map(cn=><option key={cn} value={cn}>{cn.slice(0,34)}</option>)}
+                </select></>}
+            </div>
+
+            {!disagg?<p className="text-center text-gray-300 text-sm py-8">Choose a column to break the indicators down — add a second for a cross-tab.</p>
+            :!disagg2?<>
+                <MEChart type="bar"
+                    labels={indicators.map(i=>i.indicator_name)}
+                    data={g1.slice(0,8).map((g,gi)=>({label:g,
+                        data:indicators.map(i=>computeIndicator(i,filtered.filter(r=>String(r[disagg]??'—')===g))),
+                        backgroundColor:ME_SERIES[gi%8],borderRadius:4,maxBarThickness:22}))}
+                    height={250}/>
+                <MELegend labels={g1.slice(0,8)} values={g1.slice(0,8).map(()=>0)} total={0}/>
+                <div className="overflow-auto mt-4">
+                    <table className="w-full text-xs">
+                        <thead><tr className="border-b-2 border-gray-100">
+                            <th className="text-left py-2 px-2 font-bold text-gray-500 uppercase">{disagg.slice(0,24)}</th>
+                            <th className="text-right py-2 px-2 font-bold text-gray-500 uppercase">Rows</th>
+                            {indicators.map(i=><th key={i.id} className="text-right py-2 px-2 font-bold text-gray-500 uppercase">{i.indicator_name.slice(0,18)}</th>)}
+                        </tr></thead>
+                        <tbody>{g1.map(g=>{
+                            const gr=filtered.filter(r=>String(r[disagg]??'—')===g);
+                            return <tr key={g} className="border-b border-gray-50 hover:bg-gray-50">
+                                <td className="py-2 px-2 font-semibold text-gray-800">{g}</td>
+                                <td className="py-2 px-2 text-right text-gray-500">{gr.length}</td>
+                                {indicators.map(i=><td key={i.id} className="py-2 px-2 text-right font-bold text-gray-700">{computeIndicator(i,gr).toLocaleString()}</td>)}
+                            </tr>;})}</tbody>
+                    </table>
+                </div>
+            </>:<>
+                <p className="text-xs text-gray-400 mb-3">Cross-tab: {disagg} × {disagg2}. Showing <strong>{indicators[0].indicator_name}</strong>{indicators.length>1?' (first indicator)':''}.</p>
+                <MEChart type="bar" stacked={true}
+                    labels={g1}
+                    data={g2.slice(0,8).map((b,bi)=>({label:b,
+                        data:g1.map(a=>computeIndicator(indicators[0],filtered.filter(r=>String(r[disagg]??'—')===a&&String(r[disagg2]??'—')===b))),
+                        backgroundColor:ME_SERIES[bi%8],borderRadius:3,maxBarThickness:34}))}
+                    height={260}/>
+                <MELegend labels={g2.slice(0,8)} values={g2.slice(0,8).map(()=>0)} total={0}/>
+                <div className="overflow-auto mt-4">
+                    <table className="w-full text-xs">
+                        <thead><tr className="border-b-2 border-gray-100">
+                            <th className="text-left py-2 px-2 font-bold text-gray-500 uppercase">{disagg.slice(0,20)} \ {disagg2.slice(0,20)}</th>
+                            {g2.map(b=><th key={b} className="text-right py-2 px-2 font-bold text-gray-500 uppercase">{b.slice(0,16)}</th>)}
+                            <th className="text-right py-2 px-2 font-bold text-gray-700 uppercase">Total</th>
+                        </tr></thead>
+                        <tbody>{g1.map(a=>{
+                            const rowVals=g2.map(b=>computeIndicator(indicators[0],filtered.filter(r=>String(r[disagg]??'—')===a&&String(r[disagg2]??'—')===b)));
+                            return <tr key={a} className="border-b border-gray-50 hover:bg-gray-50">
+                                <td className="py-2 px-2 font-semibold text-gray-800">{a}</td>
+                                {rowVals.map((v,i)=><td key={i} className="py-2 px-2 text-right text-gray-700">{v.toLocaleString()}</td>)}
+                                <td className="py-2 px-2 text-right font-bold text-gray-900">{rowVals.reduce((x,y)=>x+y,0).toLocaleString()}</td>
+                            </tr>;})}</tbody>
+                    </table>
+                </div>
+            </>}
+        </div>
+
+        {wpStats&&wpStats.total>0&&<div className="glass rounded-2xl p-5">
+            <p className="font-bold text-gray-800 text-sm mb-1">Delivery and reach together</p>
+            <p className="text-xs text-gray-400 mb-4">Work plan activity for {tool?tool.project_code:'this project'} beside the numbers those activities produced. Delivery is counted only once M&amp;E has verified it.</p>
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                <div className="p-3 rounded-xl" style={{background:'#F0F7F2'}}>
+                    <p className="text-xs text-gray-500">Activities planned</p>
+                    <p className="text-2xl font-extrabold" style={{color:ME_GREEN}}>{wpStats.total}</p></div>
+                <div className="p-3 rounded-xl" style={{background:'#F0F7F2'}}>
+                    <p className="text-xs text-gray-500">Verified delivered</p>
+                    <p className="text-2xl font-extrabold" style={{color:ME_GREEN}}>{wpStats.verified}</p></div>
+                <div className="p-3 rounded-xl" style={{background:'#FDF8E7'}}>
+                    <p className="text-xs text-gray-500">Awaiting verification</p>
+                    <p className="text-2xl font-extrabold" style={{color:ME_GOLD}}>{wpStats.awaiting}</p></div>
+                <div className="p-3 rounded-xl" style={{background:'#F0F7F2'}}>
+                    <p className="text-xs text-gray-500">Reach per verified activity</p>
+                    <p className="text-2xl font-extrabold" style={{color:ME_GREEN}}>{wpStats.verified?Math.round(grandTotal/wpStats.verified).toLocaleString():'—'}</p></div>
+            </div>
+            {wpStats.awaiting>0&&<p className="text-xs mt-3" style={{color:'#B45309'}}>
+                <i className="fas fa-triangle-exclamation mr-1"/>{wpStats.awaiting} submitted report{wpStats.awaiting!==1?'s are':' is'} still awaiting M&amp;E verification, so delivery is understated here.</p>}
+        </div>}
+
+        {trend.length>1&&<div className="glass rounded-2xl p-5">
+            <p className="font-bold text-gray-800 text-sm mb-3">Trend across periods</p>
+            <MEChart type="line"
+                labels={trend.map(t=>t.period)}
+                data={indicators.slice(0,5).map((ind,ii)=>({
+                    label:ind.indicator_name,
+                    data:trend.map(t=>t.values[ii]),
+                    borderColor:ME_SERIES[ii%8],backgroundColor:ME_SERIES[ii%8],
+                    borderWidth:2,tension:.3,pointRadius:4,fill:false
+                }))}
+                height={240}/>
+            <MELegend labels={indicators.slice(0,5).map(i=>i.indicator_name)} values={indicators.slice(0,5).map(()=>0)} total={0}/>
         </div>}
     </div>;
 }
 
+/* Printable indicator report for donors */
 function MEIndicators({tool,indicators,rows,user,notify,onSaved,readOnlyView}) {
     const [form,setForm]=useState(null);
     const cols=rows.length?profileColumns(rows.slice(0,300)).filter(c=>!c.name.startsWith('__')):[];
