@@ -1096,27 +1096,33 @@ function MyActivities({user,notify,onBack}) {
         :acts.length===0?<div className="glass rounded-2xl p-12 text-center text-gray-400">
             <i className="fas fa-clipboard-list text-4xl mb-3"/><p className="font-semibold">No activities assigned to you</p>
             <p className="text-sm mt-1">M&amp;E will assign work plan activities to you.</p></div>
-        :<div className="space-y-3">{acts.map(a=>
-            <div key={a.id} className={`glass rounded-2xl p-5 ${a.verification_status==='rejected'?'border-2 border-red-200':''}`}>
+        :<div className="space-y-3">{acts.map(a=>{
+            const routine = isRoutine(a);
+            const pr = routine ? periodReports[a.id] : null;
+            const effStatus = routine ? (pr?.verification_status||'not_submitted') : a.verification_status;
+            const effNote = routine ? pr?.mne_note : a.mne_note;
+            return <div key={a.id} className={`glass rounded-2xl p-5 ${effStatus==='rejected'?'border-2 border-red-200':''}`}>
                 <div className="flex flex-wrap justify-between items-start gap-3">
                     <div className="min-w-0 flex-1">
                         <div className="flex flex-wrap items-center gap-2 mb-1">
-                            {vBadge(a)}
+                            {vBadge({verification_status:effStatus})}
                             <span className="px-2 py-1 rounded-full text-xs font-bold" style={{background:wpStatusColour(a.current_status)+'20',color:wpStatusColour(a.current_status)}}>{a.current_status||'Not Started'}</span>
                         </div>
                         <p className="font-semibold text-gray-800 mt-1">{a.sub_activity}</p>
                         <p className="text-xs text-gray-400 mt-1">{plans[a.work_plan_id]?.plan_name||''} · {a.stage||'—'} · {a.activity_type||'—'}
                             {a.planned_months&&(()=>{try{const m=JSON.parse(a.planned_months);return m.length?' · Planned: '+m.join(', '):'';}catch(e){return '';}})()}</p>
-                        {a.verification_status==='rejected'&&a.mne_note&&
+                        {routine && <p className="text-xs text-cyan-600 font-semibold mt-1"><i className="fas fa-rotate mr-1"/>Recurring — reporting for {currentPeriod().month} {currentPeriod().year}</p>}
+                        {effStatus==='rejected'&&effNote&&
                             <div className="bg-red-50 border border-red-200 rounded-lg p-3 mt-3">
                                 <p className="text-xs font-bold text-red-600 mb-1">M&amp;E sent this back:</p>
-                                <p className="text-sm text-red-700">{a.mne_note}</p></div>}
+                                <p className="text-sm text-red-700">{effNote}</p></div>}
                     </div>
-                    {a.verification_status!=='verified'&&a.verification_status!=='submitted'&&
+                    {effStatus!=='verified'&&effStatus!=='submitted'&&
                         <button onClick={()=>setSel(a)} className="btn-green text-white px-5 py-2.5 rounded-xl font-semibold text-sm whitespace-nowrap"><i className="fas fa-pen mr-2"/>Report</button>}
-                    {a.verification_status==='submitted'&&
+                    {effStatus==='submitted'&&
                         <button onClick={()=>setSel(a)} className="bg-gray-100 hover:bg-gray-200 text-gray-600 px-5 py-2.5 rounded-xl font-semibold text-sm whitespace-nowrap"><i className="fas fa-eye mr-2"/>View</button>}
                 </div>
+            </div>;})}</div>}
             </div>)}</div>}
     </div></div>;
 }
