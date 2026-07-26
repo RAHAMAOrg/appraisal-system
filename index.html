@@ -1162,10 +1162,14 @@ function MyActivities({user,notify,onBack}) {
                                 <p className="text-xs font-bold text-red-600 mb-1">M&amp;E sent this back:</p>
                                 <p className="text-sm text-red-700">{effNote}</p></div>}
                     </div>
-                   {effStatus!=='verified'&&effStatus!=='submitted'&&
-                        <button onClick={()=>setSel(routine?{...a,verification_status:effStatus,narrative:pr?.narrative||'',mne_note:effNote,mov_file_url:pr?.mov_file_url||null,mov_file_name:pr?.mov_file_name||null}:a)} className="btn-green text-white px-5 py-2.5 rounded-xl font-semibold text-sm whitespace-nowrap"><i className="fas fa-pen mr-2"/>Report</button>}
-                    {effStatus==='submitted'&&
-                        <button onClick={()=>setSel(routine?{...a,verification_status:effStatus,narrative:pr?.narrative||'',mne_note:effNote,mov_file_url:pr?.mov_file_url||null,mov_file_name:pr?.mov_file_name||null}:a)} className="bg-gray-100 hover:bg-gray-200 text-gray-600 px-5 py-2.5 rounded-xl font-semibold text-sm whitespace-nowrap"><i className="fas fa-eye mr-2"/>View</button>}
+                {effStatus!=='verified'&&effStatus!=='submitted'&&(
+                        routine && !windowOpen
+                        ? <div className="text-right">
+                            <button disabled className="bg-gray-200 text-gray-400 px-5 py-2.5 rounded-xl font-semibold text-sm whitespace-nowrap cursor-not-allowed"><i className="fas fa-lock mr-2"/>Closed</button>
+                            <p className="text-xs text-red-500 mt-1 max-w-[160px]">Reporting window closed (1st–5th only)</p>
+                          </div>
+                        : <button onClick={()=>setSel(routine?{...a,verification_status:effStatus,narrative:pr?.narrative||'',mne_note:effNote,mov_file_url:pr?.mov_file_url||null,mov_file_name:pr?.mov_file_name||null}:a)} className="btn-green text-white px-5 py-2.5 rounded-xl font-semibold text-sm whitespace-nowrap"><i className="fas fa-pen mr-2"/>Report</button>
+                    )}
                 </div>
             </div>;})}</div>}
     </div></div>;
