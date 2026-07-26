@@ -8,6 +8,7 @@
 <script crossorigin src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.production.min.js"></script>
     <script src="https://unpkg.com/@babel/standalone@7.23.6/babel.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js"></script>
     <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
     <link rel="icon" type="image/png" href="RAHAMA Empowerment Logo Design (3).png">
@@ -726,7 +727,38 @@ function computeIndicator(ind,rows){
     if(ind.aggregation==='max') return Math.max(...nums);
     return nums.reduce((a,b)=>a+b,0);
 }
+function GroupedChart({title, type, items}) {
+    const canvasRef = useRef(null);
+    const chartRef = useRef(null);
+    useEffect(()=>{
+        if(!canvasRef.current || !window.Chart) return;
+        if(chartRef.current) chartRef.current.destroy();
+        const palette=['#059669','#0891b2','#d97706','#dc2626','#7c3aed','#0284c7','#65a30d','#db2777'];
+        chartRef.current=new window.Chart(canvasRef.current.getContext('2d'),{
+            type: type==='donut'?'doughnut':'bar',
+            data:{
+                labels: items.map(i=>i.indicator_name),
+                datasets:[{
+                    data: items.map(i=>i.value),
+                    backgroundColor: items.map((_,idx)=>palette[idx%palette.length]),
+                    borderWidth: type==='donut'?2:0,
+                    borderColor:'#fff'
+                }]
+            },
+            options:{
+                responsive:true, maintainAspectRatio:false,
+                plugins:{legend:{position: type==='donut'?'bottom':'none', labels:{boxWidth:12,font:{size:11}}}},
+                scales: type==='bar'?{y:{beginAtZero:true}}:undefined
+            }
+        });
+        return ()=>{ if(chartRef.current) chartRef.current.destroy(); };
+    },[JSON.stringify(items.map(i=>i.value)), type]);
 
+    return <div className="glass rounded-2xl p-6">
+        <h3 className="font-bold text-gray-800 mb-4"><i className={`fas ${type==='donut'?'fa-chart-pie':'fa-chart-column'} text-cyan-600 mr-2`}/>{title}</h3>
+        <div style={{height:'260px'}}><canvas ref={canvasRef}/></div>
+    </div>;
+}
 function MEDashboard({rows,indicators,datasets}) {
     const [disagg,setDisagg]=useState('');
     const [periodFilter,setPeriodFilter]=useState('all');
@@ -749,13 +781,26 @@ function MEDashboard({rows,indicators,datasets}) {
         return {...ind,value,target,pct};
     });
 
+    const chartGroups={}; const cardIndicators=[];
+    computed.forEach(ind=>{
+        if(ind.chart_type==='donut'||ind.chart_type==='bar'){
+            const key=ind.chart_group||ind.indicator_name;
+            (chartGroups[key]=chartGroups[key]||{type:ind.chart_type,items:[]}).items.push(ind);
+        } else cardIndicators.push(ind);
+    });
+
     // Trend across periods
     const trend=periods.slice().reverse().map(p=>{
         const pr=rows.filter(r=>r.__period===p);
         return {period:p, values:indicators.map(i=>computeIndicator(i,pr))};
     });
 
-    return <div className="space-y-6">
+   return <div className="space-y-6">
+        <div className="rounded-2xl p-6 flex items-center gap-4" style={{background:'linear-gradient(135deg,#065f46,#059669 60%,#34d399)'}}>
+            <img src="RAHAMA Empowerment Logo Design (3).png" alt="RAHAMA" className="w-12 h-12 object-contain bg-white rounded-xl p-1.5" onError={e=>{e.target.style.display='none';}}/>
+            <div><h2 className="text-white font-extrabold text-lg tracking-wide">RAHAMA MONITORING &amp; EVALUATION</h2>
+                <p className="text-green-50 text-sm opacity-90">Live indicator dashboard</p></div>
+        </div>
         <div className="glass rounded-xl p-4 flex flex-wrap items-center gap-3">
             <select value={periodFilter} onChange={e=>setPeriodFilter(e.target.value)} className="px-3 py-2 border-2 border-gray-200 rounded-xl text-sm font-medium">
                 <option value="all">All Periods</option>
@@ -768,16 +813,20 @@ function MEDashboard({rows,indicators,datasets}) {
             <span className="ml-auto text-sm text-gray-500 font-semibold">{filtered.length} rows</span>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            {computed.map(ind=><div key={ind.id} className="glass rounded-2xl p-5 stat">
+{cardIndicators.length>0&&<div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            {cardIndicators.map(ind=><div key={ind.id} className="glass rounded-2xl p-5 stat">
                 <p className="text-xs font-bold text-gray-400 uppercase">{ind.indicator_name}</p>
                 <p className="text-3xl font-extrabold text-gray-800 mt-1">{ind.value.toLocaleString()}<span className="text-sm text-gray-400 font-medium ml-1">{ind.unit||''}</span></p>
                 {ind.target?<>
                     <div className="cbar mt-3"><div className="cbar-fill" style={{width:`${ind.pct}%`,background:ind.pct>=100?'#059669':ind.pct>=70?'#0891b2':'#e65100'}}/></div>
                     <p className="text-xs text-gray-400 mt-1">{ind.pct}% of target {Number(ind.target).toLocaleString()}</p>
-                </>:<p className="text-xs text-gray-300 mt-2">No target set</p>}
+               </>:<p className="text-xs text-gray-300 mt-2">No target set</p>}
             </div>)}
-        </div>
+        </div>}
+
+        {Object.keys(chartGroups).length>0&&<div className="grid md:grid-cols-2 gap-6">
+            {Object.entries(chartGroups).map(([key,g])=><GroupedChart key={key} title={key} type={g.type} items={g.items}/>)}
+        </div>}
 
         {disagg&&<div className="glass rounded-2xl p-6">
             <h3 className="font-bold text-gray-800 mb-4"><i className="fas fa-layer-group text-cyan-600 mr-2"/>Disaggregated by {disagg}</h3>
@@ -824,7 +873,7 @@ function MEIndicators({tool,indicators,rows,user,notify,onSaved,readOnlyView}) {
     const numCols=cols.filter(c=>c.kind==='numeric');
     const catCols=cols.filter(c=>c.kind==='category');
 
-    const blank={indicator_name:'',source_column:'',aggregation:'sum',target:'',unit:'',filter_column:'',filter_value:''};
+    const blank={indicator_name:'',source_column:'',aggregation:'sum',target:'',unit:'',filter_column:'',filter_value:'',chart_type:'card',chart_group:''};
 
     const save=async()=>{
         if(!form.indicator_name.trim()){notify('Give the indicator a name','error');return;}
@@ -832,6 +881,7 @@ function MEIndicators({tool,indicators,rows,user,notify,onSaved,readOnlyView}) {
         const payload={tool_id:tool.id,indicator_name:form.indicator_name.trim(),source_column:form.source_column||null,
             aggregation:form.aggregation,target:form.target?Number(form.target):null,unit:form.unit||null,
             filter_column:form.filter_column||null,filter_value:form.filter_value||null,
+            chart_type:form.chart_type||'card',chart_group:form.chart_group?.trim()||null,
             sort_order:form.sort_order??indicators.length,updated_by:user.name};
         const r=form.id
             ? await fetch(`${SB}/rest/v1/me_indicators?id=eq.${form.id}`,{method:'PATCH',headers:HJ,body:JSON.stringify(payload)})
@@ -869,6 +919,15 @@ function MEIndicators({tool,indicators,rows,user,notify,onSaved,readOnlyView}) {
                     <input type="number" value={form.target} onChange={e=>setForm({...form,target:e.target.value})} placeholder="e.g. 5000" className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl"/></div>
                 <div><label className="block text-xs font-bold text-gray-500 uppercase mb-2">Unit (optional)</label>
                     <input value={form.unit} onChange={e=>setForm({...form,unit:e.target.value})} placeholder="e.g. people" className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl"/></div>
+                <div><label className="block text-xs font-bold text-gray-500 uppercase mb-2">Chart Type</label>
+                    <select value={form.chart_type||'card'} onChange={e=>setForm({...form,chart_type:e.target.value})} className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl">
+                        <option value="card">Number card (default)</option>
+                        <option value="donut">Donut — part of a whole</option>
+                        <option value="bar">Bar — compare values</option>
+                    </select></div>
+                <div><label className="block text-xs font-bold text-gray-500 uppercase mb-2">Chart Group (donut/bar only)</label>
+                    <input value={form.chart_group||''} onChange={e=>setForm({...form,chart_group:e.target.value})} placeholder="e.g. Malnutrition Referrals" className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl"/>
+                    <p className="text-xs text-gray-400 mt-1">Indicators sharing a group name are drawn together as one chart.</p></div>
                 <div><label className="block text-xs font-bold text-gray-500 uppercase mb-2">Only count rows where (optional)</label>
                     <select value={form.filter_column} onChange={e=>setForm({...form,filter_column:e.target.value,filter_value:''})} className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl">
                         <option value="">— No filter —</option>
@@ -896,7 +955,7 @@ function MEIndicators({tool,indicators,rows,user,notify,onSaved,readOnlyView}) {
             <div className="flex items-center gap-3">
                 <span className="text-2xl font-extrabold text-cyan-700">{computeIndicator(i,rows).toLocaleString()}</span>
                 {!readOnlyView&&<>
-                    <button onClick={()=>setForm({...i,target:i.target??'',unit:i.unit??'',filter_column:i.filter_column??'',filter_value:i.filter_value??'',source_column:i.source_column??''})} className="px-3 py-2 bg-gray-100 hover:bg-gray-200 rounded-lg text-xs font-bold"><i className="fas fa-pen"/></button>
+                   <button onClick={()=>setForm({...i,target:i.target??'',unit:i.unit??'',filter_column:i.filter_column??'',filter_value:i.filter_value??'',source_column:i.source_column??'',chart_type:i.chart_type??'card',chart_group:i.chart_group??''})} className="px-3 py-2 bg-gray-100 hover:bg-gray-200 rounded-lg text-xs font-bold"><i className="fas fa-pen"/></button>
                     <button onClick={()=>del(i)} className="px-3 py-2 bg-red-50 text-red-600 hover:bg-red-100 rounded-lg text-xs font-bold"><i className="fas fa-trash"/></button>
                 </>}
             </div>
