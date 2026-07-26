@@ -1129,7 +1129,7 @@ function MyActivities({user,notify,onBack}) {
             <div className="glass rounded-xl p-5 stat"><p className="text-xs font-bold text-gray-400 uppercase">Verified</p><p className="text-3xl font-extrabold text-green-600 mt-1">{verified}</p></div>
         </div>
 
-        {!loading && overdueRoutine.length>0 && <div className="bg-amber-50 border-2 border-amber-200 rounded-2xl p-5 mb-6">
+        {!loading && overdueRoutine.length>0 && <div className="glass rounded-2xl p-5 mb-6" style={{background:'rgba(255,251,235,0.98)',border:'2px solid #fcd34d'}}>
             <div className="flex items-start gap-3">
                 <div className="w-10 h-10 bg-amber-100 rounded-xl flex items-center justify-center flex-shrink-0"><i className="fas fa-bell text-amber-600"/></div>
                 <div><h3 className="font-bold text-amber-800">Recurring Reports Due</h3>
