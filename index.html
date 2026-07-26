@@ -93,7 +93,7 @@ const getOS=ua=>{if(ua.includes('Windows'))return'Windows';if(ua.includes('Mac')
 const getDevice=ua=>{if(/Mobi|Android|iPhone|iPad/i.test(ua))return'Mobile';if(/Tablet|iPad/i.test(ua))return'Tablet';return'Desktop';};
     const MONTHS=['JAN','FEB','MAR','APR','MAY','JUN','JUL','AUG','SEP','OCT','NOV','DEC'];
 const currentPeriod=()=>{const d=new Date();return {month:MONTHS[d.getMonth()],year:String(d.getFullYear())};};
-const isRoutine=a=>a.activity_type==='Ongoing (Routine)';
+const isRoutine=a=>/recurring/i.test(a.activity_type||'');
 
 function Toast({message,type,onClose}) {
     useEffect(()=>{const t=setTimeout(onClose,3500);return()=>clearTimeout(t);},[]);
