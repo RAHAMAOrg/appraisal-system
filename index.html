@@ -95,6 +95,26 @@ const getDevice=ua=>{if(/Mobi|Android|iPhone|iPad/i.test(ua))return'Mobile';if(/
 const currentPeriod=()=>{const d=new Date();return {month:MONTHS[d.getMonth()],year:String(d.getFullYear())};};
 const isRoutine=a=>/recurring/i.test(a.activity_type||'');
 
+/* Compress photos before they become base64 in the database.
+   A 4MB phone photo becomes ~300KB; base64 inflates by ~33%, so this is the
+   difference between 5.3MB and 400KB per MoV. Non-images pass through. */
+const compressImage=async(file,maxDim=1600,quality=0.72)=>{
+    if(!file||!file.type||!file.type.startsWith('image/')) return file;
+    if(file.type==='image/gif') return file;
+    if(file.size<300*1024) return file;
+    try{
+        const dataUrl=await new Promise((res,rej)=>{const r=new FileReader();r.onload=()=>res(r.result);r.onerror=rej;r.readAsDataURL(file);});
+        const img=await new Promise((res,rej)=>{const i=new Image();i.onload=()=>res(i);i.onerror=rej;i.src=dataUrl;});
+        let w=img.width,h=img.height;
+        if(w>maxDim||h>maxDim){ if(w>=h){h=Math.round(h*(maxDim/w));w=maxDim;} else {w=Math.round(w*(maxDim/h));h=maxDim;} }
+        const c=document.createElement('canvas');c.width=w;c.height=h;
+        const ctx=c.getContext('2d');ctx.fillStyle='#FFF';ctx.fillRect(0,0,w,h);ctx.drawImage(img,0,0,w,h);
+        const blob=await new Promise(res=>c.toBlob(res,'image/jpeg',quality));
+        if(!blob||blob.size>=file.size) return file;
+        return new File([blob],file.name.replace(/\.[^.]+$/,'')+'.jpg',{type:'image/jpeg'});
+    }catch(e){return file;}
+};
+
 function Toast({message,type,onClose}) {
     useEffect(()=>{const t=setTimeout(onClose,3500);return()=>clearTimeout(t);},[]);
     const bg={success:'bg-green-600',error:'bg-red-600',info:'bg-blue-600'}[type];
@@ -540,7 +560,544 @@ function MandEDashboard({plans,counts,acts,notify,onOpenPlan,onOpenKobo}) {
         </div>
     </div>;
 }
-function MandE({user,notify,onBack}) {
+
+/* ==================== M&E DATA — TOOLS, DATASETS, INDICATORS ====================
+   A project can have several reporting tools (ECHO has more than one form;
+   ASCENT has its own). Each tool holds its own uploaded datasets and its own
+   indicator definitions.
+
+   SPACE: only the columns M&E selects are stored, not all 149 in a Kobo export.
+   Row data is kept as JSON per dataset with a row cap, and usage is shown so
+   the 500MB database limit stays visible.
+================================================================= */
+const ME_AGGS=[{v:'sum',l:'Sum'},{v:'count',l:'Count of rows'},{v:'avg',l:'Average'},{v:'max',l:'Maximum'},{v:'nonblank',l:'Count where filled'}];
+const ME_ROW_CAP=3000;
+const meNum=v=>{const n=parseFloat(String(v??'').replace(/,/g,''));return isNaN(n)?0:n;};
+
+/* Profile an uploaded sheet: split columns into numeric (indicator candidates)
+   and low-cardinality (disaggregation candidates). */
+function profileColumns(rows){
+    if(!rows.length) return [];
+    const cols=Object.keys(rows[0]);
+    return cols.map(name=>{
+        const vals=rows.map(r=>r[name]).filter(v=>v!==null&&v!==undefined&&String(v).trim()!=='');
+        const numeric=vals.length?vals.filter(v=>!isNaN(parseFloat(String(v).replace(/,/g,'')))).length/vals.length>0.8:false;
+        const uniq=new Set(vals.map(v=>String(v))).size;
+        return {name,filled:vals.length,numeric,uniq,
+            kind: numeric?'numeric' : (uniq>0&&uniq<=30?'category':'text')};
+    });
+}
+
+function MEData({user,notify,onBack,readOnlyView}) {
+    const [tools,setTools]=useState([]);
+    const [plans,setPlans]=useState([]);
+    const [loading,setLoading]=useState(true);
+    const [err,setErr]=useState(null);
+    const [sel,setSel]=useState(null);
+    const [showNew,setShowNew]=useState(false);
+    const [nName,setNName]=useState('');const [nProj,setNProj]=useState('');
+
+    const load=async()=>{setLoading(true);setErr(null);
+        try{
+            const t=await fetch(`${SB}/rest/v1/me_tools?order=created_at.desc`,{headers:H});
+            if(!t.ok) throw new Error('M&E data tables not found — run the SQL setup first.');
+            setTools(await t.json()||[]);
+            const p=await fetch(`${SB}/rest/v1/work_plans?select=id,plan_name,project_code`,{headers:H}).then(r=>r.json());
+            setPlans(Array.isArray(p)?p:[]);
+        }catch(e){setErr(e.message);}
+        setLoading(false);};
+    useEffect(()=>{load();},[]);
+
+    if(sel) return <METool tool={sel} user={user} notify={notify} readOnlyView={readOnlyView} onBack={()=>{setSel(null);load();}}/>;
+
+    const createTool=async()=>{
+        if(!nName.trim()||!nProj.trim()){notify('Tool name and project code are required','error');return;}
+        const r=await fetch(`${SB}/rest/v1/me_tools`,{method:'POST',headers:HJ,
+            body:JSON.stringify({tool_name:nName.trim(),project_code:nProj.trim(),created_by:user.name})});
+        if(r.ok){notify('Tool created');setShowNew(false);setNName('');setNProj('');load();}
+        else notify('Could not create tool','error');
+    };
+
+    const byProject={};tools.forEach(t=>{(byProject[t.project_code]=byProject[t.project_code]||[]).push(t);});
+
+    return <div className="min-h-screen p-4 md:p-8"><div className="max-w-6xl mx-auto">
+        <div className="glass rounded-2xl p-6 mb-6 animate-in">
+            <button onClick={onBack} className="text-green-600 font-semibold text-sm mb-3 hover:underline"><i className="fas fa-arrow-left mr-2"/>Back</button>
+            <div className="flex flex-wrap justify-between items-center gap-4">
+                <div><h1 className="text-2xl md:text-3xl font-extrabold text-gray-800">Data &amp; Indicators</h1>
+                    <p className="text-gray-500 mt-1">Reporting tools, uploaded datasets and indicator dashboards</p></div>
+                {!readOnlyView&&<button onClick={()=>setShowNew(true)} className="btn-green text-white px-5 py-3 rounded-xl font-bold text-sm"><i className="fas fa-plus mr-2"/>New Reporting Tool</button>}
+            </div>
+        </div>
+
+        {err&&<div className="bg-amber-50 border-2 border-amber-200 rounded-2xl p-5 mb-6">
+            <h3 className="font-bold text-amber-800 mb-1"><i className="fas fa-triangle-exclamation mr-2"/>Setup required</h3>
+            <p className="text-sm text-amber-700">{err}</p></div>}
+
+        {showNew&&<div className="glass rounded-2xl p-6 mb-6">
+            <h3 className="font-bold text-gray-800 mb-4">New Reporting Tool</h3>
+            <p className="text-sm text-gray-500 mb-4">A project can have several tools — for example a Community Outreach form and a Facility form both under ECHO HIP.</p>
+            <div className="grid md:grid-cols-2 gap-4 mb-4">
+                <div><label className="block text-xs font-bold text-gray-500 uppercase mb-2">Tool Name *</label>
+                    <input value={nName} onChange={e=>setNName(e.target.value)} placeholder="e.g. Community Outreach Monitoring Form" className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl"/></div>
+                <div><label className="block text-xs font-bold text-gray-500 uppercase mb-2">Project Code *</label>
+                    <input value={nProj} onChange={e=>setNProj(e.target.value)} placeholder="e.g. CBA101" className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl" list="mePlanCodes"/>
+                    <datalist id="mePlanCodes">{[...new Set(plans.map(p=>p.project_code))].map(pc=><option key={pc} value={pc}/>)}</datalist></div>
+            </div>
+            <div className="flex gap-3">
+                <button onClick={()=>setShowNew(false)} className="flex-1 bg-gray-100 py-3 rounded-xl font-bold hover:bg-gray-200">Cancel</button>
+                <button onClick={createTool} className="flex-1 btn-green text-white py-3 rounded-xl font-bold">Create Tool</button>
+            </div>
+        </div>}
+
+        {loading?<div className="glass rounded-2xl p-12 text-center text-gray-400"><i className="fas fa-spinner fa-spin text-2xl"/></div>
+        :tools.length===0&&!err?<div className="glass rounded-2xl p-12 text-center text-gray-400">
+            <i className="fas fa-table-list text-4xl mb-3"/><p className="font-semibold">No reporting tools yet</p>
+            <p className="text-sm mt-1">Create one per data collection form, then upload its exports.</p></div>
+        :<div className="space-y-6">{Object.entries(byProject).map(([proj,list])=>
+            <div key={proj}>
+                <h3 className="font-bold text-gray-700 mb-3 text-sm uppercase tracking-wide"><i className="fas fa-folder text-cyan-600 mr-2"/>{proj} <span className="text-gray-400 font-normal">({list.length} tool{list.length!==1?'s':''})</span></h3>
+                <div className="space-y-3">{list.map(t=>
+                    <div key={t.id} className="glass rounded-2xl p-5 flex flex-wrap justify-between items-center gap-3 cursor-pointer hover:shadow-xl stat" onClick={()=>setSel(t)}>
+                        <div className="min-w-0">
+                            <p className="font-bold text-gray-800">{t.tool_name}</p>
+                            <p className="text-xs text-gray-400 mt-1">Created by {t.created_by||'—'}{t.last_upload_at?` · last upload ${new Date(t.last_upload_at).toLocaleDateString('en-NG')}`:' · no data yet'}</p>
+                        </div>
+                        <span className="px-4 py-2 bg-cyan-50 text-cyan-700 rounded-xl font-semibold text-sm whitespace-nowrap"><i className="fas fa-chart-line mr-2"/>Open</span>
+                    </div>)}</div>
+            </div>)}</div>}
+    </div></div>;
+}
+
+function METool({tool,user,notify,onBack,readOnlyView}) {
+    const [tab,setTab]=useState('dashboard');
+    const [datasets,setDatasets]=useState([]);
+    const [indicators,setIndicators]=useState([]);
+    const [rows,setRows]=useState([]);
+    const [loading,setLoading]=useState(true);
+
+    const load=async()=>{setLoading(true);
+        try{
+            const d=await fetch(`${SB}/rest/v1/me_datasets?tool_id=eq.${tool.id}&order=period_label.desc`,{headers:H}).then(r=>r.json());
+            const ds=Array.isArray(d)?d:[];
+            setDatasets(ds);
+            const ind=await fetch(`${SB}/rest/v1/me_indicators?tool_id=eq.${tool.id}&order=sort_order.asc`,{headers:H}).then(r=>r.json());
+            setIndicators(Array.isArray(ind)?ind:[]);
+            const all=[];
+            ds.forEach(x=>{try{const parsed=JSON.parse(x.rows_json||'[]');parsed.forEach(r=>all.push({...r,__period:x.period_label,__ds:x.id}));}catch(e){}});
+            setRows(all);
+        }catch(e){}
+        setLoading(false);};
+    useEffect(()=>{load();},[tool.id]);
+
+    const tabs=[['dashboard','Dashboard','fa-chart-pie'],['data','Data','fa-table'],['indicators','Indicators','fa-bullseye'],['uploads','Uploads','fa-upload']];
+
+    return <div className="min-h-screen p-4 md:p-8"><div className="max-w-6xl mx-auto">
+        <div className="glass rounded-2xl p-6 mb-6 animate-in">
+            <button onClick={onBack} className="text-green-600 font-semibold text-sm mb-3 hover:underline"><i className="fas fa-arrow-left mr-2"/>Back to Tools</button>
+            <h1 className="text-2xl md:text-3xl font-extrabold text-gray-800">{tool.tool_name}</h1>
+            <p className="text-gray-500 mt-1">{tool.project_code} · {datasets.length} dataset{datasets.length!==1?'s':''} · {rows.length} rows · {indicators.length} indicator{indicators.length!==1?'s':''}</p>
+            <div className="flex flex-wrap gap-2 mt-4">
+                {tabs.map(([k,l,ic])=><button key={k} onClick={()=>setTab(k)}
+                    className={`px-4 py-2 rounded-xl text-sm font-bold transition ${tab===k?'btn-green text-white':'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}>
+                    <i className={`fas ${ic} mr-2`}/>{l}</button>)}
+            </div>
+        </div>
+
+        {loading?<div className="glass rounded-2xl p-12 text-center text-gray-400"><i className="fas fa-spinner fa-spin text-2xl"/></div>:<>
+            {tab==='dashboard'  && <MEDashboard rows={rows} indicators={indicators} datasets={datasets}/>}
+            {tab==='data'       && <MEDataTable rows={rows} datasets={datasets} notify={notify} onSaved={load} readOnlyView={readOnlyView}/>}
+            {tab==='indicators' && <MEIndicators tool={tool} indicators={indicators} rows={rows} user={user} notify={notify} onSaved={load} readOnlyView={readOnlyView}/>}
+            {tab==='uploads'    && <MEUploads tool={tool} datasets={datasets} user={user} notify={notify} onSaved={load} readOnlyView={readOnlyView}/>}
+        </>}
+    </div></div>;
+}
+
+/* ---- Indicator computation ---- */
+function computeIndicator(ind,rows){
+    const src=ind.source_column;
+    let vals=rows;
+    if(ind.filter_column&&ind.filter_value) vals=vals.filter(r=>String(r[ind.filter_column]??'')===ind.filter_value);
+    if(ind.aggregation==='count') return vals.length;
+    if(ind.aggregation==='nonblank') return vals.filter(r=>String(r[src]??'').trim()!=='').length;
+    const nums=vals.map(r=>meNum(r[src]));
+    if(!nums.length) return 0;
+    if(ind.aggregation==='avg') return Math.round((nums.reduce((a,b)=>a+b,0)/nums.length)*10)/10;
+    if(ind.aggregation==='max') return Math.max(...nums);
+    return nums.reduce((a,b)=>a+b,0);
+}
+
+function MEDashboard({rows,indicators,datasets}) {
+    const [disagg,setDisagg]=useState('');
+    const [periodFilter,setPeriodFilter]=useState('all');
+    const periods=[...new Set(datasets.map(d=>d.period_label))].sort().reverse();
+    const filtered=periodFilter==='all'?rows:rows.filter(r=>r.__period===periodFilter);
+
+    if(!indicators.length) return <div className="glass rounded-2xl p-12 text-center text-gray-400">
+        <i className="fas fa-bullseye text-4xl mb-3"/><p className="font-semibold">No indicators defined yet</p>
+        <p className="text-sm mt-1">Go to the Indicators tab to map columns from your data to indicators.</p></div>;
+
+    const catCols=(()=>{
+        if(!filtered.length) return [];
+        return profileColumns(filtered.slice(0,300)).filter(c=>c.kind==='category'&&!c.name.startsWith('__')).map(c=>c.name);
+    })();
+
+    const computed=indicators.map(ind=>{
+        const value=computeIndicator(ind,filtered);
+        const target=ind.target?Number(ind.target):null;
+        const pct=target?Math.min(100,Math.round(value/target*100)):null;
+        return {...ind,value,target,pct};
+    });
+
+    // Trend across periods
+    const trend=periods.slice().reverse().map(p=>{
+        const pr=rows.filter(r=>r.__period===p);
+        return {period:p, values:indicators.map(i=>computeIndicator(i,pr))};
+    });
+
+    return <div className="space-y-6">
+        <div className="glass rounded-xl p-4 flex flex-wrap items-center gap-3">
+            <select value={periodFilter} onChange={e=>setPeriodFilter(e.target.value)} className="px-3 py-2 border-2 border-gray-200 rounded-xl text-sm font-medium">
+                <option value="all">All Periods</option>
+                {periods.map(p=><option key={p} value={p}>{p}</option>)}
+            </select>
+            <select value={disagg} onChange={e=>setDisagg(e.target.value)} className="px-3 py-2 border-2 border-gray-200 rounded-xl text-sm font-medium">
+                <option value="">No disaggregation</option>
+                {catCols.map(cn=><option key={cn} value={cn}>By {cn}</option>)}
+            </select>
+            <span className="ml-auto text-sm text-gray-500 font-semibold">{filtered.length} rows</span>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            {computed.map(ind=><div key={ind.id} className="glass rounded-2xl p-5 stat">
+                <p className="text-xs font-bold text-gray-400 uppercase">{ind.indicator_name}</p>
+                <p className="text-3xl font-extrabold text-gray-800 mt-1">{ind.value.toLocaleString()}<span className="text-sm text-gray-400 font-medium ml-1">{ind.unit||''}</span></p>
+                {ind.target?<>
+                    <div className="cbar mt-3"><div className="cbar-fill" style={{width:`${ind.pct}%`,background:ind.pct>=100?'#059669':ind.pct>=70?'#0891b2':'#e65100'}}/></div>
+                    <p className="text-xs text-gray-400 mt-1">{ind.pct}% of target {Number(ind.target).toLocaleString()}</p>
+                </>:<p className="text-xs text-gray-300 mt-2">No target set</p>}
+            </div>)}
+        </div>
+
+        {disagg&&<div className="glass rounded-2xl p-6">
+            <h3 className="font-bold text-gray-800 mb-4"><i className="fas fa-layer-group text-cyan-600 mr-2"/>Disaggregated by {disagg}</h3>
+            <div className="overflow-auto">
+                <table className="w-full text-xs">
+                    <thead><tr className="border-b-2 border-gray-100">
+                        <th className="text-left py-2 px-2 font-bold text-gray-500 uppercase">{disagg}</th>
+                        <th className="text-right py-2 px-2 font-bold text-gray-500 uppercase">Rows</th>
+                        {indicators.map(i=><th key={i.id} className="text-right py-2 px-2 font-bold text-gray-500 uppercase">{i.indicator_name}</th>)}
+                    </tr></thead>
+                    <tbody>{[...new Set(filtered.map(r=>String(r[disagg]??'—')))].sort().map(g=>{
+                        const gr=filtered.filter(r=>String(r[disagg]??'—')===g);
+                        return <tr key={g} className="border-b border-gray-50 hover:bg-gray-50">
+                            <td className="py-2 px-2 font-semibold text-gray-800">{g}</td>
+                            <td className="py-2 px-2 text-right text-gray-500">{gr.length}</td>
+                            {indicators.map(i=><td key={i.id} className="py-2 px-2 text-right font-bold text-gray-700">{computeIndicator(i,gr).toLocaleString()}</td>)}
+                        </tr>;})}</tbody>
+                </table>
+            </div>
+        </div>}
+
+        {trend.length>1&&<div className="glass rounded-2xl p-6">
+            <h3 className="font-bold text-gray-800 mb-4"><i className="fas fa-chart-column text-indigo-600 mr-2"/>Trend by Period</h3>
+            {indicators.slice(0,4).map((ind,ii)=>{
+                const series=trend.map(t=>t.values[ii]);
+                const mx=Math.max(1,...series);
+                return <div key={ind.id} className="mb-5">
+                    <p className="text-xs font-bold text-gray-600 mb-2">{ind.indicator_name}</p>
+                    <div className="flex items-end gap-2" style={{height:'90px'}}>
+                        {trend.map((t,i)=><div key={t.period} className="flex-1 flex flex-col items-center justify-end h-full">
+                            <span className="text-[10px] font-bold text-gray-600 mb-1">{series[i].toLocaleString()}</span>
+                            <div className="w-full rounded-t bg-gradient-to-t from-cyan-600 to-cyan-400" style={{height:`${Math.max(4,(series[i]/mx)*62)}px`}}/>
+                            <span className="text-[9px] text-gray-400 mt-1 whitespace-nowrap">{t.period}</span>
+                        </div>)}
+                    </div>
+                </div>;})}
+        </div>}
+    </div>;
+}
+
+function MEIndicators({tool,indicators,rows,user,notify,onSaved,readOnlyView}) {
+    const [form,setForm]=useState(null);
+    const cols=rows.length?profileColumns(rows.slice(0,300)).filter(c=>!c.name.startsWith('__')):[];
+    const numCols=cols.filter(c=>c.kind==='numeric');
+    const catCols=cols.filter(c=>c.kind==='category');
+
+    const blank={indicator_name:'',source_column:'',aggregation:'sum',target:'',unit:'',filter_column:'',filter_value:''};
+
+    const save=async()=>{
+        if(!form.indicator_name.trim()){notify('Give the indicator a name','error');return;}
+        if(form.aggregation!=='count'&&!form.source_column){notify('Choose the source column','error');return;}
+        const payload={tool_id:tool.id,indicator_name:form.indicator_name.trim(),source_column:form.source_column||null,
+            aggregation:form.aggregation,target:form.target?Number(form.target):null,unit:form.unit||null,
+            filter_column:form.filter_column||null,filter_value:form.filter_value||null,
+            sort_order:form.sort_order??indicators.length,updated_by:user.name};
+        const r=form.id
+            ? await fetch(`${SB}/rest/v1/me_indicators?id=eq.${form.id}`,{method:'PATCH',headers:HJ,body:JSON.stringify(payload)})
+            : await fetch(`${SB}/rest/v1/me_indicators`,{method:'POST',headers:HJ,body:JSON.stringify(payload)});
+        if(r.ok){notify('Indicator saved');setForm(null);onSaved();}else notify('Save failed','error');
+    };
+    const del=async(i)=>{
+        if(!confirm(`Delete indicator "${i.indicator_name}"?`))return;
+        const r=await fetch(`${SB}/rest/v1/me_indicators?id=eq.${i.id}`,{method:'DELETE',headers:H});
+        if(r.ok){notify('Deleted');onSaved();}else notify('Delete failed','error');
+    };
+
+    return <div className="space-y-4">
+        {!rows.length&&<div className="glass rounded-2xl p-6 text-center text-gray-400">
+            <p className="font-semibold">Upload a dataset first</p>
+            <p className="text-sm mt-1">Indicators are mapped to columns from your uploaded data.</p></div>}
+
+        {!readOnlyView&&rows.length>0&&!form&&<button onClick={()=>setForm({...blank})} className="btn-green text-white px-5 py-3 rounded-xl font-bold text-sm"><i className="fas fa-plus mr-2"/>Add Indicator</button>}
+
+        {form&&<div className="glass rounded-2xl p-6">
+            <h3 className="font-bold text-gray-800 mb-4">{form.id?'Edit':'New'} Indicator</h3>
+            <div className="grid md:grid-cols-2 gap-4 mb-4">
+                <div><label className="block text-xs font-bold text-gray-500 uppercase mb-2">Indicator Name *</label>
+                    <input value={form.indicator_name} onChange={e=>setForm({...form,indicator_name:e.target.value})} placeholder="e.g. Women Reached" className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl"/></div>
+                <div><label className="block text-xs font-bold text-gray-500 uppercase mb-2">Aggregation *</label>
+                    <select value={form.aggregation} onChange={e=>setForm({...form,aggregation:e.target.value})} className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl">
+                        {ME_AGGS.map(a=><option key={a.v} value={a.v}>{a.l}</option>)}</select></div>
+                <div className="md:col-span-2"><label className="block text-xs font-bold text-gray-500 uppercase mb-2">Source Column {form.aggregation!=='count'&&'*'}</label>
+                    <select value={form.source_column} onChange={e=>setForm({...form,source_column:e.target.value})} className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl">
+                        <option value="">— Select column —</option>
+                        <optgroup label="Numeric columns">{numCols.map(c=><option key={c.name} value={c.name}>{c.name}</option>)}</optgroup>
+                        <optgroup label="Other columns">{cols.filter(c=>c.kind!=='numeric').map(c=><option key={c.name} value={c.name}>{c.name}</option>)}</optgroup>
+                    </select></div>
+                <div><label className="block text-xs font-bold text-gray-500 uppercase mb-2">Target (optional)</label>
+                    <input type="number" value={form.target} onChange={e=>setForm({...form,target:e.target.value})} placeholder="e.g. 5000" className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl"/></div>
+                <div><label className="block text-xs font-bold text-gray-500 uppercase mb-2">Unit (optional)</label>
+                    <input value={form.unit} onChange={e=>setForm({...form,unit:e.target.value})} placeholder="e.g. people" className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl"/></div>
+                <div><label className="block text-xs font-bold text-gray-500 uppercase mb-2">Only count rows where (optional)</label>
+                    <select value={form.filter_column} onChange={e=>setForm({...form,filter_column:e.target.value,filter_value:''})} className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl">
+                        <option value="">— No filter —</option>
+                        {catCols.map(c=><option key={c.name} value={c.name}>{c.name}</option>)}</select></div>
+                <div><label className="block text-xs font-bold text-gray-500 uppercase mb-2">equals</label>
+                    <select value={form.filter_value} onChange={e=>setForm({...form,filter_value:e.target.value})} disabled={!form.filter_column} className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl disabled:bg-gray-50">
+                        <option value="">—</option>
+                        {form.filter_column&&[...new Set(rows.map(r=>String(r[form.filter_column]??'')).filter(Boolean))].sort().map(v=><option key={v} value={v}>{v}</option>)}</select></div>
+            </div>
+            {form.indicator_name&&(form.source_column||form.aggregation==='count')&&
+                <div className="bg-cyan-50 border border-cyan-200 rounded-xl p-3 mb-4">
+                    <p className="text-sm text-cyan-800"><i className="fas fa-calculator mr-2"/>Preview on current data: <strong>{computeIndicator(form,rows).toLocaleString()}</strong></p></div>}
+            <div className="flex gap-3">
+                <button onClick={()=>setForm(null)} className="flex-1 bg-gray-100 py-3 rounded-xl font-bold hover:bg-gray-200">Cancel</button>
+                <button onClick={save} className="flex-1 btn-green text-white py-3 rounded-xl font-bold">Save Indicator</button>
+            </div>
+        </div>}
+
+        {indicators.map(i=><div key={i.id} className="glass rounded-2xl p-5 flex flex-wrap justify-between items-center gap-3">
+            <div className="min-w-0">
+                <p className="font-bold text-gray-800">{i.indicator_name}</p>
+                <p className="text-xs text-gray-400 mt-1">{ME_AGGS.find(a=>a.v===i.aggregation)?.l} of <span className="font-mono">{i.source_column||'rows'}</span>
+                    {i.filter_column?` · where ${i.filter_column} = ${i.filter_value}`:''}{i.target?` · target ${Number(i.target).toLocaleString()}`:''}</p>
+            </div>
+            <div className="flex items-center gap-3">
+                <span className="text-2xl font-extrabold text-cyan-700">{computeIndicator(i,rows).toLocaleString()}</span>
+                {!readOnlyView&&<>
+                    <button onClick={()=>setForm({...i,target:i.target??'',unit:i.unit??'',filter_column:i.filter_column??'',filter_value:i.filter_value??'',source_column:i.source_column??''})} className="px-3 py-2 bg-gray-100 hover:bg-gray-200 rounded-lg text-xs font-bold"><i className="fas fa-pen"/></button>
+                    <button onClick={()=>del(i)} className="px-3 py-2 bg-red-50 text-red-600 hover:bg-red-100 rounded-lg text-xs font-bold"><i className="fas fa-trash"/></button>
+                </>}
+            </div>
+        </div>)}
+    </div>;
+}
+
+function MEDataTable({rows,datasets,notify,onSaved,readOnlyView}) {
+    const [dsFilter,setDsFilter]=useState('all');
+    const [edited,setEdited]=useState({});
+    const [busy,setBusy]=useState(false);
+    const [search,setSearch]=useState('');
+
+    const view=dsFilter==='all'?rows:rows.filter(r=>String(r.__ds)===dsFilter);
+    const cols=view.length?Object.keys(view[0]).filter(k=>!k.startsWith('__')):[];
+    const shown=search?view.filter(r=>cols.some(c=>String(r[c]??'').toLowerCase().includes(search.toLowerCase()))):view;
+
+    const setCell=(ds,idx,col,val)=>{
+        setEdited(p=>({...p,[`${ds}|${idx}|${col}`]:val}));
+    };
+    const cellVal=(r,i,col)=>{
+        const k=`${r.__ds}|${i}|${col}`;
+        return k in edited?edited[k]:(r[col]??'');
+    };
+
+    const saveEdits=async()=>{
+        const changes=Object.keys(edited);
+        if(!changes.length){notify('No changes to save','info');return;}
+        setBusy(true);
+        try{
+            // rebuild each affected dataset's rows_json
+            const byDs={};
+            changes.forEach(k=>{const [ds,idx,col]=k.split('|');(byDs[ds]=byDs[ds]||[]).push({idx:Number(idx),col,val:edited[k]});});
+            for(const [dsId,list] of Object.entries(byDs)){
+                const ds=datasets.find(d=>String(d.id)===dsId);
+                if(!ds) continue;
+                const parsed=JSON.parse(ds.rows_json||'[]');
+                // index within the dataset — recompute using global order
+                const globalRows=rows.filter(r=>String(r.__ds)===dsId);
+                list.forEach(ch=>{
+                    const target=globalRows[ch.idx];
+                    if(!target) return;
+                    const pos=parsed.findIndex(p=>JSON.stringify(p)===JSON.stringify(Object.fromEntries(Object.entries(target).filter(([k])=>!k.startsWith('__')))));
+                    if(pos>=0) parsed[pos][ch.col]=ch.val;
+                });
+                const r=await fetch(`${SB}/rest/v1/me_datasets?id=eq.${dsId}`,{method:'PATCH',headers:HJ,
+                    body:JSON.stringify({rows_json:JSON.stringify(parsed),cleaned:true,cleaned_at:new Date().toISOString()})});
+                if(!r.ok) throw new Error('save failed');
+            }
+            notify(`${changes.length} cell${changes.length!==1?'s':''} updated`);
+            setEdited({});onSaved();
+        }catch(e){notify('Could not save changes','error');}
+        setBusy(false);
+    };
+
+    if(!rows.length) return <div className="glass rounded-2xl p-12 text-center text-gray-400">
+        <i className="fas fa-table text-4xl mb-3"/><p className="font-semibold">No data uploaded yet</p></div>;
+
+    return <div className="space-y-4">
+        <div className="glass rounded-xl p-4 flex flex-wrap items-center gap-3">
+            <select value={dsFilter} onChange={e=>setDsFilter(e.target.value)} className="px-3 py-2 border-2 border-gray-200 rounded-xl text-sm font-medium">
+                <option value="all">All datasets</option>
+                {datasets.map(d=><option key={d.id} value={String(d.id)}>{d.period_label} — {d.file_name}</option>)}
+            </select>
+            <input value={search} onChange={e=>setSearch(e.target.value)} placeholder="Search rows…" className="flex-1 min-w-0 px-4 py-2 border-2 border-gray-200 rounded-xl text-sm"/>
+            <span className="text-sm text-gray-500 font-semibold">{shown.length} rows</span>
+            {!readOnlyView&&Object.keys(edited).length>0&&
+                <button onClick={saveEdits} disabled={busy} className="btn-green text-white px-4 py-2 rounded-xl font-bold text-sm disabled:opacity-50">
+                    {busy?'Saving…':`Save ${Object.keys(edited).length} change${Object.keys(edited).length!==1?'s':''}`}</button>}
+        </div>
+        {!readOnlyView&&<p className="text-xs text-gray-400 px-2"><i className="fas fa-circle-info mr-1"/>Click any cell to correct it. Changes are saved back to the dataset for cleaning.</p>}
+
+        <div className="glass rounded-2xl p-3 overflow-auto" style={{maxHeight:'620px'}}>
+            <table className="text-xs" style={{minWidth:'100%'}}>
+                <thead><tr className="border-b-2 border-gray-100">
+                    <th className="text-left py-2 px-2 font-bold text-gray-400 sticky left-0 bg-white">#</th>
+                    {cols.map(cn=><th key={cn} className="text-left py-2 px-2 font-bold text-gray-500 whitespace-nowrap" style={{minWidth:'120px'}}>{cn.slice(0,40)}</th>)}
+                </tr></thead>
+                <tbody>{shown.slice(0,400).map((r,i)=><tr key={i} className="border-b border-gray-50 hover:bg-gray-50">
+                    <td className="py-1 px-2 text-gray-300 sticky left-0 bg-white">{i+1}</td>
+                    {cols.map(cn=><td key={cn} className="py-1 px-1">
+                        {readOnlyView
+                            ? <span className="px-2 text-gray-700">{String(r[cn]??'')}</span>
+                            : <input value={cellVal(r,i,cn)} onChange={e=>setCell(r.__ds,i,cn,e.target.value)}
+                                className={`w-full px-2 py-1 rounded border text-xs ${`${r.__ds}|${i}|${cn}` in edited?'border-amber-400 bg-amber-50':'border-transparent hover:border-gray-200'}`}/>}
+                    </td>)}
+                </tr>)}</tbody>
+            </table>
+            {shown.length>400&&<p className="text-center text-gray-400 text-xs py-3">Showing first 400 of {shown.length} rows</p>}
+        </div>
+    </div>;
+}
+
+function MEUploads({tool,datasets,user,notify,onSaved,readOnlyView}) {
+    const [parsed,setParsed]=useState(null);
+    const [fileName,setFileName]=useState('');
+    const [period,setPeriod]=useState('');
+    const [keep,setKeep]=useState({});
+    const [busy,setBusy]=useState(false);
+    const fileRef=useRef(null);
+
+    const onFile=async(e)=>{
+        const f=e.target.files[0]; if(!f) return;
+        setFileName(f.name);
+        try{
+            const buf=await f.arrayBuffer();
+            const wb=XLSX.read(buf,{type:'array'});
+            const ws=wb.Sheets[wb.SheetNames[0]];
+            const rows=XLSX.utils.sheet_to_json(ws,{defval:null});
+            if(!rows.length){notify('No rows found in the file','error');return;}
+            if(rows.length>ME_ROW_CAP){notify(`File has ${rows.length} rows — only the first ${ME_ROW_CAP} will be stored`,'info');}
+            const trimmed=rows.slice(0,ME_ROW_CAP);
+            const prof=profileColumns(trimmed);
+            const k={};prof.forEach(c=>{k[c.name]=(c.kind==='numeric'||c.kind==='category');});
+            setKeep(k);
+            setParsed({rows:trimmed,profile:prof,total:rows.length,sheet:wb.SheetNames[0]});
+            notify(`${trimmed.length} rows · ${prof.length} columns found`,'info');
+        }catch(ex){notify('Could not read file: '+ex.message,'error');}
+    };
+
+    const save=async()=>{
+        if(!period.trim()){notify('Enter the reporting period (e.g. 2026-07)','error');return;}
+        const cols=Object.keys(keep).filter(k=>keep[k]);
+        if(!cols.length){notify('Select at least one column to keep','error');return;}
+        setBusy(true);
+        try{
+            const slim=parsed.rows.map(r=>{const o={};cols.forEach(c=>{o[c]=r[c];});return o;});
+            const json=JSON.stringify(slim);
+            const sizeKB=Math.round(json.length/1024);
+            const r=await fetch(`${SB}/rest/v1/me_datasets`,{method:'POST',headers:HJ,
+                body:JSON.stringify({tool_id:tool.id,period_label:period.trim(),file_name:fileName,
+                    row_count:slim.length,col_count:cols.length,size_kb:sizeKB,
+                    rows_json:json,uploaded_by:user.name})});
+            if(!r.ok) throw new Error(await r.text());
+            await fetch(`${SB}/rest/v1/me_tools?id=eq.${tool.id}`,{method:'PATCH',headers:HJ,
+                body:JSON.stringify({last_upload_at:new Date().toISOString()})});
+            notify(`Dataset saved — ${slim.length} rows, ${cols.length} columns (${sizeKB} KB)`);
+            setParsed(null);setFileName('');setPeriod('');onSaved();
+        }catch(e){notify('Upload failed: '+String(e.message).slice(0,100),'error');}
+        setBusy(false);
+    };
+
+    const del=async(d)=>{
+        if(!confirm(`Delete dataset "${d.file_name}" (${d.period_label})?\n\nThis removes ${d.row_count} rows and frees ${d.size_kb} KB.`))return;
+        const r=await fetch(`${SB}/rest/v1/me_datasets?id=eq.${d.id}`,{method:'DELETE',headers:H});
+        if(r.ok){notify('Dataset deleted');onSaved();}else notify('Delete failed','error');
+    };
+
+    const totalKB=datasets.reduce((s,d)=>s+(d.size_kb||0),0);
+    const keptCount=Object.values(keep).filter(Boolean).length;
+
+    return <div className="space-y-4">
+        {!readOnlyView&&<div className="glass rounded-2xl p-6">
+            <h3 className="font-bold text-gray-800 mb-1">Upload Data Export</h3>
+            <p className="text-sm text-gray-500 mb-4">Export from your data collection tool as CSV or XLSX, then upload here. Only the columns you keep are stored.</p>
+            <div className="grid md:grid-cols-2 gap-4 mb-4">
+                <div><label className="block text-xs font-bold text-gray-500 uppercase mb-2">Reporting Period *</label>
+                    <input value={period} onChange={e=>setPeriod(e.target.value)} placeholder="e.g. 2026-07 or Q3 2026" className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl"/></div>
+                <div><label className="block text-xs font-bold text-gray-500 uppercase mb-2">File *</label>
+                    <div onClick={()=>fileRef.current&&fileRef.current.click()}
+                        className={`border-2 border-dashed rounded-xl p-3 text-center cursor-pointer ${fileName?'border-green-400 bg-green-50':'border-gray-300 hover:border-green-400'}`}>
+                        <p className="text-sm text-gray-600">{fileName||'Click to select CSV / XLSX'}</p></div>
+                    <input ref={fileRef} type="file" accept=".xlsx,.xls,.csv" className="hidden" onChange={onFile}/></div>
+            </div>
+
+            {parsed&&<>
+                <div className="bg-cyan-50 border border-cyan-200 rounded-xl p-4 mb-4">
+                    <p className="text-sm text-cyan-800 font-semibold mb-2">{parsed.rows.length} rows from "{parsed.sheet}"{parsed.total>parsed.rows.length?` (capped from ${parsed.total})`:''}</p>
+                    <p className="text-xs text-cyan-700">Keeping <strong>{keptCount}</strong> of {parsed.profile.length} columns. Numeric and category columns are pre-selected — untick anything you don't need to save space.</p>
+                </div>
+                <div className="border-2 border-gray-100 rounded-xl p-3 mb-4 overflow-auto" style={{maxHeight:'320px'}}>
+                    {parsed.profile.map(c=><label key={c.name} className="flex items-center gap-3 py-1.5 px-2 hover:bg-gray-50 rounded cursor-pointer">
+                        <input type="checkbox" checked={!!keep[c.name]} onChange={e=>setKeep({...keep,[c.name]:e.target.checked})}/>
+                        <span className="flex-1 text-xs text-gray-700 truncate">{c.name}</span>
+                        <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${c.kind==='numeric'?'bg-cyan-100 text-cyan-700':c.kind==='category'?'bg-indigo-100 text-indigo-700':'bg-gray-100 text-gray-500'}`}>{c.kind}</span>
+                        <span className="text-[10px] text-gray-400 w-16 text-right">{c.filled} filled</span>
+                    </label>)}
+                </div>
+                <button onClick={save} disabled={busy} className="w-full btn-green text-white py-3 rounded-xl font-bold disabled:opacity-50">
+                    {busy?'Saving…':`Save Dataset (${parsed.rows.length} rows × ${keptCount} cols)`}</button>
+            </>}
+        </div>}
+
+        <div className="glass rounded-2xl p-6">
+            <div className="flex flex-wrap justify-between items-center gap-3 mb-4">
+                <h3 className="font-bold text-gray-800">Uploaded Datasets</h3>
+                <span className="text-xs font-bold text-gray-500">Storage used: {totalKB>1024?(totalKB/1024).toFixed(1)+' MB':totalKB+' KB'}</span>
+            </div>
+            {datasets.length===0?<p className="text-center text-gray-400 py-8 font-semibold">No datasets uploaded yet</p>
+            :<div className="space-y-2">{datasets.map(d=><div key={d.id} className="border-2 border-gray-100 rounded-xl p-4 flex flex-wrap justify-between items-center gap-3">
+                <div className="min-w-0">
+                    <p className="font-semibold text-gray-800 text-sm">{d.period_label} {d.cleaned&&<span className="ml-2 text-xs bg-green-100 text-green-700 px-2 py-0.5 rounded-full font-bold">cleaned</span>}</p>
+                    <p className="text-xs text-gray-400 mt-0.5 truncate">{d.file_name} · {d.row_count} rows × {d.col_count} cols · {d.size_kb} KB · {d.uploaded_by}</p>
+                </div>
+                {!readOnlyView&&<button onClick={()=>del(d)} className="px-3 py-2 bg-red-50 text-red-600 hover:bg-red-100 rounded-lg text-xs font-bold"><i className="fas fa-trash"/></button>}
+            </div>)}</div>}
+        </div>
+    </div>;
+}
+
+function MandE({user,notify,onBack,readOnlyView}) {
     const [view,setView]=useState('register');
     const [plans,setPlans]=useState([]);
     const [loading,setLoading]=useState(true);
@@ -569,9 +1126,10 @@ function MandE({user,notify,onBack}) {
     useEffect(()=>{load();},[]);
 
   if(view==='import')   return <WorkPlanImport user={user} notify={notify} onDone={()=>{setView('register');load();}}/>;
-    if(view==='activities')return <WorkPlanActivities plan={selPlan} user={user} notify={notify} onBack={()=>{setView('register');load();}}/>;
+    if(view==='activities')return <WorkPlanActivities plan={selPlan} user={user} notify={notify} readOnlyView={readOnlyView} onBack={()=>{setView('register');load();}}/>;
     if(view==='assign')   return <WorkPlanAssign plan={selPlan} user={user} notify={notify} onDone={()=>{setView('register');load();}}/>;
     if(view==='kobo')     return <KoboDashboard plan={koboPlan} user={user} notify={notify} onBack={()=>setView('register')}/>;
+    if(view==='medata')   return <MEData user={user} notify={notify} readOnlyView={readOnlyView} onBack={()=>setView('register')}/>;
     const publish=async(p)=>{
         if(!confirm('Publish this work plan?\n\nIt becomes the approved baseline that delivery is measured against.')) return;
         const r=await fetch(`${SB}/rest/v1/work_plans?id=eq.${p.id}`,{method:'PATCH',headers:HJ,
@@ -588,7 +1146,10 @@ function MandE({user,notify,onBack}) {
             <div className="flex flex-wrap justify-between items-center gap-4">
                 <div><h1 className="text-2xl md:text-3xl font-extrabold text-gray-800">Monitoring &amp; Evaluation</h1>
                     <p className="text-gray-500 mt-1">Project work plans and delivery tracking</p></div>
-                <button onClick={()=>setView('import')} className="btn-green text-white px-5 py-3 rounded-xl font-bold text-sm"><i className="fas fa-upload mr-2"/>Import Work Plan</button>
+                <div className="flex flex-wrap gap-2">
+                    <button onClick={()=>setView('medata')} className="px-5 py-3 rounded-xl font-bold text-sm bg-cyan-600 hover:bg-cyan-700 text-white"><i className="fas fa-chart-line mr-2"/>Data &amp; Indicators</button>
+                    {!readOnlyView&&<button onClick={()=>setView('import')} className="btn-green text-white px-5 py-3 rounded-xl font-bold text-sm"><i className="fas fa-upload mr-2"/>Import Work Plan</button>}
+                </div>
             </div>
         </div>
 
@@ -614,9 +1175,9 @@ function MandE({user,notify,onBack}) {
                     </div>
                     <div className="flex flex-wrap gap-2">
                         <button onClick={()=>{setSelPlan(p);setView('activities');}} className="px-4 py-2 bg-blue-50 text-blue-700 hover:bg-blue-100 rounded-xl font-semibold text-sm"><i className="fas fa-list mr-2"/>Activities</button>
-                        <button onClick={()=>{setSelPlan(p);setView('assign');}} className="px-4 py-2 bg-indigo-50 text-indigo-700 hover:bg-indigo-100 rounded-xl font-semibold text-sm"><i className="fas fa-users mr-2"/>Assign</button>
+                        {!readOnlyView&&<button onClick={()=>{setSelPlan(p);setView('assign');}} className="px-4 py-2 bg-indigo-50 text-indigo-700 hover:bg-indigo-100 rounded-xl font-semibold text-sm"><i className="fas fa-users mr-2"/>Assign</button>}
                         <button onClick={()=>{setKoboPlan(p);setView('kobo');}} className="px-4 py-2 bg-cyan-50 text-cyan-700 hover:bg-cyan-100 rounded-xl font-semibold text-sm"><i className="fas fa-satellite-dish mr-2"/>Kobo Data</button>
-                        {(p.status||'draft')==='draft'&&<button onClick={()=>publish(p)} className="btn-green text-white px-4 py-2 rounded-xl font-semibold text-sm"><i className="fas fa-check mr-2"/>Publish</button>}
+                        {!readOnlyView&&(p.status||'draft')==='draft'&&<button onClick={()=>publish(p)} className="btn-green text-white px-4 py-2 rounded-xl font-semibold text-sm"><i className="fas fa-check mr-2"/>Publish</button>}
                     </div>
                 </div>
             </div>)}</div>}
@@ -1138,7 +1699,7 @@ function WorkPlanAssign({plan,user,notify,onDone}) {
     </div></div>;
 }
 
-function WorkPlanActivities({plan,user,notify,onBack}) {
+function WorkPlanActivities({plan,user,notify,onBack,readOnlyView}) {
     const [acts,setActs]=useState([]);
     const [loading,setLoading]=useState(true);
     const [filter,setFilter]=useState('all');
@@ -1456,9 +2017,63 @@ function MyActivities({user,notify,onBack}) {
     </div></div>;
 }
 
+/* Printable activity report — downloadable before or after verification */
+function downloadActivityReport(act){
+    const esc=s=>String(s==null?'':s).replace(/[&<>]/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[m]));
+    const html=`<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Activity Report</title>
+<style>@media print{body{margin:20px}.no-print{display:none}}
+body{font-family:Arial,sans-serif;margin:40px;color:#111;font-size:13px}
+h1{color:#0e7490;font-size:20px;margin:0}
+h2{font-size:13px;border-bottom:2px solid #0e7490;padding-bottom:5px;margin-top:24px;color:#0e7490}
+.lbl{font-size:10px;color:#777;text-transform:uppercase;letter-spacing:.5px}
+.val{font-weight:600;margin-top:2px}
+.grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;margin:12px 0}
+.box{background:#f7f7f7;border:1px solid #e0e0e0;border-radius:8px;padding:12px 14px}</style></head><body>
+<button class="no-print" onclick="window.print()" style="margin-bottom:20px;padding:10px 24px;background:#0e7490;color:#fff;border:none;border-radius:6px;cursor:pointer;font-weight:600">🖨 Print / Save as PDF</button>
+<div style="display:flex;justify-content:space-between;border-bottom:3px solid #0e7490;padding-bottom:14px;margin-bottom:18px">
+  <div style="display:flex;align-items:center;gap:14px">
+    <img src="RAHAMA Empowerment Logo Design (3).png" style="width:60px;height:60px;object-fit:contain" onerror="this.style.display='none'">
+    <div><h1>WORK PLAN ACTIVITY REPORT</h1>
+    <div style="font-size:12px;color:#555;margin-top:3px">RAHAMA Girl Child &amp; Women Empowerment Initiative</div></div>
+  </div>
+  <div style="text-align:right;font-size:11px;color:#777">Generated<br><b>${new Date().toLocaleDateString('en-NG',{day:'numeric',month:'long',year:'numeric'})}</b></div>
+</div>
+<h2>ACTIVITY</h2>
+<div style="margin:10px 0"><div class="lbl">Sub-Activity</div><div class="val" style="font-size:15px">${esc(act.sub_activity)}</div></div>
+<div class="grid">
+  <div class="box"><div class="lbl">Stage</div><div class="val">${esc(act.stage)||'—'}</div></div>
+  <div class="box"><div class="lbl">Type</div><div class="val">${esc(act.activity_type)||'—'}</div></div>
+  <div class="box"><div class="lbl">DRI</div><div class="val">${esc(act.dri)||'—'}</div></div>
+  <div class="box"><div class="lbl">Delivery Status</div><div class="val">${esc(act.current_status)||'—'}</div></div>
+  <div class="box"><div class="lbl">Verification</div><div class="val">${esc(act.verification_status||'not submitted')}</div></div>
+  <div class="box"><div class="lbl">Submitted</div><div class="val">${act.submitted_at?new Date(act.submitted_at).toLocaleDateString('en-NG'):'—'}</div></div>
+</div>
+<h2>NARRATIVE — WHAT WAS DONE</h2>
+<div style="background:#f0f9ff;border:1px solid #bae6fd;border-radius:8px;padding:14px;white-space:pre-wrap;line-height:1.6">${esc(act.narrative)||'No narrative provided'}</div>
+${act.mne_note?`<h2>M&amp;E NOTE</h2><div style="background:#fefce8;border:1px solid #fde68a;border-radius:8px;padding:14px">${esc(act.mne_note)}</div>`:''}
+${act.mov_file_url?`<h2>MEANS OF VERIFICATION</h2><p style="font-size:12px">Attachment: <b>${esc(act.mov_file_name)||'file'}</b> — available in the system.</p>${/^data:image/.test(act.mov_file_url)?`<img src="${act.mov_file_url}" style="max-width:100%;border:1px solid #ddd;border-radius:8px;margin-top:8px">`:''}`:'<h2>MEANS OF VERIFICATION</h2><p style="color:#999;font-size:12px">No attachment provided.</p>'}
+<div style="margin-top:44px;display:grid;grid-template-columns:1fr 1fr;gap:32px">
+  <div><div class="lbl">Reported By</div><div style="height:46px;border-bottom:1px solid #333;margin-top:6px"></div>
+    <div style="font-size:11px;color:#777;margin-top:4px">${esc(act.submitted_by)||''}</div></div>
+  <div><div class="lbl">Verified By (M&amp;E)</div><div style="height:46px;border-bottom:1px solid ${act.mne_verified_by?'#333':'#bbb'};margin-top:6px"></div>
+    <div style="font-size:11px;color:#777;margin-top:4px">${esc(act.mne_verified_by)||'Pending'}</div></div>
+</div>
+<div style="margin-top:34px;border-top:1px solid #eee;padding-top:10px;font-size:10px;color:#999">RAHAMA M&amp;E — Activity Report — Confidential</div>
+</body></html>`;
+    const b=new Blob([html],{type:'text/html'});
+    const u=URL.createObjectURL(b);
+    const a=document.createElement('a');
+    a.href=u;a.download=`Activity_Report_${(act.sub_activity||'activity').slice(0,40).replace(/[^a-z0-9]/gi,'_')}.html`;
+    document.body.appendChild(a);a.click();document.body.removeChild(a);URL.revokeObjectURL(u);
+}
+
 function ReportActivity({act,user,notify,onDone}) {
     const routine = isRoutine(act);
-    const readOnly=act.verification_status==='submitted'||act.verification_status==='verified';
+    // Submitted/verified reports are read-only until the owner chooses to revise.
+    // Revising resets verification so M&E re-checks the changed submission.
+    const [editing,setEditing]=useState(false);
+    const locked=act.verification_status==='submitted'||act.verification_status==='verified';
+    const readOnly=locked&&!editing;
     const [status,setStatus]=useState(act.current_status||'Not Started');
     const [narrative,setNarrative]=useState(act.narrative||'');
     const [file,setFile]=useState(null);
@@ -1473,7 +2088,8 @@ function ReportActivity({act,user,notify,onDone}) {
             let movUrl=null, movName=null;
             if(file){
                 if(file.size>5*1024*1024){notify('File too large (max 5MB)','error');setBusy(false);return;}
-                movUrl=await toB64(file); movName=file.name;
+                const compressed=await compressImage(file);   // photos shrink ~90% before base64
+                movUrl=await toB64(compressed); movName=file.name;
             }
             if(routine){
                 const {month,year}=currentPeriod();
@@ -1510,9 +2126,20 @@ function ReportActivity({act,user,notify,onDone}) {
                 <p className="text-sm text-red-700">{act.mne_note}</p></div>}
 
         {readOnly&&<div className="bg-blue-50 border-2 border-blue-200 rounded-2xl p-4 mb-6">
-            <p className="text-sm text-blue-700 font-semibold">
-                <i className={`fas ${act.verification_status==='verified'?'fa-check-circle':'fa-hourglass-half'} mr-2`}/>
-                {act.verification_status==='verified'?'Verified by M&E — no further action needed':'Submitted and awaiting M&E verification'}</p></div>}
+            <div className="flex flex-wrap justify-between items-center gap-3">
+                <p className="text-sm text-blue-700 font-semibold">
+                    <i className={`fas ${act.verification_status==='verified'?'fa-check-circle':'fa-hourglass-half'} mr-2`}/>
+                    {act.verification_status==='verified'?'Verified by M&E — no further action needed':'Submitted and awaiting M&E verification'}</p>
+                <div className="flex gap-2">
+                    <button onClick={()=>downloadActivityReport(act)} className="px-4 py-2 bg-white border-2 border-blue-200 text-blue-700 hover:bg-blue-100 rounded-xl font-semibold text-sm"><i className="fas fa-download mr-2"/>Download</button>
+                    <button onClick={()=>setEditing(true)} className="px-4 py-2 bg-amber-100 text-amber-800 hover:bg-amber-200 rounded-xl font-semibold text-sm"><i className="fas fa-pen mr-2"/>Revise</button>
+                </div>
+            </div>
+        </div>}
+
+        {editing&&<div className="bg-amber-50 border-2 border-amber-200 rounded-2xl p-4 mb-6">
+            <p className="text-sm text-amber-800 font-semibold"><i className="fas fa-triangle-exclamation mr-2"/>Revising a {act.verification_status==='verified'?'verified':'submitted'} report — resubmitting sends it back to M&amp;E for re-verification.</p>
+        </div>}
 
         <div className="glass rounded-2xl p-6 mb-6 space-y-5">
             <div>
@@ -1923,7 +2550,7 @@ function SuperDash({user,onLogout,notify}) {
     if(showLeave) return <LeaveAdmin notify={notify} onBack={()=>setShowLeave(false)}/>;
     if(showHR) return <HRAdmin notify={notify} onBack={()=>setShowHR(false)}/>;
     if(showLoginLogs) return <LoginLogs notify={notify} onBack={()=>setShowLoginLogs(false)}/>;
-    if(showMandE) return <MandE user={user} notify={notify} onBack={()=>setShowMandE(false)}/>;
+    if(showMandE) return <MandE user={user} notify={notify} readOnlyView={!user.is_mne} onBack={()=>setShowMandE(false)}/>;
     if(showMyActs) return <MyActivities user={user} notify={notify} onBack={()=>setShowMyActs(false)}/>;
     const pending=allApps.filter(a=>a.status==='pending'),completed=allApps.filter(a=>a.status==='completed'),disputed=allApps.filter(a=>a.employee_review_status==='rejected');const list=tab==='pending'?pending:tab==='completed'?completed:disputed;
     return <div className="min-h-screen p-4 md:p-8"><div className="max-w-6xl mx-auto">
@@ -1943,7 +2570,7 @@ function SuperDash({user,onLogout,notify}) {
           {fn:()=>setShowHR(true),icon:'fa-id-badge',bg:'linear-gradient(135deg,#0ea5e9,#0369a1)',title:'HR Staff Profiles',sub:'Add or edit personnel information',hov:'text-blue-600'},
           {fn:()=>setShowLoginLogs(true),icon:'fa-shield-halved',bg:'linear-gradient(135deg,#dc2626,#991b1b)',title:'Login Activity Logs',sub:'View login history, devices & failed attempts',hov:'text-red-600'},
           {fn:()=>setShowMyActs(true),icon:'fa-list-check',bg:'linear-gradient(135deg,#0891b2,#0e7490)',title:'My Work Plan Activities',sub:'Report on activities assigned to you',hov:'text-cyan-600'},
-          ...(user.is_mne?[{fn:()=>setShowMandE(true),icon:'fa-chart-pie',bg:'linear-gradient(135deg,#0891b2,#0e7490)',title:'Monitoring & Evaluation',sub:'Work plans, activity delivery & completion rates',hov:'text-cyan-600'}]:[]),
+          {fn:()=>setShowMandE(true),icon:'fa-chart-pie',bg:'linear-gradient(135deg,#0891b2,#0e7490)',title:'Monitoring & Evaluation',sub:user.is_mne?'Work plans, data, indicators & completion rates':'View work plans, data and indicator dashboards',hov:'text-cyan-600'},
           {fn:()=>window.open('https://rahamaorg.github.io/rahamafms/','_blank'),icon:'fa-coins',bg:'linear-gradient(135deg,#16a34a,#166534)',title:'Financial Management System',sub:'Budgets, payments & approvals',hov:'text-green-600'}
         ].map((b,i)=><button key={i} onClick={b.fn} className="w-full glass rounded-2xl p-5 mb-4 hover:shadow-xl stat group">
             <div className="flex items-center gap-4">
