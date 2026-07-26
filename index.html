@@ -906,6 +906,14 @@ function WorkPlanActivities({plan,user,notify,onBack}) {
         if(r.ok){notify(ok?'Activity verified':'Sent back to owner');setSel(null);load();}
         else notify('Failed','error');
     };
+    const verifyPeriod=async(pr,ok,note)=>{
+        const body=ok
+            ? {verification_status:'verified',mne_verified_by:user.name,mne_verified_at:new Date().toISOString(),mne_note:note||null}
+            : {verification_status:'rejected',mne_verified_by:user.name,mne_verified_at:new Date().toISOString(),mne_note:note||null};
+        const r=await fetch(`${SB}/rest/v1/activity_period_reports?id=eq.${pr.id}`,{method:'PATCH',headers:HJ,body:JSON.stringify(body)});
+        if(r.ok){notify(ok?'Period verified':'Sent back to owner');setSel(null);load();}
+        else notify('Failed','error');
+    };
 
     const setStatus=async(a,status)=>{
         const r=await fetch(`${SB}/rest/v1/work_plan_activities?id=eq.${a.id}`,{method:'PATCH',headers:HJ,
@@ -976,20 +984,33 @@ function WorkPlanActivities({plan,user,notify,onBack}) {
                         </select>
                     </td>
                     <td className="py-2 px-2">
-                        {a.verification_status==='submitted'
+                        {isRoutine(a) ? (()=>{
+                            const reports = periodReports[a.id]||[];
+                            const latest = reports[0];
+                            if(!latest) return <span className="text-gray-300">—</span>;
+                            if(latest.verification_status==='submitted')
+                                return <button onClick={()=>setSel({...latest,_isPeriod:true,sub_activity:a.sub_activity,assigned_to:a.assigned_to,current_status:latest.current_status})} className="px-3 py-1.5 bg-amber-100 text-amber-700 hover:bg-amber-200 rounded-lg font-bold whitespace-nowrap"><i className="fas fa-clipboard-check mr-1"/>Review {latest.period_month}</button>;
+                            if(latest.verification_status==='verified')
+                                return <span className="text-green-600 font-bold whitespace-nowrap"><i className="fas fa-check-circle mr-1"/>Verified {latest.period_month}</span>;
+                            if(latest.verification_status==='rejected')
+                                return <button onClick={()=>setSel({...latest,_isPeriod:true,sub_activity:a.sub_activity,assigned_to:a.assigned_to,current_status:latest.current_status})} className="px-3 py-1.5 bg-red-100 text-red-700 hover:bg-red-200 rounded-lg font-bold whitespace-nowrap"><i className="fas fa-rotate-left mr-1"/>Returned {latest.period_month}</button>;
+                            return <span className="text-gray-300">—</span>;
+                        })() : (
+                            a.verification_status==='submitted'
                             ? <button onClick={()=>setSel(a)} className="px-3 py-1.5 bg-amber-100 text-amber-700 hover:bg-amber-200 rounded-lg font-bold whitespace-nowrap"><i className="fas fa-clipboard-check mr-1"/>Review</button>
                             : a.verification_status==='verified'
                             ? <span className="text-green-600 font-bold whitespace-nowrap"><i className="fas fa-check-circle mr-1"/>Verified</span>
                             : a.verification_status==='rejected'
                             ? <button onClick={()=>setSel(a)} className="px-3 py-1.5 bg-red-100 text-red-700 hover:bg-red-200 rounded-lg font-bold whitespace-nowrap"><i className="fas fa-rotate-left mr-1"/>Returned</button>
-                            : <span className="text-gray-300">—</span>}
+                            : <span className="text-gray-300">—</span>
+                        )}
                     </td>
                 </tr>)}</tbody>
             </table>
             {list.length===0&&<p className="text-center text-gray-400 py-8 font-semibold">No activities match this filter</p>}
         </div>}
 
-        {sel&&<VerifyModal act={sel} nameByEmail={nameByEmail} onClose={()=>setSel(null)} onDecide={verify}/>}
+{sel&&<VerifyModal act={sel} nameByEmail={nameByEmail} onClose={()=>setSel(null)} onDecide={sel._isPeriod?verifyPeriod:verify}/>}
     </div></div>;
 }
 
