@@ -454,7 +454,86 @@ function parseWorkPlanWorkbook(wb){
     }
     return best;
 }
+function MandEDashboard({plans,counts,acts,notify,onOpenPlan}) {
+    // acts = { [work_plan_id]: [activities] } — passed in from parent, fetched once
+    const projectStats = plans.map(p=>{
+        const list = acts[p.id]||[];
+        const done = list.filter(a=>['Completed','Completed For Period'].includes(a.current_status)&&a.verification_status==='verified').length;
+        const total = list.length||counts[p.id]||0;
+        const score = total?done/total:0;
+        return {...p, total, done, score, grade:wpGrade(score)};
+    });
 
+    const allActs = Object.values(acts).flat();
+    const totalActs = allActs.length;
+    const totalDone = allActs.filter(a=>['Completed','Completed For Period'].includes(a.current_status)&&a.verification_status==='verified').length;
+    const overallScore = totalActs?totalDone/totalActs:0;
+    const overallGrade = wpGrade(overallScore);
+    const awaiting = allActs.filter(a=>a.verification_status==='submitted').length;
+
+    // Status breakdown for donut
+    const statusCounts = {};
+    allActs.forEach(a=>{const s=a.current_status||'Not Started';statusCounts[s]=(statusCounts[s]||0)+1;});
+    const statusEntries = WP_STATUSES.filter(s=>statusCounts[s]).map(s=>({status:s,count:statusCounts[s],color:wpStatusColour(s)}));
+
+    // Build donut arc segments
+    const R=70, C=2*Math.PI*R;
+    let acc=0;
+    const arcs = statusEntries.map(e=>{
+        const frac = totalActs? e.count/totalActs : 0;
+        const dash = frac*C;
+        const arc = {...e, dashArray:`${dash} ${C-dash}`, dashOffset: -acc*C};
+        acc += frac;
+        return arc;
+    });
+
+    return <div className="space-y-6">
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            <div className="glass rounded-xl p-5 stat"><p className="text-xs font-bold text-gray-400 uppercase">Projects</p><p className="text-3xl font-extrabold text-gray-800 mt-1">{plans.length}</p></div>
+            <div className="glass rounded-xl p-5 stat"><p className="text-xs font-bold text-gray-400 uppercase">Total Activities</p><p className="text-3xl font-extrabold text-gray-800 mt-1">{totalActs}</p></div>
+            <div className="glass rounded-xl p-5 stat"><p className="text-xs font-bold text-gray-400 uppercase">Awaiting Verification</p><p className="text-3xl font-extrabold text-amber-600 mt-1">{awaiting}</p></div>
+            <div className="glass rounded-xl p-5 stat"><p className="text-xs font-bold text-gray-400 uppercase">Overall Grade</p>
+                <p className="text-lg font-extrabold mt-2" style={{color:overallGrade.colour}}>{overallGrade.label}</p>
+                <p className="text-xs text-gray-400">{Math.round(overallScore*100)}% complete</p></div>
+        </div>
+
+        <div className="grid md:grid-cols-3 gap-6">
+            {/* Donut chart */}
+            <div className="glass rounded-2xl p-6 md:col-span-1 flex flex-col items-center">
+                <h3 className="font-bold text-gray-800 mb-4 self-start"><i className="fas fa-chart-pie text-cyan-600 mr-2"/>Activity Status</h3>
+                <svg viewBox="0 0 180 180" width="180" height="180">
+                    <circle cx="90" cy="90" r={R} fill="none" stroke="#f3f4f6" strokeWidth="24"/>
+                    {arcs.map((a,i)=><circle key={i} cx="90" cy="90" r={R} fill="none" stroke={a.color} strokeWidth="24"
+                        strokeDasharray={a.dashArray} strokeDashoffset={a.dashOffset} transform="rotate(-90 90 90)"/>)}
+                    <text x="90" y="85" textAnchor="middle" fontSize="24" fontWeight="800" fill="#1f2937">{Math.round(overallScore*100)}%</text>
+                    <text x="90" y="105" textAnchor="middle" fontSize="10" fill="#9ca3af">VERIFIED</text>
+                </svg>
+                <div className="grid grid-cols-1 gap-1.5 mt-4 w-full">
+                    {statusEntries.map((e,i)=><div key={i} className="flex items-center justify-between text-xs">
+                        <span className="flex items-center gap-2"><span className="w-2.5 h-2.5 rounded-full" style={{background:e.color}}/>{e.status}</span>
+                        <span className="font-bold text-gray-600">{e.count}</span>
+                    </div>)}
+                </div>
+            </div>
+
+            {/* Per-project completion bars */}
+            <div className="glass rounded-2xl p-6 md:col-span-2">
+                <h3 className="font-bold text-gray-800 mb-4"><i className="fas fa-chart-bar text-indigo-600 mr-2"/>Completion by Project</h3>
+                <div className="space-y-4">
+                    {projectStats.map(p=><div key={p.id} className="cursor-pointer" onClick={()=>onOpenPlan(p)}>
+                        <div className="flex justify-between items-center mb-1">
+                            <span className="text-sm font-semibold text-gray-700 truncate">{p.plan_name}</span>
+                            <span className="text-xs font-bold" style={{color:p.grade.colour}}>{Math.round(p.score*100)}% · {p.grade.label}</span>
+                        </div>
+                        <div className="cbar"><div className="cbar-fill" style={{width:`${p.score*100}%`,background:p.grade.colour}}/></div>
+                        <p className="text-xs text-gray-400 mt-1">{p.done}/{p.total} activities verified</p>
+                    </div>)}
+                    {projectStats.length===0&&<p className="text-center text-gray-400 py-6">No work plans yet</p>}
+                </div>
+            </div>
+        </div>
+    </div>;
+}
 function MandE({user,notify,onBack}) {
     const [view,setView]=useState('register');
     const [plans,setPlans]=useState([]);
@@ -462,6 +541,7 @@ function MandE({user,notify,onBack}) {
     const [err,setErr]=useState(null);
     const [counts,setCounts]=useState({});
     const [selPlan,setSelPlan]=useState(null);
+    const [actsByPlan,setActsByPlan]=useState({}); 
 
     const load=async()=>{setLoading(true);setErr(null);
         try{
@@ -474,6 +554,9 @@ function MandE({user,notify,onBack}) {
             const ad=await a.json();
             const c={};(Array.isArray(ad)?ad:[]).forEach(x=>{c[x.work_plan_id]=(c[x.work_plan_id]||0)+1;});
             setCounts(c);
+            const allActRows=await fetch(`${SB}/rest/v1/work_plan_activities?select=*`,{headers:H}).then(r=>r.json());
+            const grouped={};(Array.isArray(allActRows)?allActRows:[]).forEach(x=>{(grouped[x.work_plan_id]=grouped[x.work_plan_id]||[]).push(x);});
+            setActsByPlan(grouped);
         }catch(e){setErr(e.message);}
         setLoading(false);};
     useEffect(()=>{load();},[]);
@@ -505,7 +588,8 @@ function MandE({user,notify,onBack}) {
         {err&&<div className="bg-amber-50 border-2 border-amber-200 rounded-2xl p-5 mb-6">
             <h3 className="font-bold text-amber-800 mb-1"><i className="fas fa-triangle-exclamation mr-2"/>Setup required</h3>
             <p className="text-sm text-amber-700">{err}</p></div>}
-
+{!loading && <MandEDashboard plans={plans} counts={counts} acts={actsByPlan} notify={notify}
+            onOpenPlan={(p)=>{setSelPlan(p);setView('activities');}}/>}
         {loading?<div className="glass rounded-2xl p-12 text-center text-gray-400"><i className="fas fa-spinner fa-spin text-2xl"/></div>
         :plans.length===0&&!err?<div className="glass rounded-2xl p-12 text-center text-gray-400">
             <i className="fas fa-clipboard-list text-4xl mb-3"/><p className="font-semibold">No work plans yet</p>
