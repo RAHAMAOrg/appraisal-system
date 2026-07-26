@@ -870,16 +870,39 @@ function MEIndicators({tool,indicators,rows,user,notify,onSaved,readOnlyView}) {
     const numCols=cols.filter(c=>c.kind==='numeric');
     const catCols=cols.filter(c=>c.kind==='category');
 
-    const blank={indicator_name:'',source_column:'',aggregation:'sum',target:'',unit:'',filter_column:'',filter_value:'',chart_type:'card',chart_group:''};
+    const blank={indicator_name:'',source_columns:[],aggregation:'sum',target:'',unit:'',filter_column:'',filter_value:'',chart_type:'card',chart_group:''};
 
-    const save=async()=>{
-        if(!form.indicator_name.trim()){notify('Give the indicator a name','error');return;}
-        if(form.aggregation!=='count'&&!form.source_column){notify('Choose the source column','error');return;}
-        const payload={tool_id:tool.id,indicator_name:form.indicator_name.trim(),source_column:form.source_column||null,
-            aggregation:form.aggregation,target:form.target?Number(form.target):null,unit:form.unit||null,
+   const save=async()=>{
+        const cols=form.source_columns||[];
+        const isMulti=!form.id && form.aggregation!=='count' && cols.length>1;
+
+        if(form.aggregation!=='count'&&cols.length===0){notify('Choose at least one source column','error');return;}
+        if(!isMulti&&!form.indicator_name.trim()){notify('Give the indicator a name','error');return;}
+        if(isMulti&&!form.indicator_name.trim()){notify('Give the comparison a group name','error');return;}
+
+        const base={tool_id:tool.id,aggregation:form.aggregation,target:form.target?Number(form.target):null,unit:form.unit||null,
             filter_column:form.filter_column||null,filter_value:form.filter_value||null,
-            chart_type:form.chart_type||'card',chart_group:form.chart_group?.trim()||null,
-            sort_order:form.sort_order??indicators.length,updated_by:user.name};
+            chart_type:isMulti?(form.chart_type==='card'?'bar':form.chart_type):(form.chart_type||'card'),
+            updated_by:user.name};
+
+        if(isMulti){
+            // One indicator per selected column, all sharing a chart group so they render together
+            const groupName=form.indicator_name.trim();
+            const payloads=cols.map((c,idx)=>({...base,indicator_name:c,source_column:c,
+                chart_group:groupName,sort_order:indicators.length+idx}));
+            let okCount=0;
+            for(const p of payloads){
+                const r=await fetch(`${SB}/rest/v1/me_indicators`,{method:'POST',headers:HJ,body:JSON.stringify(p)});
+                if(r.ok) okCount++;
+            }
+            if(okCount===payloads.length){notify(`${okCount} indicators created for comparison`);setForm(null);onSaved();}
+            else notify(`Only ${okCount} of ${payloads.length} saved — check for issues`,'error');
+            return;
+        }
+
+        const payload={...base,indicator_name:form.indicator_name.trim(),
+            source_column:cols[0]||null,chart_group:form.chart_group?.trim()||null,
+            sort_order:form.sort_order??indicators.length};
         const r=form.id
             ? await fetch(`${SB}/rest/v1/me_indicators?id=eq.${form.id}`,{method:'PATCH',headers:HJ,body:JSON.stringify(payload)})
             : await fetch(`${SB}/rest/v1/me_indicators`,{method:'POST',headers:HJ,body:JSON.stringify(payload)});
@@ -901,17 +924,31 @@ function MEIndicators({tool,indicators,rows,user,notify,onSaved,readOnlyView}) {
         {form&&<div className="glass rounded-2xl p-6">
             <h3 className="font-bold text-gray-800 mb-4">{form.id?'Edit':'New'} Indicator</h3>
             <div className="grid md:grid-cols-2 gap-4 mb-4">
-                <div><label className="block text-xs font-bold text-gray-500 uppercase mb-2">Indicator Name *</label>
-                    <input value={form.indicator_name} onChange={e=>setForm({...form,indicator_name:e.target.value})} placeholder="e.g. Women Reached" className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl"/></div>
+                <div><label className="block text-xs font-bold text-gray-500 uppercase mb-2">
+                        {!form.id&&(form.source_columns||[]).length>1?'Comparison Group Name *':'Indicator Name *'}</label>
+                    <input value={form.indicator_name} onChange={e=>setForm({...form,indicator_name:e.target.value})}
+                        placeholder={!form.id&&(form.source_columns||[]).length>1?'e.g. Malnutrition Referrals':'e.g. Women Reached'}
+                        className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl"/>
+                    {!form.id&&(form.source_columns||[]).length>1&&<p className="text-xs text-gray-400 mt-1">Each selected column becomes its own indicator, named after the column, grouped under this name.</p>}</div>
                 <div><label className="block text-xs font-bold text-gray-500 uppercase mb-2">Aggregation *</label>
                     <select value={form.aggregation} onChange={e=>setForm({...form,aggregation:e.target.value})} className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl">
                         {ME_AGGS.map(a=><option key={a.v} value={a.v}>{a.l}</option>)}</select></div>
-                <div className="md:col-span-2"><label className="block text-xs font-bold text-gray-500 uppercase mb-2">Source Column {form.aggregation!=='count'&&'*'}</label>
-                    <select value={form.source_column} onChange={e=>setForm({...form,source_column:e.target.value})} className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl">
-                        <option value="">— Select column —</option>
-                        <optgroup label="Numeric columns">{numCols.map(c=><option key={c.name} value={c.name}>{c.name}</option>)}</optgroup>
-                        <optgroup label="Other columns">{cols.filter(c=>c.kind!=='numeric').map(c=><option key={c.name} value={c.name}>{c.name}</option>)}</optgroup>
-                    </select></div>
+                <div className="md:col-span-2">
+                    <label className="block text-xs font-bold text-gray-500 uppercase mb-2">Source Column{form.aggregation!=='count'&&' *'}</label>
+                    <p className="text-xs text-gray-400 mb-2">Select one column for a single indicator, or several to compare them (e.g. SAM vs MAM) — each becomes its own indicator, grouped into one chart.</p>
+                    <div className="border-2 border-gray-200 rounded-xl p-3 max-h-48 overflow-auto space-y-1">
+                        {cols.map(c=><label key={c.name} className="flex items-center gap-2 py-1 px-2 hover:bg-gray-50 rounded cursor-pointer">
+                            <input type="checkbox" disabled={!!form.id} checked={(form.source_columns||[]).includes(c.name)}
+                                onChange={e=>{
+                                    const cur=form.source_columns||[];
+                                    setForm({...form,source_columns:e.target.checked?[...cur,c.name]:cur.filter(x=>x!==c.name)});
+                                }}/>
+                            <span className="flex-1 text-sm text-gray-700">{c.name}</span>
+                            <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${c.kind==='numeric'?'bg-cyan-100 text-cyan-700':'bg-gray-100 text-gray-500'}`}>{c.kind}</span>
+                        </label>)}
+                    </div>
+                    {form.id&&<p className="text-xs text-amber-600 mt-1"><i className="fas fa-lock mr-1"/>Column selection is fixed once an indicator is saved — delete and recreate to change it.</p>}
+                </div>
                 <div><label className="block text-xs font-bold text-gray-500 uppercase mb-2">Target (optional)</label>
                     <input type="number" value={form.target} onChange={e=>setForm({...form,target:e.target.value})} placeholder="e.g. 5000" className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl"/></div>
                 <div><label className="block text-xs font-bold text-gray-500 uppercase mb-2">Unit (optional)</label>
@@ -922,9 +959,10 @@ function MEIndicators({tool,indicators,rows,user,notify,onSaved,readOnlyView}) {
                         <option value="donut">Donut — part of a whole</option>
                         <option value="bar">Bar — compare values</option>
                     </select></div>
+               {!(!form.id&&(form.source_columns||[]).length>1)&&
                 <div><label className="block text-xs font-bold text-gray-500 uppercase mb-2">Chart Group (donut/bar only)</label>
                     <input value={form.chart_group||''} onChange={e=>setForm({...form,chart_group:e.target.value})} placeholder="e.g. Malnutrition Referrals" className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl"/>
-                    <p className="text-xs text-gray-400 mt-1">Indicators sharing a group name are drawn together as one chart.</p></div>
+                    <p className="text-xs text-gray-400 mt-1">Indicators sharing a group name are drawn together as one chart.</p></div>}
                 <div><label className="block text-xs font-bold text-gray-500 uppercase mb-2">Only count rows where (optional)</label>
                     <select value={form.filter_column} onChange={e=>setForm({...form,filter_column:e.target.value,filter_value:''})} className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl">
                         <option value="">— No filter —</option>
@@ -934,9 +972,13 @@ function MEIndicators({tool,indicators,rows,user,notify,onSaved,readOnlyView}) {
                         <option value="">—</option>
                         {form.filter_column&&[...new Set(rows.map(r=>String(r[form.filter_column]??'')).filter(Boolean))].sort().map(v=><option key={v} value={v}>{v}</option>)}</select></div>
             </div>
-            {form.indicator_name&&(form.source_column||form.aggregation==='count')&&
-                <div className="bg-cyan-50 border border-cyan-200 rounded-xl p-3 mb-4">
-                    <p className="text-sm text-cyan-800"><i className="fas fa-calculator mr-2"/>Preview on current data: <strong>{computeIndicator(form,rows).toLocaleString()}</strong></p></div>}
+            {form.indicator_name&&((form.source_columns||[]).length>0||form.aggregation==='count')&&
+                <div className="bg-cyan-50 border border-cyan-200 rounded-xl p-3 mb-4 space-y-1">
+                    {(form.source_columns.length<=1?[form.source_columns[0]||null]:form.source_columns).map(c=>
+                        <p key={c||'count'} className="text-sm text-cyan-800"><i className="fas fa-calculator mr-2"/>
+                            {form.source_columns.length>1&&<span className="font-semibold">{c}: </span>}
+                            Preview on current data: <strong>{computeIndicator({...form,source_column:c},rows).toLocaleString()}</strong></p>)}
+                </div>}
             <div className="flex gap-3">
                 <button onClick={()=>setForm(null)} className="flex-1 bg-gray-100 py-3 rounded-xl font-bold hover:bg-gray-200">Cancel</button>
                 <button onClick={save} className="flex-1 btn-green text-white py-3 rounded-xl font-bold">Save Indicator</button>
@@ -952,7 +994,7 @@ function MEIndicators({tool,indicators,rows,user,notify,onSaved,readOnlyView}) {
             <div className="flex items-center gap-3">
                 <span className="text-2xl font-extrabold text-cyan-700">{computeIndicator(i,rows).toLocaleString()}</span>
                 {!readOnlyView&&<>
-                   <button onClick={()=>setForm({...i,target:i.target??'',unit:i.unit??'',filter_column:i.filter_column??'',filter_value:i.filter_value??'',source_column:i.source_column??'',chart_type:i.chart_type??'card',chart_group:i.chart_group??''})} className="px-3 py-2 bg-gray-100 hover:bg-gray-200 rounded-lg text-xs font-bold"><i className="fas fa-pen"/></button>
+                 <button onClick={()=>setForm({...i,target:i.target??'',unit:i.unit??'',filter_column:i.filter_column??'',filter_value:i.filter_value??'',source_columns:i.source_column?[i.source_column]:[],chart_type:i.chart_type??'card',chart_group:i.chart_group??''})} className="px-3 py-2 bg-gray-100 hover:bg-gray-200 rounded-lg text-xs font-bold"><i className="fas fa-pen"/></button>
                     <button onClick={()=>del(i)} className="px-3 py-2 bg-red-50 text-red-600 hover:bg-red-100 rounded-lg text-xs font-bold"><i className="fas fa-trash"/></button>
                 </>}
             </div>
