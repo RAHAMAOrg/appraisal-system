@@ -1100,6 +1100,14 @@ function MyActivities({user,notify,onBack}) {
     const submitted=acts.filter(a=>a.verification_status==='submitted').length;
     const verified=acts.filter(a=>a.verification_status==='verified').length;
 
+    const overdueRoutine = acts.filter(a=>isRoutine(a) && (!periodReports[a.id] || periodReports[a.id].verification_status==='rejected'));
+    const sortedActs = [...acts].sort((a,b)=>{
+        const aOver = isRoutine(a) && !periodReports[a.id];
+        const bOver = isRoutine(b) && !periodReports[b.id];
+        if(aOver && !bOver) return -1;
+        if(!aOver && bOver) return 1;
+        return 0;
+    });
     const vBadge=a=>{
         const v=a.verification_status;
         if(v==='verified')  return <span className="px-2 py-1 rounded-full text-xs font-bold bg-green-100 text-green-700"><i className="fas fa-check-circle mr-1"/>Verified</span>;
@@ -1121,11 +1129,19 @@ function MyActivities({user,notify,onBack}) {
             <div className="glass rounded-xl p-5 stat"><p className="text-xs font-bold text-gray-400 uppercase">Verified</p><p className="text-3xl font-extrabold text-green-600 mt-1">{verified}</p></div>
         </div>
 
+        {!loading && overdueRoutine.length>0 && <div className="bg-amber-50 border-2 border-amber-200 rounded-2xl p-5 mb-6">
+            <div className="flex items-start gap-3">
+                <div className="w-10 h-10 bg-amber-100 rounded-xl flex items-center justify-center flex-shrink-0"><i className="fas fa-bell text-amber-600"/></div>
+                <div><h3 className="font-bold text-amber-800">Recurring Reports Due</h3>
+                    <p className="text-sm text-amber-700 mt-1">You have {overdueRoutine.length} recurring activit{overdueRoutine.length===1?'y':'ies'} to report on for {currentPeriod().month} {currentPeriod().year}.</p></div>
+            </div>
+        </div>}
+
         {loading?<div className="glass rounded-2xl p-12 text-center text-gray-400"><i className="fas fa-spinner fa-spin text-2xl"/></div>
         :acts.length===0?<div className="glass rounded-2xl p-12 text-center text-gray-400">
             <i className="fas fa-clipboard-list text-4xl mb-3"/><p className="font-semibold">No activities assigned to you</p>
             <p className="text-sm mt-1">M&amp;E will assign work plan activities to you.</p></div>
-        :<div className="space-y-3">{acts.map(a=>{
+        :<div className="space-y-3">{sortedActs.map(a=>{
             const routine = isRoutine(a);
             const pr = routine ? periodReports[a.id] : null;
             const effStatus = routine ? (pr?.verification_status||'not_submitted') : a.verification_status;
