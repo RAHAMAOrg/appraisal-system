@@ -770,6 +770,9 @@ function GroupedChart({title, type, items}) {
         <div style={{height:'260px'}}><canvas ref={canvasRef}/></div>
     </div>;
 }
+
+/* RAHAMA brand palette for charts */
+const ME_GREEN='#285B3C', ME_GOLD='#C9A227';
 function periodProgress(tool){
     if(!tool||!tool.period_start||!tool.period_end) return null;
     const s=new Date(tool.period_start).getTime(), e=new Date(tool.period_end).getTime(), n=Date.now();
