@@ -478,7 +478,7 @@ function parseWorkPlanWorkbook(wb){
     }
     return best;
 }
-function MandEDashboard({plans,counts,acts,notify,onOpenPlan,onOpenKobo}) {
+function MandEDashboard({plans,counts,acts,notify,onOpenPlan}) {
     // acts = { [work_plan_id]: [activities] } — passed in from parent, fetched once
     const projectStats = plans.map(p=>{
         const list = acts[p.id]||[];
@@ -547,10 +547,7 @@ function MandEDashboard({plans,counts,acts,notify,onOpenPlan,onOpenKobo}) {
                    {projectStats.map(p=><div key={p.id}>
                         <div className="flex justify-between items-center mb-1">
                             <span className="text-sm font-semibold text-gray-700 truncate cursor-pointer" onClick={()=>onOpenPlan(p)}>{p.plan_name}</span>
-                            <span className="flex items-center gap-2">
-                                <span className="text-xs font-bold" style={{color:p.grade.colour}}>{Math.round(p.score*100)}% · {p.grade.label}</span>
-                                <button onClick={()=>onOpenKobo(p)} className="text-xs font-bold px-2 py-1 rounded-lg bg-cyan-50 text-cyan-700 hover:bg-cyan-100"><i className="fas fa-satellite-dish mr-1"/>Kobo Data</button>
-                            </span>
+                            <span className="text-xs font-bold" style={{color:p.grade.colour}}>{Math.round(p.score*100)}% · {p.grade.label}</span>
                         </div>
                         <div className="cbar cursor-pointer" onClick={()=>onOpenPlan(p)}><div className="cbar-fill" style={{width:`${p.score*100}%`,background:p.grade.colour}}/></div>
                         <p className="text-xs text-gray-400 mt-1">{p.done}/{p.total} activities verified</p>
@@ -1164,7 +1161,6 @@ function MandE({user,notify,onBack,readOnlyView}) {
     const [counts,setCounts]=useState({});
     const [selPlan,setSelPlan]=useState(null);
     const [actsByPlan,setActsByPlan]=useState({});
-    const [koboPlan,setKoboPlan]=useState(null);
 
     const load=async()=>{setLoading(true);setErr(null);
         try{
@@ -1185,9 +1181,8 @@ function MandE({user,notify,onBack,readOnlyView}) {
     useEffect(()=>{load();},[]);
 
   if(view==='import')   return <WorkPlanImport user={user} notify={notify} onDone={()=>{setView('register');load();}}/>;
-    if(view==='activities')return <WorkPlanActivities plan={selPlan} user={user} notify={notify} readOnlyView={readOnlyView} onBack={()=>{setView('register');load();}}/>;
+   if(view==='activities')return <WorkPlanActivities plan={selPlan} user={user} notify={notify} readOnlyView={readOnlyView} onBack={()=>{setView('register');load();}}/>;
     if(view==='assign')   return <WorkPlanAssign plan={selPlan} user={user} notify={notify} onDone={()=>{setView('register');load();}}/>;
-    if(view==='kobo')     return <KoboDashboard plan={koboPlan} user={user} notify={notify} onBack={()=>setView('register')}/>;
     if(view==='medata')   return <MEData user={user} notify={notify} readOnlyView={readOnlyView} onBack={()=>setView('register')}/>;
     const publish=async(p)=>{
         if(!confirm('Publish this work plan?\n\nIt becomes the approved baseline that delivery is measured against.')) return;
@@ -1205,10 +1200,10 @@ function MandE({user,notify,onBack,readOnlyView}) {
             <div className="flex flex-wrap justify-between items-center gap-4">
                 <div><h1 className="text-2xl md:text-3xl font-extrabold text-gray-800">Monitoring &amp; Evaluation</h1>
                     <p className="text-gray-500 mt-1">Project work plans and delivery tracking</p></div>
-                <div className="flex flex-wrap gap-2">
-                    <button onClick={()=>setView('medata')} className="px-5 py-3 rounded-xl font-bold text-sm bg-cyan-600 hover:bg-cyan-700 text-white"><i className="fas fa-chart-line mr-2"/>Data &amp; Indicators</button>
-                    {!readOnlyView&&<button onClick={()=>setView('import')} className="btn-green text-white px-5 py-3 rounded-xl font-bold text-sm"><i className="fas fa-upload mr-2"/>Import Work Plan</button>}
-                </div>
+               <div className="flex flex-wrap gap-2">
+    <button onClick={()=>setView('medata')} className="px-5 py-3 rounded-xl font-bold text-sm" style={{background:'linear-gradient(135deg,#0891b2,#0e7490)',color:'#fff'}}><i className="fas fa-chart-line mr-2"/>Data &amp; Indicators</button>
+    {!readOnlyView&&<button onClick={()=>setView('import')} className="btn-green text-white px-5 py-3 rounded-xl font-bold text-sm"><i className="fas fa-upload mr-2"/>Import Work Plan</button>}
+</div>
             </div>
         </div>
 
@@ -1216,8 +1211,7 @@ function MandE({user,notify,onBack,readOnlyView}) {
             <h3 className="font-bold text-amber-800 mb-1"><i className="fas fa-triangle-exclamation mr-2"/>Setup required</h3>
             <p className="text-sm text-amber-700">{err}</p></div>}
 {!loading && <MandEDashboard plans={plans} counts={counts} acts={actsByPlan} notify={notify}
-            onOpenPlan={(p)=>{setSelPlan(p);setView('activities');}}
-            onOpenKobo={(p)=>{setKoboPlan(p);setView('kobo');}}/>}
+            onOpenPlan={(p)=>{setSelPlan(p);setView('activities');}}/>}
         {loading?<div className="glass rounded-2xl p-12 text-center text-gray-400"><i className="fas fa-spinner fa-spin text-2xl"/></div>
         :plans.length===0&&!err?<div className="glass rounded-2xl p-12 text-center text-gray-400">
             <i className="fas fa-clipboard-list text-4xl mb-3"/><p className="font-semibold">No work plans yet</p>
@@ -1233,273 +1227,12 @@ function MandE({user,notify,onBack,readOnlyView}) {
                         <p className="text-xs text-gray-400 mt-1">Created by {p.created_by||'—'}{p.start_date?` · ${p.start_date} → ${p.end_date||'—'}`:''}</p>
                     </div>
                     <div className="flex flex-wrap gap-2">
-                        <button onClick={()=>{setSelPlan(p);setView('activities');}} className="px-4 py-2 bg-blue-50 text-blue-700 hover:bg-blue-100 rounded-xl font-semibold text-sm"><i className="fas fa-list mr-2"/>Activities</button>
+                     <button onClick={()=>{setSelPlan(p);setView('activities');}} className="px-4 py-2 bg-blue-50 text-blue-700 hover:bg-blue-100 rounded-xl font-semibold text-sm"><i className="fas fa-list mr-2"/>Activities</button>
                         {!readOnlyView&&<button onClick={()=>{setSelPlan(p);setView('assign');}} className="px-4 py-2 bg-indigo-50 text-indigo-700 hover:bg-indigo-100 rounded-xl font-semibold text-sm"><i className="fas fa-users mr-2"/>Assign</button>}
-                        <button onClick={()=>{setKoboPlan(p);setView('kobo');}} className="px-4 py-2 bg-cyan-50 text-cyan-700 hover:bg-cyan-100 rounded-xl font-semibold text-sm"><i className="fas fa-satellite-dish mr-2"/>Kobo Data</button>
                         {!readOnlyView&&(p.status||'draft')==='draft'&&<button onClick={()=>publish(p)} className="btn-green text-white px-4 py-2 rounded-xl font-semibold text-sm"><i className="fas fa-check mr-2"/>Publish</button>}
                     </div>
                 </div>
             </div>)}</div>}
-    </div></div>;
-}
-/* ==================== KOBOTOOLBOX DATA COLLECTION DASHBOARD ====================
-   Each work plan can be linked to a KoboToolbox form (asset). Connection
-   details (server, API token, asset UID) are entered per-project in-app and
-   stored in the kobo_connections table — never hardcoded, since different
-   projects may use different Kobo accounts. Submissions are fetched live
-   from the Kobo API v2 (never cached in Supabase) and summarised into a
-   mini dashboard: monthly trend, validation-status breakdown, and a
-   filterable submissions table.
-================================================================= */
-const KOBO_SERVERS = [
-    {label:'Global (kf.kobotoolbox.org)', value:'https://kf.kobotoolbox.org'},
-    {label:'EU (eu.kobotoolbox.org)', value:'https://eu.kobotoolbox.org'}
-];
-const koboValidationLabel = v=>{
-    const m={
-        'validation_status_approved':{label:'Approved',color:'#059669'},
-        'validation_status_not_approved':{label:'Not Approved',color:'#dc2626'},
-        'validation_status_on_hold':{label:'On Hold',color:'#d97706'},
-        'validation_status_not_reviewed':{label:'Not Reviewed',color:'#6b7280'}
-    };
-    return m[v]||{label:'Not Reviewed',color:'#6b7280'};
-};
-const koboMonthKey = iso=>{ if(!iso) return null; const d=new Date(iso); return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`; };
-const koboMonthLabel = key=>{ const [y,m]=key.split('-'); return new Date(Number(y),Number(m)-1,1).toLocaleDateString([],{month:'short',year:'numeric'}); };
-
-function KoboConnectModal({workPlan,existing,user,notify,onClose,onSaved}) {
-    const [server,setServer]=useState(existing?.server_url||KOBO_SERVERS[0].value);
-    const [token,setToken]=useState(existing?.api_token||'');
-    const [assetUid,setAssetUid]=useState(existing?.asset_uid||'');
-    const [formName,setFormName]=useState(existing?.form_name||'');
-    const [busy,setBusy]=useState(false);
-    const [testResult,setTestResult]=useState(null);
-
-    const test=async()=>{
-        if(!token.trim()||!assetUid.trim()){notify('Enter the API token and Form (Asset) UID first','error');return;}
-        setTestResult({checking:true});
-        try{
-            const r=await fetch(`${server}/api/v2/assets/${assetUid.trim()}/data.json?limit=1`,{headers:{'Authorization':`Token ${token.trim()}`}});
-            if(!r.ok){setTestResult({ok:false,msg:`Server responded ${r.status} — check the token and UID`});return;}
-            const d=await r.json();
-            setTestResult({ok:true,msg:`Connected — ${d.count!=null?d.count:'?'} submission(s) found`});
-        }catch(e){
-            setTestResult({ok:false,msg:'Could not reach the Kobo server (network/CORS error). If this persists, ask an admin to confirm the server allows browser access.'});
-        }
-    };
-
-    const save=async()=>{
-        if(!token.trim()||!assetUid.trim()){notify('API token and Form (Asset) UID are required','error');return;}
-        setBusy(true);
-        try{
-            const payload={work_plan_id:workPlan.id,project_code:workPlan.project_code,server_url:server,
-                api_token:token.trim(),asset_uid:assetUid.trim(),form_name:formName.trim()||null,updated_by:user.name};
-            let r;
-            if(existing){
-                r=await fetch(`${SB}/rest/v1/kobo_connections?id=eq.${existing.id}`,{method:'PATCH',headers:HJ,body:JSON.stringify(payload)});
-            }else{
-                r=await fetch(`${SB}/rest/v1/kobo_connections`,{method:'POST',headers:HJ,body:JSON.stringify(payload)});
-            }
-            if(!r.ok) throw new Error(await r.text());
-            notify('Kobo connection saved');
-            onSaved();
-        }catch(e){
-            notify('Could not save — has the kobo_connections table been created? See setup notes.','error');
-        }
-        setBusy(false);
-    };
-
-    return <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50 overflow-auto">
-        <div className="bg-white rounded-2xl p-6 max-w-lg w-full animate-in my-8">
-            <div className="flex justify-between items-start mb-5">
-                <div><h2 className="text-xl font-bold text-gray-800"><i className="fas fa-satellite-dish text-cyan-600 mr-2"/>Connect KoboToolbox</h2>
-                    <p className="text-sm text-gray-500 mt-1">{workPlan.plan_name}</p></div>
-                <button onClick={onClose} className="w-8 h-8 rounded-full bg-gray-100 hover:bg-gray-200 flex items-center justify-center flex-shrink-0"><i className="fas fa-times text-gray-500"/></button>
-            </div>
-            <div className="space-y-4">
-                <div><label className="block text-xs font-bold text-gray-500 uppercase mb-2">Kobo Server</label>
-                    <select value={server} onChange={e=>setServer(e.target.value)} className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl">
-                        {KOBO_SERVERS.map(s=><option key={s.value} value={s.value}>{s.label}</option>)}
-                    </select></div>
-                <div><label className="block text-xs font-bold text-gray-500 uppercase mb-2">Form Name (optional label)</label>
-                    <input value={formName} onChange={e=>setFormName(e.target.value)} className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl" placeholder="e.g. ECHO HIP Household Survey"/></div>
-                <div><label className="block text-xs font-bold text-gray-500 uppercase mb-2">Form (Asset) UID *</label>
-                    <input value={assetUid} onChange={e=>setAssetUid(e.target.value)} className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl font-mono text-sm" placeholder="e.g. aXXXXXXXXXXXXXXXXXXXXXX"/>
-                    <p className="text-xs text-gray-400 mt-1">Found in the Kobo form URL: .../#/forms/<b>THIS_PART</b>/summary</p></div>
-                <div><label className="block text-xs font-bold text-gray-500 uppercase mb-2">API Token *</label>
-                    <input type="password" value={token} onChange={e=>setToken(e.target.value)} className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl font-mono text-sm" placeholder="Your Kobo API token"/>
-                    <p className="text-xs text-gray-400 mt-1">Account Settings → API Token, on the Kobo server above. Stored in your database — only share this tool with people you'd trust with the data.</p></div>
-                {testResult&&<div className={`rounded-xl p-3 text-sm ${testResult.checking?'bg-gray-50 text-gray-500':testResult.ok?'bg-green-50 text-green-700':'bg-red-50 text-red-700'}`}>
-                    {testResult.checking?<><i className="fas fa-spinner fa-spin mr-2"/>Testing connection...</>:<><i className={`fas ${testResult.ok?'fa-check-circle':'fa-triangle-exclamation'} mr-2`}/>{testResult.msg}</>}
-                </div>}
-            </div>
-            <div className="flex gap-3 mt-6">
-                <button onClick={test} className="flex-1 bg-gray-100 hover:bg-gray-200 py-3 rounded-xl font-semibold text-sm"><i className="fas fa-plug mr-2"/>Test Connection</button>
-                <button onClick={save} disabled={busy} className="flex-1 btn-green text-white py-3 rounded-xl font-semibold text-sm disabled:opacity-50">{busy?'Saving...':'Save Connection'}</button>
-            </div>
-        </div>
-    </div>;
-}
-
-function KoboDashboard({plan,user,notify,onBack}) {
-    const [conn,setConn]=useState(undefined); // undefined = loading, null = none found
-    const [showConnect,setShowConnect]=useState(false);
-    const [submissions,setSubmissions]=useState(null);
-    const [loading,setLoading]=useState(false);
-    const [error,setError]=useState(null);
-    const [monthFilter,setMonthFilter]=useState('all');
-    const [statusFilter,setStatusFilter]=useState('all');
-
-    const loadConn=async()=>{
-        try{
-            const r=await fetch(`${SB}/rest/v1/kobo_connections?work_plan_id=eq.${plan.id}`,{headers:H});
-            const d=await r.json();
-            setConn(Array.isArray(d)&&d.length?d[0]:null);
-        }catch(e){setConn(null);}
-    };
-    useEffect(()=>{loadConn();},[plan.id]);
-
-    const loadSubmissions=async(c)=>{
-        setLoading(true);setError(null);
-        try{
-            const r=await fetch(`${c.server_url}/api/v2/assets/${c.asset_uid}/data.json?limit=5000`,{headers:{'Authorization':`Token ${c.api_token}`}});
-            if(!r.ok) throw new Error(`Kobo API responded ${r.status}`);
-            const d=await r.json();
-            setSubmissions(Array.isArray(d.results)?d.results:[]);
-        }catch(e){
-            setError('Could not load submissions. This is usually a network/CORS restriction from the Kobo server, or an expired token — try "Test Connection" in the connection settings.');
-            setSubmissions([]);
-        }
-        setLoading(false);
-    };
-    useEffect(()=>{if(conn)loadSubmissions(conn);},[conn]);
-
-    if(conn===undefined) return <div className="min-h-screen p-4 md:p-8"><div className="max-w-6xl mx-auto glass rounded-2xl p-12 text-center text-gray-400"><i className="fas fa-spinner fa-spin text-2xl"/></div></div>;
-
-    if(!conn) return <div className="min-h-screen p-4 md:p-8"><div className="max-w-4xl mx-auto">
-        <div className="glass rounded-2xl p-6 mb-6 animate-in">
-            <button onClick={onBack} className="text-green-600 font-semibold text-sm mb-3 hover:underline"><i className="fas fa-arrow-left mr-2"/>Back</button>
-            <h1 className="text-2xl font-extrabold text-gray-800">{plan.plan_name} · Data Collection</h1>
-        </div>
-        <div className="glass rounded-2xl p-12 text-center">
-            <i className="fas fa-satellite-dish text-4xl text-cyan-400 mb-3"/>
-            <p className="font-semibold text-gray-700">No KoboToolbox form linked to this project yet</p>
-            <p className="text-sm text-gray-400 mt-1 mb-5">Connect the Kobo form used to collect data for this project to see submissions here.</p>
-            <button onClick={()=>setShowConnect(true)} className="btn-green text-white px-6 py-3 rounded-xl font-bold"><i className="fas fa-plug mr-2"/>Connect Kobo Form</button>
-        </div>
-        {showConnect&&<KoboConnectModal workPlan={plan} existing={null} user={user} notify={notify} onClose={()=>setShowConnect(false)} onSaved={()=>{setShowConnect(false);loadConn();}}/>}
-    </div></div>;
-
-    // ---- derive filtered submissions + analytics ----
-    const all = submissions||[];
-    const withMonth = all.map(s=>({...s,_month:koboMonthKey(s['_submission_time'])}));
-    const months = [...new Set(withMonth.map(s=>s._month).filter(Boolean))].sort().reverse();
-    const byMonth = monthFilter==='all'?withMonth:withMonth.filter(s=>s._month===monthFilter);
-    const byStatus = statusFilter==='all'?byMonth:byMonth.filter(s=>(s['_validation_status']?.uid||'validation_status_not_reviewed')===statusFilter);
-
-    const statusCounts={};
-    byMonth.forEach(s=>{const uid=s['_validation_status']?.uid||'validation_status_not_reviewed';statusCounts[uid]=(statusCounts[uid]||0)+1;});
-    const statusEntries=Object.entries(statusCounts).map(([uid,count])=>({uid,count,...koboValidationLabel(uid)}));
-    const totalInMonth=byMonth.length;
-
-    const trend=[...months].reverse().map(m=>({month:m,count:withMonth.filter(s=>s._month===m).length}));
-    const maxTrend=Math.max(1,...trend.map(t=>t.count));
-
-    const lastSubmission=all.length?all.map(s=>s['_submission_time']).sort().reverse()[0]:null;
-
-    return <div className="min-h-screen p-4 md:p-8"><div className="max-w-6xl mx-auto">
-        <div className="glass rounded-2xl p-6 mb-6 animate-in">
-            <button onClick={onBack} className="text-green-600 font-semibold text-sm mb-3 hover:underline"><i className="fas fa-arrow-left mr-2"/>Back</button>
-            <div className="flex flex-wrap justify-between items-center gap-3">
-                <div><h1 className="text-2xl md:text-3xl font-extrabold text-gray-800">{plan.plan_name} · Data Collection</h1>
-                    <p className="text-gray-500 mt-1">{conn.form_name||'Kobo form'} · <span className="font-mono text-xs">{conn.asset_uid}</span></p></div>
-                <div className="flex gap-2">
-                    <button onClick={()=>loadSubmissions(conn)} className="px-4 py-2 bg-gray-100 hover:bg-gray-200 rounded-xl font-semibold text-sm"><i className="fas fa-rotate mr-2"/>Refresh</button>
-                    <button onClick={()=>setShowConnect(true)} className="px-4 py-2 bg-cyan-50 text-cyan-700 hover:bg-cyan-100 rounded-xl font-semibold text-sm"><i className="fas fa-gear mr-2"/>Connection Settings</button>
-                </div>
-            </div>
-        </div>
-
-        {loading&&<div className="glass rounded-2xl p-12 text-center text-gray-400"><i className="fas fa-spinner fa-spin text-2xl"/><p className="mt-3 text-sm">Loading submissions from Kobo…</p></div>}
-
-        {!loading&&error&&<div className="bg-amber-50 border-2 border-amber-200 rounded-2xl p-5 mb-6">
-            <h3 className="font-bold text-amber-800 mb-1"><i className="fas fa-triangle-exclamation mr-2"/>Couldn't load submissions</h3>
-            <p className="text-sm text-amber-700">{error}</p></div>}
-
-        {!loading&&!error&&<>
-            <div className="glass rounded-xl p-4 mb-6 flex flex-wrap items-center gap-3">
-                <select value={monthFilter} onChange={e=>setMonthFilter(e.target.value)} className="px-3 py-2 border-2 border-gray-200 rounded-xl text-sm font-medium">
-                    <option value="all">All Months</option>
-                    {months.map(m=><option key={m} value={m}>{koboMonthLabel(m)}</option>)}
-                </select>
-                <div className="flex gap-2">
-                    {[['all','All'],['validation_status_approved','Approved'],['validation_status_not_reviewed','Not Reviewed'],['validation_status_on_hold','On Hold'],['validation_status_not_approved','Not Approved']].map(([k,l])=>
-                        <button key={k} onClick={()=>setStatusFilter(k)} className={`px-3 py-1.5 rounded-lg text-xs font-bold ${statusFilter===k?'btn-green text-white':'bg-gray-100 text-gray-600'}`}>{l}</button>)}
-                </div>
-                <span className="ml-auto text-sm text-gray-500 font-semibold">{byStatus.length} submission{byStatus.length!==1?'s':''} shown</span>
-            </div>
-
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
-                <div className="glass rounded-xl p-5 stat"><p className="text-xs font-bold text-gray-400 uppercase">Total Submissions</p><p className="text-3xl font-extrabold text-gray-800 mt-1">{all.length}</p></div>
-                <div className="glass rounded-xl p-5 stat"><p className="text-xs font-bold text-gray-400 uppercase">{monthFilter==='all'?'This Selection':koboMonthLabel(monthFilter)}</p><p className="text-3xl font-extrabold text-cyan-600 mt-1">{totalInMonth}</p></div>
-                <div className="glass rounded-xl p-5 stat"><p className="text-xs font-bold text-gray-400 uppercase">Months Active</p><p className="text-3xl font-extrabold text-gray-800 mt-1">{months.length}</p></div>
-                <div className="glass rounded-xl p-5 stat"><p className="text-xs font-bold text-gray-400 uppercase">Last Submission</p><p className="text-sm font-extrabold text-gray-700 mt-2">{lastSubmission?new Date(lastSubmission).toLocaleDateString([],{day:'numeric',month:'short',year:'numeric'}):'—'}</p></div>
-            </div>
-
-            <div className="grid md:grid-cols-3 gap-6 mb-6">
-                <div className="glass rounded-2xl p-6 md:col-span-2">
-                    <h3 className="font-bold text-gray-800 mb-4"><i className="fas fa-chart-column text-indigo-600 mr-2"/>Submissions by Month</h3>
-                    {trend.length===0?<p className="text-center text-gray-400 py-10">No submissions yet</p>:
-                    <div className="flex items-end gap-3" style={{height:'180px'}}>
-                        {trend.map(t=><div key={t.month} className="flex-1 flex flex-col items-center justify-end h-full">
-                            <span className="text-xs font-bold text-gray-600 mb-1">{t.count}</span>
-                            <div className="w-full rounded-t-lg bg-gradient-to-t from-cyan-600 to-cyan-400" style={{height:`${Math.max(6,(t.count/maxTrend)*140)}px`}}/>
-                            <span className="text-[10px] text-gray-400 mt-2 whitespace-nowrap">{koboMonthLabel(t.month)}</span>
-                        </div>)}
-                    </div>}
-                </div>
-                <div className="glass rounded-2xl p-6 flex flex-col items-center">
-                    <h3 className="font-bold text-gray-800 mb-4 self-start"><i className="fas fa-check-double text-cyan-600 mr-2"/>Validation Status</h3>
-                    <svg viewBox="0 0 180 180" width="160" height="160">
-                        <circle cx="90" cy="90" r="70" fill="none" stroke="#f3f4f6" strokeWidth="24"/>
-                        {(()=>{const C=2*Math.PI*70;let acc=0;return statusEntries.map((e,i)=>{const frac=totalInMonth?e.count/totalInMonth:0;const dash=frac*C;const off=-acc*C;acc+=frac;
-                            return <circle key={i} cx="90" cy="90" r="70" fill="none" stroke={e.color} strokeWidth="24" strokeDasharray={`${dash} ${C-dash}`} strokeDashoffset={off} transform="rotate(-90 90 90)"/>;});})()}
-                        <text x="90" y="95" textAnchor="middle" fontSize="22" fontWeight="800" fill="#1f2937">{totalInMonth}</text>
-                    </svg>
-                    <div className="grid grid-cols-1 gap-1.5 mt-4 w-full">
-                        {statusEntries.map((e,i)=><div key={i} className="flex items-center justify-between text-xs">
-                            <span className="flex items-center gap-2"><span className="w-2.5 h-2.5 rounded-full" style={{background:e.color}}/>{e.label}</span>
-                            <span className="font-bold text-gray-600">{e.count}</span>
-                        </div>)}
-                        {statusEntries.length===0&&<p className="text-center text-gray-400 text-xs">No data</p>}
-                    </div>
-                </div>
-            </div>
-
-            <div className="glass rounded-2xl p-4 overflow-auto" style={{maxHeight:'520px'}}>
-                <h3 className="font-bold text-gray-800 mb-3 px-2"><i className="fas fa-table-list text-gray-500 mr-2"/>Submissions</h3>
-                <table className="w-full text-xs">
-                    <thead><tr className="border-b-2 border-gray-100 sticky top-0 bg-white">
-                        <th className="text-left py-2 px-2 font-bold text-gray-500 uppercase">#</th>
-                        <th className="text-left py-2 px-2 font-bold text-gray-500 uppercase">Submitted</th>
-                        <th className="text-left py-2 px-2 font-bold text-gray-500 uppercase">Submitted By</th>
-                        <th className="text-left py-2 px-2 font-bold text-gray-500 uppercase">Status</th>
-                        <th className="text-left py-2 px-2 font-bold text-gray-500 uppercase">Open</th>
-                    </tr></thead>
-                    <tbody>{byStatus.slice(0,300).map((s,i)=>{const v=koboValidationLabel(s['_validation_status']?.uid);
-                        return <tr key={s['_id']||i} className="border-b border-gray-50 hover:bg-gray-50">
-                            <td className="py-2 px-2 text-gray-400">{i+1}</td>
-                            <td className="py-2 px-2 text-gray-700">{s['_submission_time']?new Date(s['_submission_time']).toLocaleString([],{day:'numeric',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit'}):'—'}</td>
-                            <td className="py-2 px-2 text-gray-600">{s['_submitted_by']||'—'}</td>
-                            <td className="py-2 px-2"><span className="px-2 py-0.5 rounded-full text-xs font-bold" style={{background:v.color+'20',color:v.color}}>{v.label}</span></td>
-                            <td className="py-2 px-2"><a href={`${conn.server_url}/#/forms/${conn.asset_uid}/data/table`} target="_blank" rel="noreferrer" className="text-cyan-600 font-semibold"><i className="fas fa-arrow-up-right-from-square"/></a></td>
-                        </tr>;})}</tbody>
-                </table>
-                {byStatus.length===0&&<p className="text-center text-gray-400 py-8 font-semibold">No submissions match this filter</p>}
-            </div>
-        </>}
-
-        {showConnect&&<KoboConnectModal workPlan={plan} existing={conn} user={user} notify={notify} onClose={()=>setShowConnect(false)} onSaved={()=>{setShowConnect(false);loadConn();}}/>}
     </div></div>;
 }
 function WorkPlanImport({user,notify,onDone}) {
