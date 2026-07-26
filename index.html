@@ -109,7 +109,26 @@ function App() {
 
     useEffect(()=>{
         const s=localStorage.getItem('rahama_session');
-        if(s){const u=JSON.parse(s);setUser(u);setView(u.role==='employee'?'dashboard':'supervisor');}
+        if(s){
+            const u=JSON.parse(s);
+            setUser(u);
+            setView(u.role==='employee'?'dashboard':'supervisor');
+            // Saved sessions predate the is_mne flag, so re-read it from the
+            // database on load rather than requiring everyone to log out.
+            fetch(`${SB}/rest/v1/users?id=eq.${u.id}&select=is_mne`,{headers:H})
+                .then(r=>r.json())
+                .then(d=>{
+                    if(Array.isArray(d)&&d.length){
+                        const flag=!!d[0].is_mne;
+                        if(flag!==!!u.is_mne){
+                            const nu={...u,is_mne:flag};
+                            setUser(nu);
+                            localStorage.setItem('rahama_session',JSON.stringify(nu));
+                            localStorage.setItem('pms_user',JSON.stringify(nu));
+                        }
+                    }
+                }).catch(()=>{});
+        }
     },[]);
 
     /* ── UPDATED login — logs device, browser, OS, IP ── */
