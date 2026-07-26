@@ -1108,6 +1108,8 @@ function MyActivities({user,notify,onBack}) {
         if(!aOver && bOver) return 1;
         return 0;
     });
+    const dayOfMonth = new Date().getDate();
+    const windowOpen = dayOfMonth <= 5;
     const vBadge=a=>{
         const v=a.verification_status;
         if(v==='verified')  return <span className="px-2 py-1 rounded-full text-xs font-bold bg-green-100 text-green-700"><i className="fas fa-check-circle mr-1"/>Verified</span>;
