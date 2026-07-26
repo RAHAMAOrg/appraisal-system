@@ -879,13 +879,21 @@ function WorkPlanActivities({plan,user,notify,onBack}) {
     const [filter,setFilter]=useState('all');
     const [nameByEmail,setNameByEmail]=useState({});
     const [sel,setSel]=useState(null);
+    const [periodReports,setPeriodReports]=useState({});
 
     const load=async()=>{setLoading(true);
         try{
             const a=await fetch(`${SB}/rest/v1/work_plan_activities?work_plan_id=eq.${plan.id}&order=sort_order.asc`,{headers:H}).then(r=>r.json());
-            setActs(Array.isArray(a)?a:[]);
+            const rows=Array.isArray(a)?a:[];
+            setActs(rows);
             const u=await fetch(`${SB}/rest/v1/users?select=id,name,email`,{headers:H}).then(r=>r.json());
             const m={};(Array.isArray(u)?u:[]).forEach(x=>{m[x.email]=x.name;});setNameByEmail(m);
+            const routineIds=rows.filter(isRoutine).map(x=>x.id);
+            if(routineIds.length){
+                const pr=await fetch(`${SB}/rest/v1/activity_period_reports?activity_id=in.(${routineIds.join(',')})&order=period_year.desc,period_month.desc`,{headers:H}).then(r=>r.json());
+                const grouped={};(Array.isArray(pr)?pr:[]).forEach(x=>{(grouped[x.activity_id]=grouped[x.activity_id]||[]).push(x);});
+                setPeriodReports(grouped);
+            }
         }catch(e){}
         setLoading(false);};
     useEffect(()=>{load();},[]);
