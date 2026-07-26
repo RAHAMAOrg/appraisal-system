@@ -906,12 +906,19 @@ function WorkPlanActivities({plan,user,notify,onBack}) {
         if(r.ok){notify(ok?'Activity verified':'Sent back to owner');setSel(null);load();}
         else notify('Failed','error');
     };
-    const verifyPeriod=async(pr,ok,note)=>{
+   const verifyPeriod=async(pr,ok,note)=>{
         const body=ok
             ? {verification_status:'verified',mne_verified_by:user.name,mne_verified_at:new Date().toISOString(),mne_note:note||null}
             : {verification_status:'rejected',mne_verified_by:user.name,mne_verified_at:new Date().toISOString(),mne_note:note||null};
         const r=await fetch(`${SB}/rest/v1/activity_period_reports?id=eq.${pr.id}`,{method:'PATCH',headers:HJ,body:JSON.stringify(body)});
         if(r.ok){notify(ok?'Period verified':'Sent back to owner');setSel(null);load();}
+        else notify('Failed','error');
+    };
+
+    const reopenWindow=async(a)=>{
+        const r=await fetch(`${SB}/rest/v1/work_plan_activities?id=eq.${a.id}`,{method:'PATCH',headers:HJ,
+            body:JSON.stringify({window_override:!a.window_override})});
+        if(r.ok){notify(a.window_override?'Reopen cancelled':'Reporting reopened for this activity');load();}
         else notify('Failed','error');
     };
 
@@ -1172,7 +1179,7 @@ function MyActivities({user,notify,onBack}) {
                                 <p className="text-sm text-red-700">{effNote}</p></div>}
                     </div>
                 {effStatus!=='verified'&&effStatus!=='submitted'&&(
-                        routine && !windowOpen
+ routine && !windowOpen && !a.window_override
                         ? <div className="text-right">
                             <button disabled className="bg-gray-200 text-gray-400 px-5 py-2.5 rounded-xl font-semibold text-sm whitespace-nowrap cursor-not-allowed"><i className="fas fa-lock mr-2"/>Closed</button>
                             <p className="text-xs text-red-500 mt-1 max-w-[160px]">Reporting window closed (1st–5th only)</p>
