@@ -51,6 +51,7 @@ const SB = 'https://wdondphcmnhdslcypeya.supabase.co';
 const SK = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Indkb25kcGhjbW5oZHNsY3lwZXlhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Njg5MDA3MDcsImV4cCI6MjA4NDQ3NjcwN30.wIisWHb3w4cSGZIB4f3q0Z6lboidH6SzL7oGToGdnsw';
 const H = {'apikey':SK,'Authorization':`Bearer ${SK}`};
 const HJ = {...H,'Content-Type':'application/json','Prefer':'return=minimal'};
+const HR = {...H,'Content-Type':'application/json'};   // for RPC calls (needs response body)
 
 const comps = [
     {name:'Job Knowledge & Expertise',desc:'Technical skills and knowledge',icon:'fa-brain'},
@@ -134,8 +135,11 @@ function App() {
     /* ── UPDATED login — logs device, browser, OS, IP ── */
     const login=async(email,pw,role)=>{
         try{
-            const r=await fetch(`${SB}/rest/v1/users?email=eq.${encodeURIComponent(email)}&role=eq.${role}`,{headers:H});
-            const u=await r.json();
+            // Credentials are checked inside the database by verify_login().
+            // The browser never reads the password column.
+            const r=await fetch(`${SB}/rest/v1/rpc/verify_login`,{method:'POST',headers:HR,
+                body:JSON.stringify({p_email:email,p_password:pw,p_role:role})});
+            const account=r.ok?await r.json():null;
 
             /* collect device info */
             const ua=navigator.userAgent;
@@ -148,16 +152,16 @@ function App() {
                 if(ip.ok){const d=await ip.json();ipInfo={ip_address:d.ip||'Unknown',location:`${d.city||''}${d.city?', ':''}${d.region||''}${d.region?', ':''}${d.country_name||''}`.trim()};}
             }catch(e){}
 
-            if(u.length>0&&u[0].password===pw){
-                const d={email,name:u[0].name,role,id:u[0].id,is_mne:!!u[0].is_mne};
+            if(account&&account.id){
+                const d={email:account.email,name:account.name,role,id:account.id,is_mne:!!account.is_mne};
                 setUser(d);
                 localStorage.setItem('rahama_session',JSON.stringify(d));
                 localStorage.setItem('pms_user',JSON.stringify(d));
                 setView(role==='employee'?'dashboard':'supervisor');
-                notify(`Welcome, ${u[0].name}!`);
+                notify(`Welcome, ${account.name}!`);
                 /* log success — silent fail */
                 fetch(`${SB}/rest/v1/login_logs`,{method:'POST',headers:HJ,
-                    body:JSON.stringify({user_id:u[0].id,email,name:u[0].name,role,...deviceInfo,...ipInfo,status:'success'})
+                    body:JSON.stringify({user_id:account.id,email,name:account.name,role,...deviceInfo,...ipInfo,status:'success'})
                 }).catch(()=>{});
             } else {
                 notify('Invalid credentials','error');
@@ -243,17 +247,22 @@ function ChangePw({user,onClose,notify}) {
     const [cur,setCur]=useState('');const [nw,setNw]=useState('');const [cf,setCf]=useState('');const [busy,setBusy]=useState(false);
     const go=async()=>{
         if(nw!==cf){notify('Passwords do not match','error');return;}
-        if(nw.length<6){notify('Minimum 6 characters','error');return;}
+        if(nw.length<8){notify('Minimum 8 characters','error');return;}
         if(cur===nw){notify('New password must be different','error');return;}
         setBusy(true);
         try{
-            const r=await fetch(`${SB}/rest/v1/users?id=eq.${user.id}`,{headers:H});const u=await r.json();
-            if(!u.length||u[0].password!==cur){notify('Current password is incorrect','error');setBusy(false);return;}
-            const up=await fetch(`${SB}/rest/v1/users?id=eq.${user.id}`,{method:'PATCH',headers:{...H,'Content-Type':'application/json','Prefer':'return=representation'},body:JSON.stringify({password:nw})});
-            if(up.ok){const vd=await (await fetch(`${SB}/rest/v1/users?id=eq.${user.id}`,{headers:H})).json();
-                if(vd.length>0&&vd[0].password===nw){notify('Password changed successfully!');onClose();}
-                else notify('Update failed — please ask admin to add UPDATE policy on users table','error');
-            }else notify('Failed to update password','error');
+            // The database verifies the current password and stores the new one
+            // hashed. The browser never handles the stored value.
+            const r=await fetch(`${SB}/rest/v1/rpc/change_password`,{method:'POST',headers:HR,
+                body:JSON.stringify({p_user_id:user.id,p_current:cur,p_new:nw})});
+            if(!r.ok){
+                const t=await r.text();
+                notify(t.includes('at least 8')?'Password must be at least 8 characters':'Failed to update password','error');
+            } else {
+                const ok=await r.json();
+                if(ok===true){notify('Password changed successfully!');onClose();}
+                else notify('Current password is incorrect','error');
+            }
         }catch(e){notify('Error changing password','error');}
         setBusy(false);
     };
@@ -263,7 +272,7 @@ function ChangePw({user,onClose,notify}) {
                 <h2 className="text-xl font-bold text-gray-800"><i className="fas fa-key text-green-600 mr-2"/>Change Password</h2>
                 <button onClick={onClose} className="w-8 h-8 rounded-full bg-gray-100 hover:bg-gray-200 flex items-center justify-center"><i className="fas fa-times text-gray-500"/></button>
             </div>
-            <div className="bg-amber-50 border border-amber-200 rounded-xl p-3 mb-5"><p className="text-xs text-amber-700"><i className="fas fa-info-circle mr-1"/>Password must be at least 6 characters.</p></div>
+            <div className="bg-amber-50 border border-amber-200 rounded-xl p-3 mb-5"><p className="text-xs text-amber-700"><i className="fas fa-info-circle mr-1"/>Password must be at least 8 characters.</p></div>
             <div className="space-y-4">
                 <div><label className="block text-xs font-bold text-gray-500 uppercase mb-2">Current Password</label><input type="password" value={cur} onChange={e=>setCur(e.target.value)} className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl" placeholder="Current password"/></div>
                 <div><label className="block text-xs font-bold text-gray-500 uppercase mb-2">New Password</label><input type="password" value={nw} onChange={e=>setNw(e.target.value)} className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl" placeholder="New password"/></div>
@@ -677,7 +686,7 @@ function WorkPlanAssign({plan,user,notify,onDone}) {
 
     useEffect(()=>{(async()=>{
         try{
-            const u=await fetch(`${SB}/rest/v1/users?order=name.asc`,{headers:H}).then(r=>r.json());
+            const u=await fetch(`${SB}/rest/v1/users?select=id,name,email,role,is_mne&order=name.asc`,{headers:H}).then(r=>r.json());
             setStaff(Array.isArray(u)?u:[]);
             const a=await fetch(`${SB}/rest/v1/work_plan_activities?work_plan_id=eq.${plan.id}&order=sort_order.asc`,{headers:H}).then(r=>r.json());
             const rows=Array.isArray(a)?a:[];
@@ -788,7 +797,7 @@ function WorkPlanActivities({plan,user,notify,onBack}) {
         try{
             const a=await fetch(`${SB}/rest/v1/work_plan_activities?work_plan_id=eq.${plan.id}&order=sort_order.asc`,{headers:H}).then(r=>r.json());
             setActs(Array.isArray(a)?a:[]);
-            const u=await fetch(`${SB}/rest/v1/users`,{headers:H}).then(r=>r.json());
+            const u=await fetch(`${SB}/rest/v1/users?select=id,name,email`,{headers:H}).then(r=>r.json());
             const m={};(Array.isArray(u)?u:[]).forEach(x=>{m[x.email]=x.name;});setNameByEmail(m);
         }catch(e){}
         setLoading(false);};
@@ -1417,8 +1426,8 @@ function AttendanceAdmin({notify,onBack}) {
     const [records,setRecords]=useState([]);const [names,setNames]=useState({});const [loading,setLoading]=useState(true);const [date,setDate]=useState(new Date().toISOString().slice(0,10));const [viewMode,setViewMode]=useState('daily');const [month,setMonth]=useState(new Date().toISOString().slice(0,7));
     const load=async()=>{setLoading(true);try{let url=viewMode==='daily'?`${SB}/rest/v1/attendance?date=eq.${date}&order=clock_in.asc`:`${SB}/rest/v1/attendance?date=gte.${month}-01&date=lte.${month}-31&order=date.desc,clock_in.asc`;
         const r=await fetch(url,{headers:H});if(!r.ok){setLoading(false);return;}const data=await r.json();if(!Array.isArray(data)){setRecords([]);setLoading(false);return;}setRecords(data);
-        const ids=[...new Set(data.map(a=>a.employee_id))];if(ids.length>0){const ur=await fetch(`${SB}/rest/v1/users?id=in.(${ids.join(',')})&role=eq.employee`,{headers:H});const users=await ur.json();if(Array.isArray(users)){const n={};users.forEach(u=>n[u.id]=u.name);setNames(n);}}
-        const ar=await fetch(`${SB}/rest/v1/users?role=eq.employee`,{headers:H});const allEmp=await ar.json();if(Array.isArray(allEmp)){allEmp.forEach(u=>{if(!names[u.id])setNames(prev=>({...prev,[u.id]:u.name}));});}}catch(e){}setLoading(false);};
+        const ids=[...new Set(data.map(a=>a.employee_id))];if(ids.length>0){const ur=await fetch(`${SB}/rest/v1/users?select=id,name&id=in.(${ids.join(',')})&role=eq.employee`,{headers:H});const users=await ur.json();if(Array.isArray(users)){const n={};users.forEach(u=>n[u.id]=u.name);setNames(n);}}
+        const ar=await fetch(`${SB}/rest/v1/users?select=id,name&role=eq.employee`,{headers:H});const allEmp=await ar.json();if(Array.isArray(allEmp)){allEmp.forEach(u=>{if(!names[u.id])setNames(prev=>({...prev,[u.id]:u.name}));});}}catch(e){}setLoading(false);};
     useEffect(()=>{load();},[date,month,viewMode]);
     const fmt=ts=>{if(!ts)return'--';return new Date(ts).toLocaleTimeString([],{hour:'2-digit',minute:'2-digit',hour12:true});};
     const dur=(a,b)=>{if(!a||!b)return'--';const ms=new Date(b)-new Date(a);return `${Math.floor(ms/3600000)}h ${Math.floor((ms%3600000)/60000)}m`;};
@@ -1464,7 +1473,7 @@ function AttendanceAdmin({notify,onBack}) {
 function SuperDash({user,onLogout,notify}) {
     const [allApps,setAllApps]=useState([]);const [selected,setSelected]=useState(null);const [names,setNames]=useState({});const [showPw,setShowPw]=useState(false);const [tab,setTab]=useState('pending');
     const [showAttendance,setShowAttendance]=useState(false);const [showLeave,setShowLeave]=useState(false);const [showHR,setShowHR]=useState(false);const [showLoginLogs,setShowLoginLogs]=useState(false);const [showMandE,setShowMandE]=useState(false);const [showMyActs,setShowMyActs]=useState(false);
-    const load=()=>{fetch(`${SB}/rest/v1/appraisals?order=created_at.desc`,{headers:H}).then(r=>r.json()).then(data=>{setAllApps(data);const ids=[...new Set(data.map(a=>a.employee_id))];if(ids.length>0)fetch(`${SB}/rest/v1/users?id=in.(${ids.join(',')})`,{headers:H}).then(r=>r.json()).then(users=>{const n={};users.forEach(u=>n[u.id]=u.name);setNames(n);});});};
+    const load=()=>{fetch(`${SB}/rest/v1/appraisals?order=created_at.desc`,{headers:H}).then(r=>r.json()).then(data=>{setAllApps(data);const ids=[...new Set(data.map(a=>a.employee_id))];if(ids.length>0)fetch(`${SB}/rest/v1/users?select=id,name&id=in.(${ids.join(',')})`,{headers:H}).then(r=>r.json()).then(users=>{const n={};users.forEach(u=>n[u.id]=u.name);setNames(n);});});};
     useEffect(()=>{load();},[]);
     if(showAttendance) return <AttendanceAdmin notify={notify} onBack={()=>setShowAttendance(false)}/>;
     if(selected) return <SupReview app={selected} name={names[selected.employee_id]} notify={notify} onDone={()=>{setSelected(null);load();}}/>;
@@ -1617,7 +1626,7 @@ function LeaveRequest({user,notify,onBack}) {
 
 function LeaveAdmin({notify,onBack}) {
     const [list,setList]=useState([]);const [names,setNames]=useState({});const [selected,setSelected]=useState(null);
-    const load=()=>{fetch(`${SB}/rest/v1/leave_requests?order=created_at.desc`,{headers:H}).then(r=>r.json()).then(d=>{setList(d||[]);const ids=[...new Set(d.map(a=>a.employee_id))];if(ids.length>0)fetch(`${SB}/rest/v1/users?id=in.(${ids.join(',')})`,{headers:H}).then(r=>r.json()).then(us=>{const n={};us.forEach(u=>n[u.id]=u.name);setNames(n);});});};
+    const load=()=>{fetch(`${SB}/rest/v1/leave_requests?order=created_at.desc`,{headers:H}).then(r=>r.json()).then(d=>{setList(d||[]);const ids=[...new Set(d.map(a=>a.employee_id))];if(ids.length>0)fetch(`${SB}/rest/v1/users?select=id,name&id=in.(${ids.join(',')})`,{headers:H}).then(r=>r.json()).then(us=>{const n={};us.forEach(u=>n[u.id]=u.name);setNames(n);});});};
     useEffect(()=>{load();},[]);
     if(selected) return <LeaveReview req={selected} name={names[selected.employee_id]} notify={notify} onDone={()=>{setSelected(null);load();}}/>;
     return <div className="min-h-screen p-4 md:p-8"><div className="max-w-5xl mx-auto">
@@ -1645,7 +1654,7 @@ function LeaveReview({req,name,notify,onDone}) {
 
 function Directory({user,notify,onBack}) {
     const [staff,setStaff]=useState([]);const [loading,setLoading]=useState(true);const [search,setSearch]=useState('');
-    const load=async()=>{setLoading(true);try{const u=await fetch(`${SB}/rest/v1/users`,{headers:H}).then(r=>r.json());const p=await fetch(`${SB}/rest/v1/staff_profiles`,{headers:H}).then(r=>r.json());setStaff(u.map(x=>({...x,...(p.find(pp=>pp.user_id===x.id)||{})})));}catch(e){}setLoading(false);};
+    const load=async()=>{setLoading(true);try{const u=await fetch(`${SB}/rest/v1/users?select=id,name,email,role,is_mne`,{headers:H}).then(r=>r.json());const p=await fetch(`${SB}/rest/v1/staff_profiles`,{headers:H}).then(r=>r.json());setStaff(u.map(x=>({...x,...(p.find(pp=>pp.user_id===x.id)||{})})));}catch(e){}setLoading(false);};
     useEffect(()=>{load();},[]);
     const list=staff.filter(s=>[(s.name||''),(s.department||''),(s.position||'')].some(v=>v.toLowerCase().includes(search.toLowerCase())));
     return <div className="min-h-screen p-4 md:p-8"><div className="max-w-5xl mx-auto">
@@ -1658,7 +1667,7 @@ function Directory({user,notify,onBack}) {
 
 function HRAdmin({notify,onBack}) {
     const [staff,setStaff]=useState([]);const [profiles,setProfiles]=useState({});const [selected,setSelected]=useState(null);const [loading,setLoading]=useState(true);
-    const load=async()=>{setLoading(true);try{const u=await fetch(`${SB}/rest/v1/users?role=eq.employee`,{headers:H}).then(r=>r.json());setStaff(u||[]);const ids=u.map(x=>x.id);if(ids.length>0){const pd=await fetch(`${SB}/rest/v1/staff_profiles?user_id=in.(${ids.join(',')})`,{headers:H}).then(r=>r.json());const map={};pd.forEach(p=>map[p.user_id]=p);setProfiles(map);}}catch(e){}setLoading(false);};
+    const load=async()=>{setLoading(true);try{const u=await fetch(`${SB}/rest/v1/users?select=id,name,email,role&role=eq.employee`,{headers:H}).then(r=>r.json());setStaff(u||[]);const ids=u.map(x=>x.id);if(ids.length>0){const pd=await fetch(`${SB}/rest/v1/staff_profiles?user_id=in.(${ids.join(',')})`,{headers:H}).then(r=>r.json());const map={};pd.forEach(p=>map[p.user_id]=p);setProfiles(map);}}catch(e){}setLoading(false);};
     useEffect(()=>{load();},[]);
     if(selected) return <HRProfileEdit staff={selected} profile={profiles[selected.id]} notify={notify} onDone={()=>{setSelected(null);load();}}/>;
     return <div className="min-h-screen p-4 md:p-8"><div className="max-w-5xl mx-auto">
