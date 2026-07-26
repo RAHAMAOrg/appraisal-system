@@ -1127,6 +1127,7 @@ function MyActivities({user,notify,onBack}) {
 }
 
 function ReportActivity({act,user,notify,onDone}) {
+    const routine = isRoutine(act);
     const readOnly=act.verification_status==='submitted'||act.verification_status==='verified';
     const [status,setStatus]=useState(act.current_status||'Not Started');
     const [narrative,setNarrative]=useState(act.narrative||'');
@@ -1139,16 +1140,28 @@ function ReportActivity({act,user,notify,onDone}) {
         if(narrative.trim().length<10){notify('Describe what was done (min 10 characters)','error');return;}
         setBusy(true);
         try{
-            const body={current_status:status,narrative,verification_status:'submitted',
-                submitted_by:user.name,submitted_at:new Date().toISOString(),
-                status_updated_by:user.name,status_updated_at:new Date().toISOString(),mne_note:null};
+            let movUrl=null, movName=null;
             if(file){
                 if(file.size>5*1024*1024){notify('File too large (max 5MB)','error');setBusy(false);return;}
-                body.mov_file_url=await toB64(file); body.mov_file_name=file.name;
+                movUrl=await toB64(file); movName=file.name;
             }
-            const r=await fetch(`${SB}/rest/v1/work_plan_activities?id=eq.${act.id}`,{method:'PATCH',headers:HJ,body:JSON.stringify(body)});
-            if(r.ok){notify('Submitted to M&E for verification');onDone();}
-            else notify('Submission failed','error');
+            if(routine){
+                const {month,year}=currentPeriod();
+                const body={activity_id:act.id,period_month:month,period_year:year,current_status:status,
+                    narrative,mov_file_url:movUrl,mov_file_name:movName,verification_status:'submitted',
+                    submitted_by:user.name,submitted_at:new Date().toISOString(),mne_note:null};
+                const r=await fetch(`${SB}/rest/v1/activity_period_reports`,{method:'POST',headers:HJ,body:JSON.stringify(body)});
+                if(r.ok){notify('Submitted to M&E for verification');onDone();}
+                else notify('Submission failed','error');
+            } else {
+                const body={current_status:status,narrative,verification_status:'submitted',
+                    submitted_by:user.name,submitted_at:new Date().toISOString(),
+                    status_updated_by:user.name,status_updated_at:new Date().toISOString(),mne_note:null};
+                if(movUrl){body.mov_file_url=movUrl;body.mov_file_name=movName;}
+                const r=await fetch(`${SB}/rest/v1/work_plan_activities?id=eq.${act.id}`,{method:'PATCH',headers:HJ,body:JSON.stringify(body)});
+                if(r.ok){notify('Submitted to M&E for verification');onDone();}
+                else notify('Submission failed','error');
+            }
         }catch(e){notify('Error submitting','error');}
         setBusy(false);
     };
