@@ -7,6 +7,7 @@
    <script crossorigin src="https://unpkg.com/react@18.3.1/umd/react.production.min.js"></script>
 <script crossorigin src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.production.min.js"></script>
     <script src="https://unpkg.com/@babel/standalone@7.23.6/babel.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js"></script>
     <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
@@ -53,6 +54,12 @@ const SK = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI
 const H = {'apikey':SK,'Authorization':`Bearer ${SK}`};
 const HJ = {...H,'Content-Type':'application/json','Prefer':'return=minimal'};
 const HR = {...H,'Content-Type':'application/json'};   // for RPC calls (needs response body)
+
+/* Supabase Auth client — used only for sign-in / session / password
+   calls. Every other data read or write in this file still goes
+   through the plain REST calls above (H/HJ/HR) exactly as before;
+   this is additive, not a rewrite of the app's data layer. */
+const supabaseClient = window.supabase ? window.supabase.createClient(SB, SK) : null;
 
 const comps = [
     {name:'Job Knowledge & Expertise',desc:'Technical skills and knowledge',icon:'fa-brain'},
@@ -133,9 +140,33 @@ function App() {
     const notify=(msg,type='success')=>setToast({message:msg,type});
 
     useEffect(()=>{
-        const s=localStorage.getItem('rahama_session');
-        if(s){
-            const u=JSON.parse(s);
+        (async()=>{
+            const s=localStorage.getItem('rahama_session');
+            if(!s) return;
+            let u=JSON.parse(s);
+            // Pre-migration sessions (or anything hand-edited) have no real
+            // access_token — those are no longer trusted at all.
+            if(!u.access_token||!u.refresh_token){
+                localStorage.removeItem('rahama_session');localStorage.removeItem('pms_user');return;
+            }
+            // Re-hydrate the Supabase Auth client with the stored session,
+            // refreshing first if the access token has already expired (or
+            // is about to). This replaces trusting the localStorage blob
+            // outright with an actual signed-token check.
+            const stale=!u.expires_at||(Date.now()/1000)>(u.expires_at-30);
+            if(stale){
+                if(!supabaseClient){localStorage.removeItem('rahama_session');localStorage.removeItem('pms_user');setView('login');return;}
+                const {data,error}=await supabaseClient.auth.refreshSession({refresh_token:u.refresh_token});
+                if(error||!data?.session){
+                    localStorage.removeItem('rahama_session');localStorage.removeItem('pms_user');
+                    setView('login');return;
+                }
+                u={...u,access_token:data.session.access_token,refresh_token:data.session.refresh_token,expires_at:data.session.expires_at,issuedAt:Date.now()};
+                localStorage.setItem('rahama_session',JSON.stringify(u));
+                localStorage.setItem('pms_user',JSON.stringify(u));
+            } else if(supabaseClient){
+                await supabaseClient.auth.setSession({access_token:u.access_token,refresh_token:u.refresh_token}).catch(()=>{});
+            }
             setUser(u);
             setView(u.role==='employee'?'dashboard':'supervisor');
             // Saved sessions predate the is_mne flag, so re-read it from the
@@ -153,17 +184,18 @@ function App() {
                         }
                     }
                 }).catch(()=>{});
-        }
+        })();
     },[]);
 
-    /* ── UPDATED login — logs device, browser, OS, IP ── */
+    /* ── Login via Supabase Auth ──
+       Credentials are now checked by GoTrue against auth.users (seeded
+       from the same bcrypt hashes that used to live only in
+       public.users.password_hash) instead of the old verify_login() RPC.
+       Device/browser/OS/IP logging into login_logs is unchanged. */
     const login=async(email,pw,role)=>{
         try{
-            // Credentials are checked inside the database by verify_login().
-            // The browser never reads the password column.
-            const r=await fetch(`${SB}/rest/v1/rpc/verify_login`,{method:'POST',headers:HR,
-                body:JSON.stringify({p_email:email,p_password:pw,p_role:role})});
-            const account=r.ok?await r.json():null;
+            if(!supabaseClient){notify('Auth unavailable — please reload the page','error');return;}
+            const {data,error}=await supabaseClient.auth.signInWithPassword({email,password:pw});
 
             /* collect device info */
             const ua=navigator.userAgent;
@@ -176,8 +208,24 @@ function App() {
                 if(ip.ok){const d=await ip.json();ipInfo={ip_address:d.ip||'Unknown',location:`${d.city||''}${d.city?', ':''}${d.region||''}${d.region?', ':''}${d.country_name||''}`.trim()};}
             }catch(e){}
 
-            if(account&&account.id){
-                const d={email:account.email,name:account.name,role,id:account.id,is_mne:!!account.is_mne};
+            /* Auth only proves *who they are*; role/name/id/is_mne still
+               live in public.users, so pull that profile once sign-in
+               succeeds. The role picked on the login screen must match the
+               role on file — this is now enforced here since the RPC that
+               used to do it is gone. */
+            let account=null;
+            if(!error&&data?.user){
+                const pr=await fetch(`${SB}/rest/v1/users?email=eq.${encodeURIComponent(data.user.email)}&select=id,name,email,role,is_mne`,{headers:H});
+                const rows=pr.ok?await pr.json():[];
+                account=Array.isArray(rows)&&rows.length?rows[0]:null;
+            }
+
+            if(account&&account.id&&account.role===role){
+                const d={
+                    email:account.email,name:account.name,role:account.role,id:account.id,is_mne:!!account.is_mne,
+                    access_token:data.session.access_token,refresh_token:data.session.refresh_token,expires_at:data.session.expires_at,
+                    issuedAt:Date.now()
+                };
                 setUser(d);
                 localStorage.setItem('rahama_session',JSON.stringify(d));
                 localStorage.setItem('pms_user',JSON.stringify(d));
@@ -188,16 +236,28 @@ function App() {
                     body:JSON.stringify({user_id:account.id,email,name:account.name,role,...deviceInfo,...ipInfo,status:'success'})
                 }).catch(()=>{});
             } else {
-                notify('Invalid credentials','error');
+                // Auth succeeded but the role didn't match (or no profile
+                // row exists) — don't leave a live Supabase session behind.
+                if(data?.session) await supabaseClient.auth.signOut().catch(()=>{});
+                const msg=(account&&account.role&&account.role!==role)
+                    ?`This account is registered as ${account.role}. Please choose the correct sign-in option.`
+                    :'Invalid credentials';
+                notify(msg,'error');
                 /* log failed attempt — silent fail */
                 fetch(`${SB}/rest/v1/login_logs`,{method:'POST',headers:HJ,
-                    body:JSON.stringify({user_id:null,email,name:'—',role,...deviceInfo,...ipInfo,status:'failed'})
+                    body:JSON.stringify({user_id:account?account.id:null,email,name:account?account.name:'—',role,...deviceInfo,...ipInfo,status:'failed'})
                 }).catch(()=>{});
             }
         }catch(e){notify('Login failed','error');}
     };
 
-    const logout=()=>{setUser(null);localStorage.removeItem('rahama_session');setView('login');};
+    const logout=()=>{
+        if(supabaseClient) supabaseClient.auth.signOut().catch(()=>{});
+        setUser(null);
+        localStorage.removeItem('rahama_session');
+        localStorage.removeItem('pms_user');
+        setView('login');
+    };
 
     return <>
         {toast&&<Toast {...toast} onClose={()=>setToast(null)}/>}
@@ -275,18 +335,28 @@ function ChangePw({user,onClose,notify}) {
         if(cur===nw){notify('New password must be different','error');return;}
         setBusy(true);
         try{
-            // The database verifies the current password and stores the new one
-            // hashed. The browser never handles the stored value.
-            const r=await fetch(`${SB}/rest/v1/rpc/change_password`,{method:'POST',headers:HR,
-                body:JSON.stringify({p_user_id:user.id,p_current:cur,p_new:nw})});
-            if(!r.ok){
-                const t=await r.text();
-                notify(t.includes('at least 8')?'Password must be at least 8 characters':'Failed to update password','error');
-            } else {
-                const ok=await r.json();
-                if(ok===true){notify('Password changed successfully!');onClose();}
-                else notify('Current password is incorrect','error');
+            if(!supabaseClient){notify('Auth unavailable — please reload the page','error');setBusy(false);return;}
+            // Supabase Auth's updateUser() will change the password for
+            // whoever holds the live session without asking for the old
+            // one, so we re-authenticate with the current password first —
+            // that stands in for the old RPC's "current password must
+            // match" guard. The browser never handles the stored hash.
+            const {error:verr}=await supabaseClient.auth.signInWithPassword({email:user.email,password:cur});
+            if(verr){notify('Current password is incorrect','error');setBusy(false);return;}
+            const {error:uerr}=await supabaseClient.auth.updateUser({password:nw});
+            if(uerr){
+                notify(uerr.message&&/8/.test(uerr.message)?'Password must be at least 8 characters':'Failed to update password','error');
+                setBusy(false);return;
             }
+            // updateUser() rotates the session tokens — persist the fresh
+            // ones so the FMS handoff (and this session) keep working.
+            const {data:sd}=await supabaseClient.auth.getSession();
+            if(sd?.session){
+                const nu={...user,access_token:sd.session.access_token,refresh_token:sd.session.refresh_token,expires_at:sd.session.expires_at,issuedAt:Date.now()};
+                localStorage.setItem('rahama_session',JSON.stringify(nu));
+                localStorage.setItem('pms_user',JSON.stringify(nu));
+            }
+            notify('Password changed successfully!');onClose();
         }catch(e){notify('Error changing password','error');}
         setBusy(false);
     };
