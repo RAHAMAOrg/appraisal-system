@@ -1765,6 +1765,15 @@ function MandE({user,notify,onBack,readOnlyView}) {
         if(r.ok){notify('Work plan published');load();}else notify('Failed to publish','error');
     };
 
+    const deletePlan=async(p)=>{
+        if(!confirm(`Delete "${p.plan_name}"?\n\nThis removes the draft and its ${counts[p.id]||0} imported activities. This cannot be undone. Only draft work plans can be deleted — published ones are locked.`)) return;
+        // Activities reference the plan, so clear those out first, then the plan itself.
+        const ar=await fetch(`${SB}/rest/v1/work_plan_activities?work_plan_id=eq.${p.id}`,{method:'DELETE',headers:H});
+        if(!ar.ok){notify('Failed to delete work plan activities','error');return;}
+        const r=await fetch(`${SB}/rest/v1/work_plans?id=eq.${p.id}`,{method:'DELETE',headers:H});
+        if(r.ok){notify('Draft work plan deleted');load();}else notify('Failed to delete work plan','error');
+    };
+
     const badge=s=>{const m={draft:'bg-gray-100 text-gray-700',active:'bg-green-100 text-green-700',closed:'bg-purple-100 text-purple-700'};
         return <span className={`px-2 py-1 rounded-full text-xs font-bold uppercase ${m[s]||m.draft}`}>{s||'draft'}</span>;};
 
@@ -1804,6 +1813,7 @@ function MandE({user,notify,onBack,readOnlyView}) {
                      <button onClick={()=>{setSelPlan(p);setView('activities');}} className="px-4 py-2 bg-blue-50 text-blue-700 hover:bg-blue-100 rounded-xl font-semibold text-sm"><i className="fas fa-list mr-2"/>Activities</button>
                         {!readOnlyView&&<button onClick={()=>{setSelPlan(p);setView('assign');}} className="px-4 py-2 bg-indigo-50 text-indigo-700 hover:bg-indigo-100 rounded-xl font-semibold text-sm"><i className="fas fa-users mr-2"/>Assign</button>}
                         {!readOnlyView&&(p.status||'draft')==='draft'&&<button onClick={()=>publish(p)} className="btn-green text-white px-4 py-2 rounded-xl font-semibold text-sm"><i className="fas fa-check mr-2"/>Publish</button>}
+                        {!readOnlyView&&(p.status||'draft')==='draft'&&<button onClick={()=>deletePlan(p)} className="px-4 py-2 bg-red-50 text-red-600 hover:bg-red-100 rounded-xl font-semibold text-sm"><i className="fas fa-trash-alt mr-2"/>Delete</button>}
                     </div>
                 </div>
             </div>)}</div>}
@@ -2980,6 +2990,10 @@ function FieldTrip({user,notify,onBack}) {
     const [gpsStatus,setGpsStatus]=useState(null);
     const watchIdRef=useRef(null);
     const lastPingRef=useRef({t:0,lat:null,lng:null});
+    const mapRef=useRef(null);
+    const mapObj=useRef(null);
+    const markerRef=useRef(null);
+    const polylineRef=useRef(null);
 
     const load=async()=>{setLoading(true);try{
         const ar=await fetch(`${SB}/rest/v1/field_trips?employee_id=eq.${user.id}&status=eq.active&order=started_at.desc&limit=1`,{headers:H});
@@ -3019,6 +3033,49 @@ function FieldTrip({user,notify,onBack}) {
         if(active&&watchIdRef.current==null) beginWatch(active.id);
         return ()=>{ if(watchIdRef.current!=null){navigator.geolocation.clearWatch(watchIdRef.current);watchIdRef.current=null;} };
     },[active&&active.id]);
+
+    // The moment the tab comes back to the foreground (phone unlocked, browser
+    // reopened, app switched back to), grab one fresh GPS fix right away
+    // instead of waiting for the next scheduled ping — shortens the gap left
+    // by however long the tab was backgrounded/suspended.
+    useEffect(()=>{
+        if(!active) return;
+        const onVisible=()=>{
+            if(document.visibilityState==='visible'){
+                navigator.geolocation.getCurrentPosition(pos=>{
+                    lastPingRef.current={t:0,lat:null,lng:null}; // force through the normal throttle just this once
+                    recordPing(active.id,pos.coords.latitude,pos.coords.longitude,pos.coords.accuracy);
+                },()=>{},{enableHighAccuracy:true,timeout:15000});
+            }
+        };
+        document.addEventListener('visibilitychange',onVisible);
+        return ()=>document.removeEventListener('visibilitychange',onVisible);
+    },[active&&active.id]);
+
+    // Live self-view map: lets staff actually see their own position update as
+    // they move, instead of just trusting a "points logged" counter. Creates
+    // the map when a trip starts and tears it down when it ends.
+    useEffect(()=>{
+        if(!active){ if(mapObj.current){mapObj.current.remove();mapObj.current=null;markerRef.current=null;polylineRef.current=null;} return; }
+        if(!window.L||!mapRef.current) return;
+        if(!mapObj.current){
+            mapObj.current=window.L.map(mapRef.current).setView([9.0,8.0],13);
+            window.L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{attribution:'&copy; OpenStreetMap contributors',maxZoom:18}).addTo(mapObj.current);
+        }
+    },[active&&active.id]);
+
+    useEffect(()=>{
+        if(!mapObj.current||!pings.length) return;
+        const latlngs=pings.map(p=>[p.lat,p.lng]);
+        const last=latlngs[latlngs.length-1];
+        if(!markerRef.current) markerRef.current=window.L.marker(last).addTo(mapObj.current);
+        else markerRef.current.setLatLng(last);
+        if(latlngs.length>1){
+            if(!polylineRef.current) polylineRef.current=window.L.polyline(latlngs,{color:'#059669',weight:4}).addTo(mapObj.current);
+            else polylineRef.current.setLatLngs(latlngs);
+        }
+        mapObj.current.setView(last, Math.max(mapObj.current.getZoom(),15));
+    },[pings]);
 
     const startTrip=()=>{
         if(!purpose.trim()){notify('Enter a purpose for the trip','error');return;}
@@ -3072,9 +3129,9 @@ function FieldTrip({user,notify,onBack}) {
                 <div className="bg-gray-50 rounded-xl p-4"><p className="text-xs font-bold text-gray-400 uppercase">Started</p><p className="font-bold text-gray-800">{new Date(active.started_at).toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'})}</p></div>
                 <div className="bg-gray-50 rounded-xl p-4"><p className="text-xs font-bold text-gray-400 uppercase">Duration</p><p className="font-bold text-gray-800">{fmtDur(active.started_at)}</p></div>
             </div>
+            <div ref={mapRef} className="mt-4" style={{height:'220px',borderRadius:'12px'}}/>
             <p className="text-xs text-gray-400 mt-3">{pings.length} location point{pings.length!==1?'s':''} logged</p>
             {gpsStatus&&<p className="text-xs text-amber-600 mt-2"><i className="fas fa-triangle-exclamation mr-1"/>{gpsStatus}</p>}
-            <p className="text-xs text-gray-400 mt-2"><i className="fas fa-circle-info mr-1"/>Tracking pauses if your phone locks or you leave this page — reopen it to resume.</p>
             <button onClick={endTrip} disabled={busy} className="mt-4 w-full bg-red-500 hover:bg-red-600 disabled:opacity-50 text-white py-3 rounded-xl font-bold"><i className="fas fa-flag-checkered mr-2"/>End Trip</button>
         </div>:<div className="glass rounded-2xl p-6 mb-6">
             <h2 className="text-lg font-bold mb-4"><i className="fas fa-route text-green-600 mr-2"/>Start a Trip</h2>
@@ -3099,11 +3156,12 @@ function FieldTripAdmin({notify,onBack}) {
     const [activeTrips,setActiveTrips]=useState([]);
     const [recent,setRecent]=useState([]);
     const [names,setNames]=useState({});
-    const [latestByTrip,setLatestByTrip]=useState({});
+    const [pingsByTrip,setPingsByTrip]=useState({});
     const [loading,setLoading]=useState(true);
     const mapRef=useRef(null);
     const mapObj=useRef(null);
     const markersRef=useRef({});
+    const polylinesRef=useRef({});
 
     const load=async()=>{
         try{
@@ -3117,11 +3175,14 @@ function FieldTripAdmin({notify,onBack}) {
                 const ud=await ur.json();const n={};(ud||[]).forEach(u=>n[u.id]=u.name);setNames(n);
             }
             if(activeArr.length>0){
+                // Full ping history per active trip (not just the latest point) so the
+                // map can draw the actual route walked/driven, not a single static dot.
                 const tripIds=activeArr.map(t=>t.id).join(',');
-                const pr=await fetch(`${SB}/rest/v1/trip_pings?trip_id=in.(${tripIds})&order=recorded_at.desc`,{headers:H});
-                const pd=await pr.json();const latest={};(pd||[]).forEach(p=>{if(!latest[p.trip_id])latest[p.trip_id]=p;});
-                setLatestByTrip(latest);
-            } else setLatestByTrip({});
+                const pr=await fetch(`${SB}/rest/v1/trip_pings?trip_id=in.(${tripIds})&order=recorded_at.asc`,{headers:H});
+                const pd=await pr.json();
+                const byTrip={};(pd||[]).forEach(p=>{(byTrip[p.trip_id]=byTrip[p.trip_id]||[]).push(p);});
+                setPingsByTrip(byTrip);
+            } else setPingsByTrip({});
         }catch(e){}
         setLoading(false);
     };
@@ -3130,32 +3191,47 @@ function FieldTripAdmin({notify,onBack}) {
     useEffect(()=>{
         if(!window.L||!mapRef.current)return;
         if(!mapObj.current){
-            mapObj.current=window.L.map(mapRef.current).setView([11.99,8.53],7);
+            mapObj.current=window.L.map(mapRef.current).setView([9.0,8.0],6);
             window.L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{attribution:'&copy; OpenStreetMap contributors',maxZoom:18}).addTo(mapObj.current);
         }
         const map=mapObj.current;
         Object.values(markersRef.current).forEach(m=>map.removeLayer(m));
         markersRef.current={};
+        Object.values(polylinesRef.current).forEach(l=>map.removeLayer(l));
+        polylinesRef.current={};
+        const allPoints=[];
         activeTrips.forEach(t=>{
-            const ping=latestByTrip[t.id];
-            const lat=ping?ping.lat:t.start_lat, lng=ping?ping.lng:t.start_lng;
-            if(lat==null||lng==null)return;
-            const marker=window.L.marker([lat,lng]).addTo(map).bindPopup(`<b>${names[t.employee_id]||'Staff'}</b><br/>${t.purpose}${ping?`<br/><span style="color:#888">Updated ${new Date(ping.recorded_at).toLocaleTimeString()}</span>`:''}`);
+            const trail=(pingsByTrip[t.id]||[]).map(p=>[p.lat,p.lng]);
+            const points=trail.length?trail:(t.start_lat!=null?[[t.start_lat,t.start_lng]]:[]);
+            if(!points.length)return;
+            points.forEach(pt=>allPoints.push(pt));
+            if(points.length>1){
+                polylinesRef.current[t.id]=window.L.polyline(points,{color:'#dc2626',weight:3,opacity:0.7}).addTo(map);
+            }
+            const last=points[points.length-1];
+            const pings=pingsByTrip[t.id];
+            const lastPing=pings&&pings.length?pings[pings.length-1]:null;
+            const marker=window.L.marker(last).addTo(map).bindPopup(`<b>${names[t.employee_id]||'Staff'}</b><br/>${t.purpose}${lastPing?`<br/><span style="color:#888">Updated ${new Date(lastPing.recorded_at).toLocaleTimeString()}</span>`:'<br/><span style="color:#888">Awaiting first ping</span>'}`);
             markersRef.current[t.id]=marker;
         });
-    },[activeTrips,latestByTrip,names]);
+        // Keep every active trip visible without requiring the supervisor to
+        // manually pan — the map used to sit fixed on Kano/Katsina regardless
+        // of where staff actually were.
+        if(allPoints.length===1) map.setView(allPoints[0],14);
+        else if(allPoints.length>1) map.fitBounds(allPoints,{padding:[40,40],maxZoom:14});
+    },[activeTrips,pingsByTrip,names]);
 
     return <div className="min-h-screen p-4 md:p-8"><div className="max-w-6xl mx-auto">
         <div className="glass rounded-2xl p-6 mb-6 animate-in"><button onClick={onBack} className="text-green-600 font-semibold text-sm mb-3 hover:underline"><i className="fas fa-arrow-left mr-2"/>Back to Dashboard</button>
-            <h1 className="text-2xl md:text-3xl font-extrabold text-gray-800">Field Trips</h1><p className="text-gray-500 mt-1">Live locations for staff currently on a trip · refreshes every 30s</p>
+            <h1 className="text-2xl md:text-3xl font-extrabold text-gray-800">Field Trips</h1><p className="text-gray-500 mt-1">Live locations and routes for staff currently on a trip · refreshes every 30s</p>
         </div>
-        <div className="glass rounded-2xl p-3 mb-6"><div ref={mapRef} style={{height:'360px',borderRadius:'12px'}}/></div>
+        <div className="glass rounded-2xl p-3 mb-6"><div ref={mapRef} style={{height:'420px',borderRadius:'12px'}}/></div>
         <div className="glass rounded-2xl p-6 mb-6">
             <h2 className="text-lg font-bold mb-4"><i className="fas fa-satellite-dish text-green-600 mr-2"/>Active Now ({activeTrips.length})</h2>
             {loading?<div className="text-center py-8 text-gray-400"><i className="fas fa-spinner fa-spin text-2xl"/></div>
             :activeTrips.length===0?<div className="text-center py-8 text-gray-400"><i className="fas fa-route text-3xl mb-2"/><p className="font-semibold">No one is on a tracked trip right now</p></div>
-            :<div className="space-y-3">{activeTrips.map(t=>{const ping=latestByTrip[t.id];return <div key={t.id} className="border-2 border-green-100 rounded-xl p-4" style={{background:'rgba(16,185,129,0.06)'}}>
-                <div className="flex justify-between items-start"><div><p className="font-bold text-gray-800"><span className="w-2 h-2 inline-block rounded-full bg-green-500 mr-2 animate-pulse"/>{names[t.employee_id]||'Staff'}</p><p className="text-sm text-gray-600">{t.purpose}{t.destination?` → ${t.destination}`:''}</p><p className="text-xs text-gray-400 mt-1">Started {new Date(t.started_at).toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'})} · {fmtDur(t.started_at)} elapsed</p></div>
+            :<div className="space-y-3">{activeTrips.map(t=>{const pings=pingsByTrip[t.id];const ping=pings&&pings.length?pings[pings.length-1]:null;return <div key={t.id} className="border-2 border-green-100 rounded-xl p-4" style={{background:'rgba(16,185,129,0.06)'}}>
+                <div className="flex justify-between items-start"><div><p className="font-bold text-gray-800"><span className="w-2 h-2 inline-block rounded-full bg-green-500 mr-2 animate-pulse"/>{names[t.employee_id]||'Staff'}</p><p className="text-sm text-gray-600">{t.purpose}{t.destination?` → ${t.destination}`:''}</p><p className="text-xs text-gray-400 mt-1">Started {new Date(t.started_at).toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'})} · {fmtDur(t.started_at)} elapsed · {pings?pings.length:0} point{pings&&pings.length!==1?'s':''} logged</p></div>
                 <div className="text-right text-xs text-gray-400">{ping?`Updated ${new Date(ping.recorded_at).toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'})}`:'Awaiting first ping'}</div></div>
             </div>;})}</div>}
         </div>
