@@ -10,6 +10,8 @@
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js"></script>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
     <link rel="icon" type="image/png" href="RAHAMA Empowerment Logo Design (3).png">
@@ -48,7 +50,7 @@
 <body>
 <div id="root"></div>
 <script type="text/babel">
-const { useState, useEffect, useRef } = React;
+const { useState, useEffect, useRef, useMemo } = React;
 const SB = 'https://wdondphcmnhdslcypeya.supabase.co';
 const SK = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Indkb25kcGhjbW5oZHNsY3lwZXlhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Njg5MDA3MDcsImV4cCI6MjA4NDQ3NjcwN30.wIisWHb3w4cSGZIB4f3q0Z6lboidH6SzL7oGToGdnsw';
 const H = {'apikey':SK,'Authorization':`Bearer ${SK}`};
@@ -1738,12 +1740,15 @@ function MandE({user,notify,onBack,readOnlyView}) {
             const d=await r.json();
             if(!Array.isArray(d)) throw new Error('Unexpected response from database.');
             setPlans(d);
-            const a=await fetch(`${SB}/rest/v1/work_plan_activities?select=work_plan_id`,{headers:H});
-            const ad=await a.json();
-            const c={};(Array.isArray(ad)?ad:[]).forEach(x=>{c[x.work_plan_id]=(c[x.work_plan_id]||0)+1;});
+            // Single trimmed fetch instead of two full-table pulls: the dashboard
+            // below only ever reads work_plan_id, current_status and
+            // verification_status, so that's all we ask the DB for. Counts are
+            // derived from this same result instead of a separate query.
+            const allActRows=await fetch(`${SB}/rest/v1/work_plan_activities?select=work_plan_id,current_status,verification_status`,{headers:H}).then(r=>r.json());
+            const rows=Array.isArray(allActRows)?allActRows:[];
+            const c={};rows.forEach(x=>{c[x.work_plan_id]=(c[x.work_plan_id]||0)+1;});
             setCounts(c);
-            const allActRows=await fetch(`${SB}/rest/v1/work_plan_activities?select=*`,{headers:H}).then(r=>r.json());
-            const grouped={};(Array.isArray(allActRows)?allActRows:[]).forEach(x=>{(grouped[x.work_plan_id]=grouped[x.work_plan_id]||[]).push(x);});
+            const grouped={};rows.forEach(x=>{(grouped[x.work_plan_id]=grouped[x.work_plan_id]||[]).push(x);});
             setActsByPlan(grouped);
         }catch(e){setErr(e.message);}
         setLoading(false);};
@@ -2563,6 +2568,7 @@ function Dashboard({user,onLogout,notify}) {
     if(view==='leave') return <LeaveRequest user={user} notify={notify} onBack={()=>setView('list')}/>;
     if(view==='mande') return <MandE user={user} notify={notify} onBack={()=>setView('list')}/>;
     if(view==='myacts') return <MyActivities user={user} notify={notify} onBack={()=>setView('list')}/>;
+    if(view==='fieldtrip') return <FieldTrip user={user} notify={notify} onBack={()=>setView('list')}/>;
     // Withdrawn submissions (duplicates, mistakes) stay visible in history for
     // transparency, but don't count toward Pending/Completed/Needs Response —
     // they're neither, they're closed out.
@@ -2588,6 +2594,7 @@ function Dashboard({user,onLogout,notify}) {
           {v:'directory',icon:'fa-address-book',bg:'',bgStyle:{background:'linear-gradient(135deg,#0ea5e9,#0369a1)'},title:'Staff Directory',sub:'Find and contact colleagues',hov:'text-blue-600'},
           {v:'leave',icon:'fa-plane-departure',bg:'',bgStyle:{background:'linear-gradient(135deg,#8b5cf6,#6d28d9)'},title:'Request Leave / Permission',sub:'Submit absence or time-off request',hov:'text-purple-600'},
           {v:'myacts',icon:'fa-list-check',bg:'',bgStyle:{background:'linear-gradient(135deg,#0891b2,#0e7490)'},title:'My Work Plan Activities',sub:'Report on activities assigned to you',hov:'text-cyan-600'},
+          {v:'fieldtrip',icon:'fa-route',bg:'',bgStyle:{background:'linear-gradient(135deg,#f59e0b,#b45309)'},title:'Field Trips',sub:'Start a trip and have your location tracked until you end it',hov:'text-amber-600'},
           ...(user.is_mne?[{v:'mande',icon:'fa-chart-pie',bg:'',bgStyle:{background:'linear-gradient(135deg,#0891b2,#0e7490)'},title:'Monitoring & Evaluation',sub:'Work plans, activity delivery & completion rates',hov:'text-cyan-600'}]:[])
         ].map((b,i)=><button key={i} onClick={()=>setView(b.v)} className="w-full glass rounded-2xl p-5 mb-4 hover:shadow-xl stat group">
             <div className="flex items-center gap-4">
@@ -2959,6 +2966,219 @@ function AttendanceAdmin({notify,onBack}) {
     </div></div>;
 }
 
+/* ==================== FIELD TRIPS ==================== */
+function fmtDur(a,b){if(!a)return'--';const ms=(b?new Date(b):new Date())-new Date(a);const h=Math.floor(ms/3600000),m=Math.floor((ms%3600000)/60000);return `${h}h ${m}m`;}
+
+function FieldTrip({user,notify,onBack}) {
+    const [active,setActive]=useState(null);
+    const [history,setHistory]=useState([]);
+    const [pings,setPings]=useState([]);
+    const [loading,setLoading]=useState(true);
+    const [purpose,setPurpose]=useState('');
+    const [destination,setDestination]=useState('');
+    const [busy,setBusy]=useState(false);
+    const [gpsStatus,setGpsStatus]=useState(null);
+    const watchIdRef=useRef(null);
+    const lastPingRef=useRef({t:0,lat:null,lng:null});
+
+    const load=async()=>{setLoading(true);try{
+        const ar=await fetch(`${SB}/rest/v1/field_trips?employee_id=eq.${user.id}&status=eq.active&order=started_at.desc&limit=1`,{headers:H});
+        const ad=await ar.json();
+        const cur=Array.isArray(ad)&&ad.length>0?ad[0]:null;
+        setActive(cur);
+        if(cur){
+            const pr=await fetch(`${SB}/rest/v1/trip_pings?trip_id=eq.${cur.id}&order=recorded_at.asc`,{headers:H});
+            const pd=await pr.json();setPings(Array.isArray(pd)?pd:[]);
+        } else setPings([]);
+        const hr=await fetch(`${SB}/rest/v1/field_trips?employee_id=eq.${user.id}&status=eq.completed&order=started_at.desc&limit=20`,{headers:H});
+        const hd=await hr.json();setHistory(Array.isArray(hd)?hd:[]);
+    }catch(e){}setLoading(false);};
+    useEffect(()=>{load();},[]);
+
+    const recordPing=(tripId,lat,lng,accuracy)=>{
+        const now=Date.now();const last=lastPingRef.current;
+        const moved=last.lat==null?Infinity:getDistanceM(lat,lng,last.lat,last.lng);
+        // Throttle: at most one ping every 45s, unless the person has moved >100m since the last one.
+        if(now-last.t<45000 && moved<100) return;
+        lastPingRef.current={t:now,lat,lng};
+        fetch(`${SB}/rest/v1/trip_pings`,{method:'POST',headers:HJ,body:JSON.stringify({trip_id:tripId,lat,lng,accuracy:accuracy||null})}).catch(()=>{});
+        setPings(p=>[...p,{lat,lng,recorded_at:new Date().toISOString()}]);
+    };
+
+    const beginWatch=(tripId)=>{
+        if(!navigator.geolocation){setGpsStatus('GPS not available on this device');return;}
+        watchIdRef.current=navigator.geolocation.watchPosition(
+            pos=>{setGpsStatus(null);recordPing(tripId,pos.coords.latitude,pos.coords.longitude,pos.coords.accuracy);},
+            err=>{const msgs={1:'Location permission denied — this trip is not being tracked',2:'Location unavailable',3:'Location signal lost, retrying…'};setGpsStatus(msgs[err.code]||'GPS error');},
+            {enableHighAccuracy:true,maximumAge:20000,timeout:30000}
+        );
+    };
+
+    // Resume watching if there's already an active trip (e.g. after a page reload).
+    useEffect(()=>{
+        if(active&&watchIdRef.current==null) beginWatch(active.id);
+        return ()=>{ if(watchIdRef.current!=null){navigator.geolocation.clearWatch(watchIdRef.current);watchIdRef.current=null;} };
+    },[active&&active.id]);
+
+    const startTrip=()=>{
+        if(!purpose.trim()){notify('Enter a purpose for the trip','error');return;}
+        setBusy(true);
+        navigator.geolocation.getCurrentPosition(async pos=>{
+            try{
+                const r=await fetch(`${SB}/rest/v1/field_trips`,{method:'POST',headers:{...HJ,'Prefer':'return=representation'},body:JSON.stringify({
+                    employee_id:user.id,purpose:purpose.trim(),destination:destination.trim()||null,status:'active',
+                    started_at:new Date().toISOString(),start_lat:pos.coords.latitude,start_lng:pos.coords.longitude
+                })});
+                if(r.ok){
+                    const d=await r.json();const trip=Array.isArray(d)?d[0]:d;
+                    setPurpose('');setDestination('');notify('Trip started — tracking is on');
+                    setPings([{lat:pos.coords.latitude,lng:pos.coords.longitude,recorded_at:new Date().toISOString()}]);
+                    setActive(trip);
+                } else notify('Could not start trip','error');
+            }catch(e){notify('Error starting trip','error');}
+            setBusy(false);
+        },err=>{
+            const msgs={1:'Location permission denied — cannot start a tracked trip',2:'Location unavailable',3:'Location timed out'};
+            notify(msgs[err.code]||'GPS error','error');setBusy(false);
+        },{enableHighAccuracy:true,timeout:15000});
+    };
+
+    const endTrip=()=>{
+        if(!active)return;
+        setBusy(true);
+        if(watchIdRef.current!=null){navigator.geolocation.clearWatch(watchIdRef.current);watchIdRef.current=null;}
+        const finish=async(endLat,endLng)=>{
+            const all=endLat!=null?[...pings,{lat:endLat,lng:endLng}]:pings;
+            let dist=0;for(let i=1;i<all.length;i++) dist+=getDistanceM(all[i-1].lat,all[i-1].lng,all[i].lat,all[i].lng);
+            const body={status:'completed',ended_at:new Date().toISOString(),distance_km:+(dist/1000).toFixed(2)};
+            if(endLat!=null){body.end_lat=endLat;body.end_lng=endLng;}
+            const r=await fetch(`${SB}/rest/v1/field_trips?id=eq.${active.id}`,{method:'PATCH',headers:HJ,body:JSON.stringify(body)});
+            if(r.ok){notify(endLat!=null?'Trip ended':'Trip ended (no final GPS fix)');setActive(null);setPings([]);load();}else notify('Failed to end trip','error');
+            setBusy(false);
+        };
+        navigator.geolocation.getCurrentPosition(pos=>finish(pos.coords.latitude,pos.coords.longitude),()=>finish(null,null),{enableHighAccuracy:true,timeout:10000});
+    };
+
+    return <div className="min-h-screen p-4 md:p-8"><div className="max-w-4xl mx-auto">
+        <div className="glass rounded-2xl p-6 mb-6 animate-in"><button onClick={onBack} className="text-green-600 font-semibold text-sm mb-3 hover:underline"><i className="fas fa-arrow-left mr-2"/>Back to Dashboard</button>
+            <h1 className="text-2xl md:text-3xl font-extrabold text-gray-800">Field Trips</h1><p className="text-gray-500 mt-1">Start a trip when you head out — your location logs periodically until you end it</p>
+        </div>
+        {loading?<div className="glass rounded-2xl p-12 text-center text-gray-400"><i className="fas fa-spinner fa-spin text-2xl"/></div>:<>
+        {active?<div className="glass rounded-2xl p-6 mb-6 border-2 border-green-200">
+            <div className="flex items-center gap-2 mb-3"><span className="w-3 h-3 rounded-full bg-green-500 animate-pulse"/><h2 className="text-lg font-bold text-green-700">Trip in progress</h2></div>
+            <p className="text-gray-800 font-semibold">{active.purpose}</p>
+            {active.destination&&<p className="text-sm text-gray-500">→ {active.destination}</p>}
+            <div className="grid grid-cols-2 gap-4 mt-4">
+                <div className="bg-gray-50 rounded-xl p-4"><p className="text-xs font-bold text-gray-400 uppercase">Started</p><p className="font-bold text-gray-800">{new Date(active.started_at).toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'})}</p></div>
+                <div className="bg-gray-50 rounded-xl p-4"><p className="text-xs font-bold text-gray-400 uppercase">Duration</p><p className="font-bold text-gray-800">{fmtDur(active.started_at)}</p></div>
+            </div>
+            <p className="text-xs text-gray-400 mt-3">{pings.length} location point{pings.length!==1?'s':''} logged</p>
+            {gpsStatus&&<p className="text-xs text-amber-600 mt-2"><i className="fas fa-triangle-exclamation mr-1"/>{gpsStatus}</p>}
+            <p className="text-xs text-gray-400 mt-2"><i className="fas fa-circle-info mr-1"/>Tracking pauses if your phone locks or you leave this page — reopen it to resume.</p>
+            <button onClick={endTrip} disabled={busy} className="mt-4 w-full bg-red-500 hover:bg-red-600 disabled:opacity-50 text-white py-3 rounded-xl font-bold"><i className="fas fa-flag-checkered mr-2"/>End Trip</button>
+        </div>:<div className="glass rounded-2xl p-6 mb-6">
+            <h2 className="text-lg font-bold mb-4"><i className="fas fa-route text-green-600 mr-2"/>Start a Trip</h2>
+            <input value={purpose} onChange={e=>setPurpose(e.target.value)} placeholder="Purpose (e.g. Facility supervision visit)" className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl mb-3"/>
+            <input value={destination} onChange={e=>setDestination(e.target.value)} placeholder="Destination (optional)" className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl mb-4"/>
+            <p className="text-xs text-gray-400 mb-3"><i className="fas fa-location-dot mr-1"/>Your phone will ask for location access. Tracking only runs while this page is open.</p>
+            <button onClick={startTrip} disabled={busy||!purpose.trim()} className="w-full btn-green disabled:opacity-50 text-white py-3 rounded-xl font-bold"><i className="fas fa-play mr-2"/>Start Trip</button>
+        </div>}
+        <div className="glass rounded-2xl p-6">
+            <h2 className="text-lg font-bold mb-4"><i className="fas fa-clock-rotate-left text-blue-600 mr-2"/>Trip History</h2>
+            {history.length===0?<div className="text-center py-8 text-gray-400"><i className="fas fa-route text-3xl mb-2"/><p className="font-semibold">No completed trips yet</p></div>
+            :<div className="space-y-3">{history.map(t=><div key={t.id} className="border-2 border-gray-100 rounded-xl p-4">
+                <div className="flex justify-between items-start"><div><p className="font-semibold text-gray-800">{t.purpose}</p>{t.destination&&<p className="text-sm text-gray-500">→ {t.destination}</p>}<p className="text-xs text-gray-400 mt-1">{new Date(t.started_at).toLocaleDateString([],{month:'short',day:'numeric',year:'numeric'})} · {new Date(t.started_at).toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'})} – {t.ended_at?new Date(t.ended_at).toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'}):'--'}</p></div>
+                <div className="text-right"><p className="text-xs font-bold text-gray-400 uppercase">Distance</p><p className="font-bold text-gray-800">{t.distance_km?`${t.distance_km} km`:'--'}</p></div></div>
+            </div>)}</div>}
+        </div>
+        </>}
+    </div></div>;
+}
+
+function FieldTripAdmin({notify,onBack}) {
+    const [activeTrips,setActiveTrips]=useState([]);
+    const [recent,setRecent]=useState([]);
+    const [names,setNames]=useState({});
+    const [latestByTrip,setLatestByTrip]=useState({});
+    const [loading,setLoading]=useState(true);
+    const mapRef=useRef(null);
+    const mapObj=useRef(null);
+    const markersRef=useRef({});
+
+    const load=async()=>{
+        try{
+            const ar=await fetch(`${SB}/rest/v1/field_trips?status=eq.active&order=started_at.desc`,{headers:H});
+            const ad=await ar.json();const activeArr=Array.isArray(ad)?ad:[];setActiveTrips(activeArr);
+            const rr=await fetch(`${SB}/rest/v1/field_trips?status=eq.completed&order=started_at.desc&limit=30`,{headers:H});
+            const rd=await rr.json();const recentArr=Array.isArray(rd)?rd:[];setRecent(recentArr);
+            const ids=[...new Set([...activeArr,...recentArr].map(t=>t.employee_id))];
+            if(ids.length>0){
+                const ur=await fetch(`${SB}/rest/v1/users?select=id,name&id=in.(${ids.join(',')})`,{headers:H});
+                const ud=await ur.json();const n={};(ud||[]).forEach(u=>n[u.id]=u.name);setNames(n);
+            }
+            if(activeArr.length>0){
+                const tripIds=activeArr.map(t=>t.id).join(',');
+                const pr=await fetch(`${SB}/rest/v1/trip_pings?trip_id=in.(${tripIds})&order=recorded_at.desc`,{headers:H});
+                const pd=await pr.json();const latest={};(pd||[]).forEach(p=>{if(!latest[p.trip_id])latest[p.trip_id]=p;});
+                setLatestByTrip(latest);
+            } else setLatestByTrip({});
+        }catch(e){}
+        setLoading(false);
+    };
+    useEffect(()=>{load();const iv=setInterval(load,30000);return()=>clearInterval(iv);},[]);
+
+    useEffect(()=>{
+        if(!window.L||!mapRef.current)return;
+        if(!mapObj.current){
+            mapObj.current=window.L.map(mapRef.current).setView([11.99,8.53],7);
+            window.L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{attribution:'&copy; OpenStreetMap contributors',maxZoom:18}).addTo(mapObj.current);
+        }
+        const map=mapObj.current;
+        Object.values(markersRef.current).forEach(m=>map.removeLayer(m));
+        markersRef.current={};
+        activeTrips.forEach(t=>{
+            const ping=latestByTrip[t.id];
+            const lat=ping?ping.lat:t.start_lat, lng=ping?ping.lng:t.start_lng;
+            if(lat==null||lng==null)return;
+            const marker=window.L.marker([lat,lng]).addTo(map).bindPopup(`<b>${names[t.employee_id]||'Staff'}</b><br/>${t.purpose}${ping?`<br/><span style="color:#888">Updated ${new Date(ping.recorded_at).toLocaleTimeString()}</span>`:''}`);
+            markersRef.current[t.id]=marker;
+        });
+    },[activeTrips,latestByTrip,names]);
+
+    return <div className="min-h-screen p-4 md:p-8"><div className="max-w-6xl mx-auto">
+        <div className="glass rounded-2xl p-6 mb-6 animate-in"><button onClick={onBack} className="text-green-600 font-semibold text-sm mb-3 hover:underline"><i className="fas fa-arrow-left mr-2"/>Back to Dashboard</button>
+            <h1 className="text-2xl md:text-3xl font-extrabold text-gray-800">Field Trips</h1><p className="text-gray-500 mt-1">Live locations for staff currently on a trip · refreshes every 30s</p>
+        </div>
+        <div className="glass rounded-2xl p-3 mb-6"><div ref={mapRef} style={{height:'360px',borderRadius:'12px'}}/></div>
+        <div className="glass rounded-2xl p-6 mb-6">
+            <h2 className="text-lg font-bold mb-4"><i className="fas fa-satellite-dish text-green-600 mr-2"/>Active Now ({activeTrips.length})</h2>
+            {loading?<div className="text-center py-8 text-gray-400"><i className="fas fa-spinner fa-spin text-2xl"/></div>
+            :activeTrips.length===0?<div className="text-center py-8 text-gray-400"><i className="fas fa-route text-3xl mb-2"/><p className="font-semibold">No one is on a tracked trip right now</p></div>
+            :<div className="space-y-3">{activeTrips.map(t=>{const ping=latestByTrip[t.id];return <div key={t.id} className="border-2 border-green-100 rounded-xl p-4" style={{background:'rgba(16,185,129,0.06)'}}>
+                <div className="flex justify-between items-start"><div><p className="font-bold text-gray-800"><span className="w-2 h-2 inline-block rounded-full bg-green-500 mr-2 animate-pulse"/>{names[t.employee_id]||'Staff'}</p><p className="text-sm text-gray-600">{t.purpose}{t.destination?` → ${t.destination}`:''}</p><p className="text-xs text-gray-400 mt-1">Started {new Date(t.started_at).toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'})} · {fmtDur(t.started_at)} elapsed</p></div>
+                <div className="text-right text-xs text-gray-400">{ping?`Updated ${new Date(ping.recorded_at).toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'})}`:'Awaiting first ping'}</div></div>
+            </div>;})}</div>}
+        </div>
+        <div className="glass rounded-2xl p-6">
+            <h2 className="text-lg font-bold mb-4"><i className="fas fa-clock-rotate-left text-blue-600 mr-2"/>Recent Completed Trips</h2>
+            {recent.length===0?<div className="text-center py-8 text-gray-400"><i className="fas fa-route text-3xl mb-2"/><p className="font-semibold">No completed trips yet</p></div>
+            :<div className="overflow-x-auto"><table className="w-full text-sm"><thead><tr className="border-b-2 border-gray-100">
+                <th className="text-left py-2 px-2 font-bold text-gray-500 uppercase text-xs">Staff</th>
+                <th className="text-left py-2 px-2 font-bold text-gray-500 uppercase text-xs">Purpose</th>
+                <th className="text-left py-2 px-2 font-bold text-gray-500 uppercase text-xs">Date</th>
+                <th className="text-left py-2 px-2 font-bold text-gray-500 uppercase text-xs">Duration</th>
+                <th className="text-left py-2 px-2 font-bold text-gray-500 uppercase text-xs">Distance</th>
+            </tr></thead><tbody>{recent.map(t=><tr key={t.id} className="border-b border-gray-50">
+                <td className="py-2 px-2 font-semibold text-gray-800">{names[t.employee_id]||'Staff'}</td>
+                <td className="py-2 px-2 text-gray-600">{t.purpose}{t.destination?` → ${t.destination}`:''}</td>
+                <td className="py-2 px-2 text-gray-600">{new Date(t.started_at).toLocaleDateString([],{month:'short',day:'numeric'})}</td>
+                <td className="py-2 px-2 text-gray-600">{fmtDur(t.started_at,t.ended_at)}</td>
+                <td className="py-2 px-2 text-gray-600">{t.distance_km?`${t.distance_km} km`:'--'}</td>
+            </tr>)}</tbody></table></div>}
+        </div>
+    </div></div>;
+}
+
 /* ==================== SUPERVISOR DASHBOARD — with Login Logs button ==================== */
 function DeadlineSettings({user,notify,onBack}) {
     const [deadline,setDeadline]=useState('');
@@ -3120,7 +3340,7 @@ function QuarterlyOverview({notify,onBack}) {
 
 function SuperDash({user,onLogout,notify}) {
     const [allApps,setAllApps]=useState([]);const [selected,setSelected]=useState(null);const [names,setNames]=useState({});const [showPw,setShowPw]=useState(false);const [tab,setTab]=useState('pending');
-    const [showAttendance,setShowAttendance]=useState(false);const [showLeave,setShowLeave]=useState(false);const [showHR,setShowHR]=useState(false);const [showLoginLogs,setShowLoginLogs]=useState(false);const [showMandE,setShowMandE]=useState(false);const [showMyActs,setShowMyActs]=useState(false);const [showDeadline,setShowDeadline]=useState(false);const [showQuarterly,setShowQuarterly]=useState(false);
+    const [showAttendance,setShowAttendance]=useState(false);const [showLeave,setShowLeave]=useState(false);const [showHR,setShowHR]=useState(false);const [showLoginLogs,setShowLoginLogs]=useState(false);const [showMandE,setShowMandE]=useState(false);const [showMyActs,setShowMyActs]=useState(false);const [showDeadline,setShowDeadline]=useState(false);const [showQuarterly,setShowQuarterly]=useState(false);const [showFieldTrip,setShowFieldTrip]=useState(false);const [showMyFieldTrip,setShowMyFieldTrip]=useState(false);
     const load=()=>{fetch(`${SB}/rest/v1/appraisals?order=created_at.desc`,{headers:H}).then(r=>r.json()).then(data=>{setAllApps(data);const ids=[...new Set(data.map(a=>a.employee_id))];if(ids.length>0)fetch(`${SB}/rest/v1/users?select=id,name&id=in.(${ids.join(',')})`,{headers:H}).then(r=>r.json()).then(users=>{const n={};users.forEach(u=>n[u.id]=u.name);setNames(n);});});};
     useEffect(()=>{load();},[]);
     if(showAttendance) return <AttendanceAdmin notify={notify} onBack={()=>setShowAttendance(false)}/>;
@@ -3132,6 +3352,8 @@ function SuperDash({user,onLogout,notify}) {
     if(showMyActs) return <MyActivities user={user} notify={notify} onBack={()=>setShowMyActs(false)}/>;
     if(showDeadline) return <DeadlineSettings user={user} notify={notify} onBack={()=>setShowDeadline(false)}/>;
     if(showQuarterly) return <QuarterlyOverview notify={notify} onBack={()=>setShowQuarterly(false)}/>;
+    if(showFieldTrip) return <FieldTripAdmin notify={notify} onBack={()=>setShowFieldTrip(false)}/>;
+    if(showMyFieldTrip) return <FieldTrip user={user} notify={notify} onBack={()=>setShowMyFieldTrip(false)}/>;
     // Withdrawn submissions (duplicates, mistakes) are kept for audit but
     // dropped out of the normal Pending/Completed/Disputed working queues.
     const activeApps=allApps.filter(a=>!a.withdrawn);
@@ -3162,6 +3384,8 @@ function SuperDash({user,onLogout,notify}) {
           {fn:()=>setShowMandE(true),icon:'fa-chart-pie',bg:'linear-gradient(135deg,#0891b2,#0e7490)',title:'Monitoring & Evaluation',sub:user.is_mne?'Work plans, data, indicators & completion rates':'View work plans, data and indicator dashboards',hov:'text-cyan-600'},
           {fn:()=>setShowDeadline(true),icon:'fa-hourglass-half',bg:'linear-gradient(135deg,#ea580c,#9a3412)',title:'Self-Assessment Deadline',sub:'Set the submission deadline or reopen it for everyone',hov:'text-orange-600'},
           {fn:()=>setShowQuarterly(true),icon:'fa-calendar-check',bg:'linear-gradient(135deg,#059669,#065f46)',title:'Submissions by Quarter',sub:'See who has submitted, who\'s pending review, and who hasn\'t started',hov:'text-emerald-600'},
+          {fn:()=>setShowFieldTrip(true),icon:'fa-route',bg:'linear-gradient(135deg,#f59e0b,#b45309)',title:'Field Trips',sub:'Live map of staff on active trips, plus trip history',hov:'text-amber-600'},
+          {fn:()=>setShowMyFieldTrip(true),icon:'fa-person-walking-luggage',bg:'linear-gradient(135deg,#0d9488,#0f766e)',title:'My Field Trips',sub:'Start your own trip and have your location tracked until you end it',hov:'text-teal-600'},
           {fn:()=>window.open('https://rahamaorg.github.io/rahamafms/','_blank'),icon:'fa-coins',bg:'linear-gradient(135deg,#16a34a,#166534)',title:'Financial Management System',sub:'Budgets, payments & approvals',hov:'text-green-600'}
         ].map((b,i)=><button key={i} onClick={b.fn} className="w-full glass rounded-2xl p-5 mb-4 hover:shadow-xl stat group">
             <div className="flex items-center gap-4">
