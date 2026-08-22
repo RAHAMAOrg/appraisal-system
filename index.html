@@ -197,6 +197,24 @@ function App() {
                         }
                     }
                 }).catch(()=>{});
+            // is_security is fetched separately and defensively — if that
+            // column doesn't exist yet on `users`, this silently no-ops
+            // instead of affecting login or session restore at all.
+            fetch(`${SB}/rest/v1/users?id=eq.${u.id}&select=is_security`,{headers:H})
+                .then(r=>r.ok?r.json():[])
+                .then(d=>{
+                    if(Array.isArray(d)&&d.length){
+                        const secFlag=!!d[0].is_security;
+                        if(secFlag!==!!u.is_security){
+                            setUser(cur=>{
+                                const nu={...(cur||u),is_security:secFlag};
+                                localStorage.setItem('rahama_session',JSON.stringify(nu));
+                                localStorage.setItem('pms_user',JSON.stringify(nu));
+                                return nu;
+                            });
+                        }
+                    }
+                }).catch(()=>{});
         })();
     },[]);
 
@@ -234,8 +252,13 @@ function App() {
             }
 
             if(account&&account.id&&account.role===role){
+                let isSecurity=false;
+                try{
+                    const sr=await fetch(`${SB}/rest/v1/users?id=eq.${account.id}&select=is_security`,{headers:H});
+                    if(sr.ok){const sd=await sr.json();isSecurity=Array.isArray(sd)&&sd.length?!!sd[0].is_security:false;}
+                }catch(e){}
                 const d={
-                    email:account.email,name:account.name,role:account.role,id:account.id,is_mne:!!account.is_mne,
+                    email:account.email,name:account.name,role:account.role,id:account.id,is_mne:!!account.is_mne,is_security:isSecurity,
                     access_token:data.session.access_token,refresh_token:data.session.refresh_token,expires_at:data.session.expires_at,
                     issuedAt:Date.now()
                 };
@@ -2579,6 +2602,7 @@ function Dashboard({user,onLogout,notify}) {
     if(view==='mande') return <MandE user={user} notify={notify} onBack={()=>setView('list')}/>;
     if(view==='myacts') return <MyActivities user={user} notify={notify} onBack={()=>setView('list')}/>;
     if(view==='fieldtrip') return <FieldTrip user={user} notify={notify} onBack={()=>setView('list')}/>;
+    if(view==='fieldtripmon') return <FieldTripAdmin notify={notify} onBack={()=>setView('list')}/>;
     // Withdrawn submissions (duplicates, mistakes) stay visible in history for
     // transparency, but don't count toward Pending/Completed/Needs Response —
     // they're neither, they're closed out.
@@ -2605,6 +2629,7 @@ function Dashboard({user,onLogout,notify}) {
           {v:'leave',icon:'fa-plane-departure',bg:'',bgStyle:{background:'linear-gradient(135deg,#8b5cf6,#6d28d9)'},title:'Request Leave / Permission',sub:'Submit absence or time-off request',hov:'text-purple-600'},
           {v:'myacts',icon:'fa-list-check',bg:'',bgStyle:{background:'linear-gradient(135deg,#0891b2,#0e7490)'},title:'My Work Plan Activities',sub:'Report on activities assigned to you',hov:'text-cyan-600'},
           {v:'fieldtrip',icon:'fa-route',bg:'',bgStyle:{background:'linear-gradient(135deg,#f59e0b,#b45309)'},title:'Field Trips',sub:'Start a trip and have your location tracked until you end it',hov:'text-amber-600'},
+          ...(user.is_security?[{v:'fieldtripmon',icon:'fa-map-location-dot',bg:'',bgStyle:{background:'linear-gradient(135deg,#dc2626,#991b1b)'},title:'Field Trip Monitoring',sub:'Live map and history of all staff field trips',hov:'text-red-600'}]:[]),
           ...(user.is_mne?[{v:'mande',icon:'fa-chart-pie',bg:'',bgStyle:{background:'linear-gradient(135deg,#0891b2,#0e7490)'},title:'Monitoring & Evaluation',sub:'Work plans, activity delivery & completion rates',hov:'text-cyan-600'}]:[])
         ].map((b,i)=><button key={i} onClick={()=>setView(b.v)} className="w-full glass rounded-2xl p-5 mb-4 hover:shadow-xl stat group">
             <div className="flex items-center gap-4">
