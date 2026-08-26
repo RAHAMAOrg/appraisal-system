@@ -781,25 +781,34 @@ function METool({tool,user,notify,onBack,readOnlyView}) {
     const [loading,setLoading]=useState(true);
     const [wpStats,setWpStats]=useState(null);
 
-    const load=async()=>{setLoading(true);
+       const load=async()=>{setLoading(true);
         try{
-            // Delivery side: work plan progress for this project, shown beside reach
-            try{
-                const wp=await fetch(`${SB}/rest/v1/work_plans?select=id&project_code=eq.${encodeURIComponent(tool.project_code)}`,{headers:H}).then(r=>r.json());
-                if(Array.isArray(wp)&&wp.length){
-                    const ids=wp.map(x=>x.id).join(',');
-                    const acts=await fetch(`${SB}/rest/v1/work_plan_activities?select=current_status,verification_status&work_plan_id=in.(${ids})`,{headers:H}).then(r=>r.json());
-                    const a=Array.isArray(acts)?acts:[];
-                    setWpStats({total:a.length,
-                        verified:a.filter(x=>['Completed','Completed For Period'].includes(x.current_status)&&x.verification_status==='verified').length,
-                        awaiting:a.filter(x=>x.verification_status==='submitted').length});
-                }
-            }catch(e){}
-            const d=await fetch(`${SB}/rest/v1/me_datasets?tool_id=eq.${tool.id}&order=period_label.desc`,{headers:H}).then(r=>r.json());
-            const ds=Array.isArray(d)?d:[];
+            // These three requests don't depend on each other — running them
+            // concurrently instead of one after another cuts the wait roughly
+            // to the slowest single round-trip instead of the sum of all three,
+            // which matters most on a slow connection.
+            const wpStatsPromise=(async()=>{
+                try{
+                    const wp=await fetch(`${SB}/rest/v1/work_plans?select=id&project_code=eq.${encodeURIComponent(tool.project_code)}`,{headers:H}).then(r=>r.json());
+                    if(Array.isArray(wp)&&wp.length){
+                        const ids=wp.map(x=>x.id).join(',');
+                        const acts=await fetch(`${SB}/rest/v1/work_plan_activities?select=current_status,verification_status&work_plan_id=in.(${ids})`,{headers:H}).then(r=>r.json());
+                        const a=Array.isArray(acts)?acts:[];
+                        return {total:a.length,
+                            verified:a.filter(x=>['Completed','Completed For Period'].includes(x.current_status)&&x.verification_status==='verified').length,
+                            awaiting:a.filter(x=>x.verification_status==='submitted').length};
+                    }
+                    return null;
+                }catch(e){return null;}
+            })();
+            const datasetsPromise=fetch(`${SB}/rest/v1/me_datasets?tool_id=eq.${tool.id}&order=period_label.desc`,{headers:H}).then(r=>r.json()).catch(()=>[]);
+            const indicatorsPromise=fetch(`${SB}/rest/v1/me_indicators?tool_id=eq.${tool.id}&order=sort_order.asc`,{headers:H}).then(r=>r.json()).catch(()=>[]);
+
+            const [wpStatsResult,dRaw,indRaw]=await Promise.all([wpStatsPromise,datasetsPromise,indicatorsPromise]);
+            if(wpStatsResult) setWpStats(wpStatsResult);
+            const ds=Array.isArray(dRaw)?dRaw:[];
             setDatasets(ds);
-            const ind=await fetch(`${SB}/rest/v1/me_indicators?tool_id=eq.${tool.id}&order=sort_order.asc`,{headers:H}).then(r=>r.json());
-            setIndicators(Array.isArray(ind)?ind:[]);
+            setIndicators(Array.isArray(indRaw)?indRaw:[]);
             const all=[];
             ds.forEach(x=>{try{const parsed=JSON.parse(x.rows_json||'[]');parsed.forEach(r=>all.push({...r,__period:x.period_label,__ds:x.id}));}catch(e){}});
             setRows(all);
@@ -1756,9 +1765,14 @@ function MandE({user,notify,onBack,readOnlyView}) {
     const [selPlan,setSelPlan]=useState(null);
     const [actsByPlan,setActsByPlan]=useState({});
 
-    const load=async()=>{setLoading(true);setErr(null);
+        const load=async()=>{setLoading(true);setErr(null);
         try{
-            const r=await fetch(`${SB}/rest/v1/work_plans?order=created_at.desc`,{headers:H});
+            // These two fetches don't depend on each other, so run them
+            // concurrently rather than one after another.
+            const [r,allActRows]=await Promise.all([
+                fetch(`${SB}/rest/v1/work_plans?order=created_at.desc`,{headers:H}),
+                fetch(`${SB}/rest/v1/work_plan_activities?select=work_plan_id,current_status,verification_status`,{headers:H}).then(r=>r.json()).catch(()=>[])
+            ]);
             if(!r.ok) throw new Error('Work plan tables not found — run the SQL setup first.');
             const d=await r.json();
             if(!Array.isArray(d)) throw new Error('Unexpected response from database.');
@@ -1767,7 +1781,6 @@ function MandE({user,notify,onBack,readOnlyView}) {
             // below only ever reads work_plan_id, current_status and
             // verification_status, so that's all we ask the DB for. Counts are
             // derived from this same result instead of a separate query.
-            const allActRows=await fetch(`${SB}/rest/v1/work_plan_activities?select=work_plan_id,current_status,verification_status`,{headers:H}).then(r=>r.json());
             const rows=Array.isArray(allActRows)?allActRows:[];
             const c={};rows.forEach(x=>{c[x.work_plan_id]=(c[x.work_plan_id]||0)+1;});
             setCounts(c);
