@@ -2602,9 +2602,14 @@ function ReportActivity({act,user,notify,onDone}) {
 
 function Dashboard({user,onLogout,notify}) {
     const [view,setView]=useState('list');const [showPw,setShowPw]=useState(false);const [apps,setApps]=useState([]);const [loading,setLoading]=useState(true);const [selApp,setSelApp]=useState(null);const [leaves,setLeaves]=useState([]);
+    const [isHr,setIsHr]=useState(false);const [isEd,setIsEd]=useState(false);const [polPending,setPolPending]=useState(0);
     const load=()=>{setLoading(true);
         fetch(`${SB}/rest/v1/appraisals?employee_id=eq.${user.id}&order=created_at.desc`,{headers:H}).then(r=>r.json()).then(d=>{setApps(d);}).catch(()=>{});
         fetch(`${SB}/rest/v1/leave_requests?employee_id=eq.${user.id}&order=created_at.desc`,{headers:H}).then(r=>r.json()).then(d=>setLeaves(d||[])).catch(()=>setLeaves([]));
+        // HR flag is read here, not at login, so the login flow is untouched.
+        fetch(`${SB}/rest/v1/users?id=eq.${user.id}&select=is_hr`,{headers:H}).then(r=>r.ok?r.json():[]).then(d=>setIsHr(Array.isArray(d)&&d.length?!!d[0].is_hr:false)).catch(()=>{});
+        fetch(`${SB}/rest/v1/users?id=eq.${user.id}&select=is_ed`,{headers:H}).then(r=>r.ok?r.json():[]).then(d=>setIsEd(Array.isArray(d)&&d.length?!!d[0].is_ed:false)).catch(()=>{});
+        loadMyPolicyItems(user.id).then(it=>setPolPending(it.filter(x=>x.status!=='signed').length)).catch(()=>{});
         setLoading(false);};
     useEffect(()=>{load();},[]);
     if(view==='create') return <Assessment user={user} notify={notify} onDone={()=>{setView('list');load();}}/>;
@@ -2615,7 +2620,10 @@ function Dashboard({user,onLogout,notify}) {
     if(view==='mande') return <MandE user={user} notify={notify} onBack={()=>setView('list')}/>;
     if(view==='myacts') return <MyActivities user={user} notify={notify} onBack={()=>setView('list')}/>;
     if(view==='fieldtrip') return <FieldTrip user={user} notify={notify} onBack={()=>setView('list')}/>;
-    if(view==='fieldtripmon') return <FieldTripAdmin notify={notify} onBack={()=>setView('list')}/>;
+    if(view==='fieldtripmon') return <FieldTripAdmin user={user} notify={notify} onBack={()=>setView('list')}/>;
+    if(view==='policies') return <MyPolicies user={user} notify={notify} onBack={()=>{setView('list');load();}}/>;
+    if(view==='policyadmin') return <PolicyAdmin user={user} notify={notify} onBack={()=>setView('list')}/>;
+    if(view==='hrdash') return <HRDashboard user={user} notify={notify} access={isHr?'hr':'ed'} onBack={()=>setView('list')}/>;
     // Withdrawn submissions (duplicates, mistakes) stay visible in history for
     // transparency, but don't count toward Pending/Completed/Needs Response —
     // they're neither, they're closed out.
@@ -2632,6 +2640,7 @@ function Dashboard({user,onLogout,notify}) {
             </div>
         </div>
         {needsResponse.length>0&&<div className="bg-blue-50 border-2 border-blue-200 rounded-2xl p-5 mb-6"><div className="flex items-start gap-3"><div className="w-10 h-10 bg-blue-100 rounded-xl flex items-center justify-center flex-shrink-0"><i className="fas fa-bell text-blue-600"/></div><div><h3 className="font-bold text-blue-800">Supervisor Review Available</h3><p className="text-sm text-blue-600 mt-1">You have {needsResponse.length} review(s) to respond to.</p></div></div></div>}
+        {polPending>0&&<div className="bg-amber-50 border-2 border-amber-200 rounded-2xl p-5 mb-6 flex flex-wrap items-center gap-3"><div className="w-10 h-10 bg-amber-100 rounded-xl flex items-center justify-center flex-shrink-0"><i className="fas fa-file-signature text-amber-600"/></div><div className="flex-1"><h3 className="font-bold text-amber-800">Policies to sign</h3><p className="text-sm text-amber-700 mt-1">HR has asked you to read and sign {polPending} {polPending===1?'policy':'policies'}.</p></div><button onClick={()=>setView('policies')} className="btn-green text-white px-4 py-2 rounded-xl font-semibold text-sm">Open My Policies</button></div>}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
             {[{label:'Total',val:apps.length,icon:'fa-clipboard-list',bg:'bg-blue-50',color:'text-blue-600'},{label:'Pending',val:pending.length,icon:'fa-clock',bg:'bg-amber-50',color:'text-amber-600'},{label:'Completed',val:completed.length,icon:'fa-check-circle',bg:'bg-green-50',color:'text-green-600'},{label:'Needs Response',val:needsResponse.length,icon:'fa-reply',bg:'bg-purple-50',color:'text-purple-600'}
             ].map((s,i)=><div key={i} className="glass rounded-xl p-5 stat"><div className="flex justify-between items-start"><div><p className="text-xs font-bold text-gray-400 uppercase tracking-wider">{s.label}</p><p className="text-3xl font-extrabold text-gray-800 mt-1">{s.val}</p></div><div className={`w-10 h-10 ${s.bg} rounded-lg flex items-center justify-center`}><i className={`fas ${s.icon} ${s.color}`}/></div></div></div>)}
@@ -2643,6 +2652,8 @@ function Dashboard({user,onLogout,notify}) {
           {v:'myacts',icon:'fa-list-check',bg:'',bgStyle:{background:'linear-gradient(135deg,#0891b2,#0e7490)'},title:'My Work Plan Activities',sub:'Report on activities assigned to you',hov:'text-cyan-600'},
           {v:'fieldtrip',icon:'fa-route',bg:'',bgStyle:{background:'linear-gradient(135deg,#f59e0b,#b45309)'},title:'Field Trips',sub:'Start a trip and have your location tracked until you end it',hov:'text-amber-600'},
           ...(user.is_security?[{v:'fieldtripmon',icon:'fa-map-location-dot',bg:'',bgStyle:{background:'linear-gradient(135deg,#dc2626,#991b1b)'},title:'Field Trip Monitoring',sub:'Live map and history of all staff field trips',hov:'text-red-600'}]:[]),
+          {v:'policies',icon:'fa-file-signature',bg:'',bgStyle:{background:'linear-gradient(135deg,#e11d48,#9f1239)'},title:'My Policies',sub:polPending>0?`${polPending} waiting for your signature`:'Read and sign RAHAMA policies',hov:'text-rose-600'},
+          ...((isHr||isEd)?[{v:'hrdash',icon:'fa-people-group',bg:'',bgStyle:{background:'linear-gradient(135deg,#7c3aed,#4c1d95)'},title:'HR Dashboard',sub:isHr?'Appraisal findings, promotions, staff profiles & policies':'Appraisal findings, promotion decisions & policy compliance',hov:'text-violet-600'}]:[]),
           ...(user.is_mne?[{v:'mande',icon:'fa-chart-pie',bg:'',bgStyle:{background:'linear-gradient(135deg,#0891b2,#0e7490)'},title:'Monitoring & Evaluation',sub:'Work plans, activity delivery & completion rates',hov:'text-cyan-600'}]:[])
         ].map((b,i)=><button key={i} onClick={()=>setView(b.v)} className="w-full glass rounded-2xl p-5 mb-4 hover:shadow-xl stat group">
             <div className="flex items-center gap-4">
@@ -3017,6 +3028,13 @@ function AttendanceAdmin({notify,onBack}) {
 /* ==================== FIELD TRIPS ==================== */
 function fmtDur(a,b){if(!a)return'--';const ms=(b?new Date(b):new Date())-new Date(a);const h=Math.floor(ms/3600000),m=Math.floor((ms%3600000)/60000);return `${h}h ${m}m`;}
 
+/* ── Field trip security helpers ── */
+const TRIP_STALE_MIN=20; // minutes without a location update before a trip is flagged
+const tripEsc=s=>String(s==null?'':s).replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
+const waNumber=p=>{let d=String(p||'').replace(/\D/g,'');if(!d)return '';if(d.startsWith('0'))d='234'+d.slice(1);else if(d.length===10)d='234'+d;return d;};
+const TRIP_TEMPLATES=['Please check in now and confirm you are safe.','Please share your current location and expected return time.','Avoid your planned route. Contact Security before moving on.','Pause movement and stay where you are until Security contacts you.','Return to base as soon as it is safe to do so.'];
+const tripTime=d=>new Date(d).toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'});
+
 function FieldTrip({user,notify,onBack}) {
     const [active,setActive]=useState(null);
     const [history,setHistory]=useState([]);
@@ -3046,6 +3064,20 @@ function FieldTrip({user,notify,onBack}) {
         const hd=await hr.json();setHistory(Array.isArray(hd)?hd:[]);
     }catch(e){}setLoading(false);};
     useEffect(()=>{load();},[]);
+
+    /* Messages from Security while a trip is active — checked every 30s */
+    const [msgs,setMsgs]=useState([]);const [replies,setReplies]=useState({});const seenRef=useRef(new Set());
+    const loadMsgs=async(tripId)=>{try{
+        const r=await fetch(`${SB}/rest/v1/trip_messages?trip_id=eq.${encodeURIComponent(String(tripId))}&order=sent_at.desc`,{headers:H});
+        const d=r.ok?await r.json():[];const arr=Array.isArray(d)?d:[];
+        const fresh=arr.filter(m=>!m.read_at&&!seenRef.current.has(m.id));
+        if(fresh.length){fresh.forEach(m=>seenRef.current.add(m.id));try{if(navigator.vibrate)navigator.vibrate([200,100,200]);}catch(_){}
+            fetch(`${SB}/rest/v1/trip_messages?id=in.(${fresh.map(m=>m.id).join(',')})`,{method:'PATCH',headers:HJ,body:JSON.stringify({read_at:new Date().toISOString()})}).catch(()=>{});}
+        setMsgs(arr);}catch(e){}};
+    useEffect(()=>{if(!active){setMsgs([]);return;}loadMsgs(active.id);const iv=setInterval(()=>loadMsgs(active.id),30000);return()=>clearInterval(iv);},[active&&active.id]);
+    const ackMsg=async m=>{const reply=(replies[m.id]||'').trim().slice(0,500);
+        const r=await fetch(`${SB}/rest/v1/trip_messages?id=eq.${m.id}`,{method:'PATCH',headers:HJ,body:JSON.stringify({acknowledged_at:new Date().toISOString(),reply:reply||null})});
+        if(r.ok){notify('Security can now see you received this');loadMsgs(active.id);}else notify('Could not send — check your connection','error');};
 
     const recordPing=(tripId,lat,lng,accuracy)=>{
         const now=Date.now();const last=lastPingRef.current;
@@ -3161,6 +3193,14 @@ function FieldTrip({user,notify,onBack}) {
         {loading?<div className="glass rounded-2xl p-12 text-center text-gray-400"><i className="fas fa-spinner fa-spin text-2xl"/></div>:<>
         {active?<div className="glass rounded-2xl p-6 mb-6 border-2 border-green-200">
             <div className="flex items-center gap-2 mb-3"><span className="w-3 h-3 rounded-full bg-green-500 animate-pulse"/><h2 className="text-lg font-bold text-green-700">Trip in progress</h2></div>
+            {msgs.filter(m=>!m.acknowledged_at).map(m=><div key={m.id} className="bg-red-50 border-2 border-red-300 rounded-xl p-4 mb-3">
+                <p className="text-xs font-bold text-red-700 uppercase tracking-wide"><i className="fas fa-shield-halved mr-1"/>Message from Security · {m.from_name} · {tripTime(m.sent_at)}</p>
+                <p className="text-gray-800 font-semibold mt-2 whitespace-pre-wrap">{m.message}</p>
+                <input value={replies[m.id]||''} onChange={e=>setReplies({...replies,[m.id]:e.target.value})} maxLength={500} placeholder="Reply (optional) — e.g. where you are, when you'll be back" className="w-full px-3 py-2 border-2 border-red-200 rounded-xl text-sm mt-3 bg-white"/>
+                <button onClick={()=>ackMsg(m)} className="mt-2 w-full bg-red-600 hover:bg-red-700 text-white py-2.5 rounded-xl font-bold text-sm"><i className="fas fa-check mr-2"/>Received — I'm safe</button>
+            </div>)}
+            {msgs.some(m=>m.acknowledged_at)&&<details className="mb-3"><summary className="text-xs text-gray-500 cursor-pointer font-semibold">Earlier messages from Security ({msgs.filter(m=>m.acknowledged_at).length})</summary>
+                <div className="space-y-2 mt-2">{msgs.filter(m=>m.acknowledged_at).map(m=><div key={m.id} className="bg-gray-50 rounded-xl p-3 text-sm"><p className="text-xs text-gray-400">{m.from_name} · {tripTime(m.sent_at)}</p><p className="text-gray-700 whitespace-pre-wrap">{m.message}</p>{m.reply&&<p className="text-xs text-green-700 mt-1">Your reply: {m.reply}</p>}</div>)}</div></details>}
             <p className="text-gray-800 font-semibold">{active.purpose}</p>
             {active.destination&&<p className="text-sm text-gray-500">→ {active.destination}</p>}
             <div className="grid grid-cols-2 gap-4 mt-4">
@@ -3190,7 +3230,7 @@ function FieldTrip({user,notify,onBack}) {
     </div></div>;
 }
 
-function FieldTripAdmin({notify,onBack}) {
+function FieldTripAdmin({user,notify,onBack}) {
     const [activeTrips,setActiveTrips]=useState([]);
     const [recent,setRecent]=useState([]);
     const [names,setNames]=useState({});
@@ -3200,6 +3240,8 @@ function FieldTripAdmin({notify,onBack}) {
     const mapObj=useRef(null);
     const markersRef=useRef({});
     const polylinesRef=useRef({});
+    const [msgsByTrip,setMsgsByTrip]=useState({});const [phones,setPhones]=useState({});const [lastUpdated,setLastUpdated]=useState(null);
+    const [refreshing,setRefreshing]=useState(false);const [composeFor,setComposeFor]=useState(null);const [draft,setDraft]=useState('');const [sending,setSending]=useState(false);
 
     const load=async()=>{
         try{
@@ -3221,6 +3263,15 @@ function FieldTripAdmin({notify,onBack}) {
                 const byTrip={};(pd||[]).forEach(p=>{(byTrip[p.trip_id]=byTrip[p.trip_id]||[]).push(p);});
                 setPingsByTrip(byTrip);
             } else setPingsByTrip({});
+            if(activeArr.length>0){
+                const uids=[...new Set(activeArr.map(t=>t.employee_id))];
+                const [ph,ms]=await Promise.all([
+                    fetch(`${SB}/rest/v1/staff_profiles?user_id=in.(${uids.join(',')})&select=user_id,phone`,{headers:H}).then(r=>r.ok?r.json():[]).catch(()=>[]),
+                    fetch(`${SB}/rest/v1/trip_messages?trip_id=in.(${activeArr.map(t=>encodeURIComponent(String(t.id))).join(',')})&order=sent_at.asc`,{headers:H}).then(r=>r.ok?r.json():[]).catch(()=>[])]);
+                const pm={};(Array.isArray(ph)?ph:[]).forEach(p=>{if(p.phone)pm[p.user_id]=p.phone;});setPhones(pm);
+                const mm={};(Array.isArray(ms)?ms:[]).forEach(m=>{(mm[m.trip_id]=mm[m.trip_id]||[]).push(m);});setMsgsByTrip(mm);
+            } else setMsgsByTrip({});
+            setLastUpdated(new Date());
         }catch(e){}
         setLoading(false);
     };
@@ -3249,7 +3300,7 @@ function FieldTripAdmin({notify,onBack}) {
             const last=points[points.length-1];
             const pings=pingsByTrip[t.id];
             const lastPing=pings&&pings.length?pings[pings.length-1]:null;
-            const marker=window.L.marker(last).addTo(map).bindPopup(`<b>${names[t.employee_id]||'Staff'}</b><br/>${t.purpose}${lastPing?`<br/><span style="color:#888">Updated ${new Date(lastPing.recorded_at).toLocaleTimeString()}</span>`:'<br/><span style="color:#888">Awaiting first ping</span>'}`);
+            const marker=window.L.marker(last).addTo(map).bindPopup(`<b>${tripEsc(names[t.employee_id]||'Staff')}</b><br/>${tripEsc(t.purpose)}${lastPing?`<br/><span style="color:#888">Updated ${new Date(lastPing.recorded_at).toLocaleTimeString()}</span>`:'<br/><span style="color:#888">Awaiting first ping</span>'}`);
             markersRef.current[t.id]=marker;
         });
         // Keep every active trip visible without requiring the supervisor to
@@ -3259,18 +3310,48 @@ function FieldTripAdmin({notify,onBack}) {
         else if(allPoints.length>1) map.fitBounds(allPoints,{padding:[40,40],maxZoom:14});
     },[activeTrips,pingsByTrip,names]);
 
+    const refreshNow=async()=>{setRefreshing(true);await load();setRefreshing(false);};
+    const lastSeen=t=>{const p=pingsByTrip[t.id];return new Date(p&&p.length?p[p.length-1].recorded_at:t.started_at);};
+    const minsSince=t=>Math.floor((Date.now()-lastSeen(t).getTime())/60000);
+    const isStale=t=>minsSince(t)>TRIP_STALE_MIN;
+    const staleCount=activeTrips.filter(isStale).length;
+    const sortedActive=[...activeTrips].sort((a,b)=>(isStale(b)-isStale(a))||(lastSeen(a)-lastSeen(b)));
+    const sendMsg=async t=>{const text=draft.trim();if(!text){notify('Write a message first','error');return;}setSending(true);
+        try{const r=await fetch(`${SB}/rest/v1/trip_messages`,{method:'POST',headers:HJ,body:JSON.stringify({trip_id:String(t.id),to_user_id:t.employee_id,from_name:(user&&user.name)||'Security',message:text.slice(0,1000)})});
+            if(r.ok){notify('Message sent. It will show on their trip screen.');setDraft('');setComposeFor(null);load();}else notify('Could not send the message','error');}
+        catch(e){notify('Could not send — check your connection','error');}
+        setSending(false);};
     return <div className="min-h-screen p-4 md:p-8"><div className="max-w-6xl mx-auto">
         <div className="glass rounded-2xl p-6 mb-6 animate-in"><button onClick={onBack} className="text-green-600 font-semibold text-sm mb-3 hover:underline"><i className="fas fa-arrow-left mr-2"/>Back to Dashboard</button>
-            <h1 className="text-2xl md:text-3xl font-extrabold text-gray-800">Field Trips</h1><p className="text-gray-500 mt-1">Live locations and routes for staff currently on a trip · refreshes every 30s</p>
+            <h1 className="text-2xl md:text-3xl font-extrabold text-gray-800">Field Trips</h1><div className="flex flex-wrap justify-between items-end gap-3"><p className="text-gray-500 mt-1">Live locations and routes for staff currently on a trip · refreshes every 30s{lastUpdated?` · last updated ${lastUpdated.toLocaleTimeString()}`:''}</p>
+            <button onClick={refreshNow} disabled={refreshing} className="px-4 py-2 rounded-xl font-semibold text-sm bg-green-50 text-green-700 hover:bg-green-100 disabled:opacity-60"><i className={`fas fa-rotate mr-2 ${refreshing?'fa-spin':''}`}/>Refresh now</button></div>
+            {staleCount>0&&<div className="mt-4 bg-red-50 border-2 border-red-200 rounded-xl p-3 text-sm font-semibold text-red-700"><i className="fas fa-triangle-exclamation mr-2"/>{staleCount} {staleCount===1?'person has':'people have'} not sent a location update for over {TRIP_STALE_MIN} minutes. Contact them.</div>}
         </div>
         <div className="glass rounded-2xl p-3 mb-6"><div ref={mapRef} style={{height:'420px',borderRadius:'12px'}}/></div>
         <div className="glass rounded-2xl p-6 mb-6">
             <h2 className="text-lg font-bold mb-4"><i className="fas fa-satellite-dish text-green-600 mr-2"/>Active Now ({activeTrips.length})</h2>
             {loading?<div className="text-center py-8 text-gray-400"><i className="fas fa-spinner fa-spin text-2xl"/></div>
             :activeTrips.length===0?<div className="text-center py-8 text-gray-400"><i className="fas fa-route text-3xl mb-2"/><p className="font-semibold">No one is on a tracked trip right now</p></div>
-            :<div className="space-y-3">{activeTrips.map(t=>{const pings=pingsByTrip[t.id];const ping=pings&&pings.length?pings[pings.length-1]:null;return <div key={t.id} className="border-2 border-green-100 rounded-xl p-4" style={{background:'rgba(16,185,129,0.06)'}}>
-                <div className="flex justify-between items-start"><div><p className="font-bold text-gray-800"><span className="w-2 h-2 inline-block rounded-full bg-green-500 mr-2 animate-pulse"/>{names[t.employee_id]||'Staff'}</p><p className="text-sm text-gray-600">{t.purpose}{t.destination?` → ${t.destination}`:''}</p><p className="text-xs text-gray-400 mt-1">Started {new Date(t.started_at).toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'})} · {fmtDur(t.started_at)} elapsed · {pings?pings.length:0} point{pings&&pings.length!==1?'s':''} logged</p></div>
-                <div className="text-right text-xs text-gray-400">{ping?`Updated ${new Date(ping.recorded_at).toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'})}`:'Awaiting first ping'}</div></div>
+                        :<div className="space-y-3">{sortedActive.map(t=>{const pings=pingsByTrip[t.id];const ping=pings&&pings.length?pings[pings.length-1]:null;const stale=isStale(t);const tm=msgsByTrip[String(t.id)]||[];const phone=phones[t.employee_id];const wa=waNumber(phone);
+                return <div key={t.id} className={`border-2 rounded-xl p-4 ${stale?'border-red-300':'border-green-100'}`} style={{background:stale?'rgba(220,38,38,0.06)':'rgba(16,185,129,0.06)'}}>
+                <div className="flex justify-between items-start gap-3"><div><p className="font-bold text-gray-800"><span className={`w-2 h-2 inline-block rounded-full mr-2 ${stale?'bg-red-500':'bg-green-500 animate-pulse'}`}/>{names[t.employee_id]||'Staff'}</p><p className="text-sm text-gray-600">{t.purpose}{t.destination?` → ${t.destination}`:''}</p><p className="text-xs text-gray-400 mt-1">Started {new Date(t.started_at).toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'})} · {fmtDur(t.started_at)} elapsed · {pings?pings.length:0} point{pings&&pings.length!==1?'s':''} logged</p></div>
+                <div className={`text-right text-xs ${stale?'text-red-600 font-bold':'text-gray-400'}`}>{ping?`Updated ${new Date(ping.recorded_at).toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'})}`:'Awaiting first ping'}{stale&&<p>No update for {minsSince(t)} min</p>}</div></div>
+                <div className="flex flex-wrap gap-2 mt-3">
+                    {phone?<><a href={`tel:${String(phone).replace(/[^\d+]/g,'')}`} className="px-3 py-1.5 rounded-xl text-xs font-bold bg-blue-50 text-blue-700 hover:bg-blue-100"><i className="fas fa-phone mr-1"/>Call</a>
+                        {wa&&<a href={`https://wa.me/${wa}`} target="_blank" rel="noopener noreferrer" className="px-3 py-1.5 rounded-xl text-xs font-bold bg-green-50 text-green-700 hover:bg-green-100"><i className="fab fa-whatsapp mr-1"/>WhatsApp</a>}</>
+                    :<span className="px-3 py-1.5 rounded-xl text-xs font-semibold bg-gray-100 text-gray-500">No phone number in HR profile</span>}
+                    <button onClick={()=>{setComposeFor(composeFor===t.id?null:t.id);setDraft('');}} className="px-3 py-1.5 rounded-xl text-xs font-bold bg-red-50 text-red-700 hover:bg-red-100"><i className="fas fa-message mr-1"/>Send message</button>
+                </div>
+                {composeFor===t.id&&<div className="mt-3 bg-white rounded-xl p-3 border-2 border-gray-100">
+                    <div className="flex flex-wrap gap-1 mb-2">{TRIP_TEMPLATES.map((tx,i)=><button key={i} onClick={()=>setDraft(tx)} className="px-2 py-1 rounded-lg text-xs bg-gray-100 text-gray-600 hover:bg-gray-200">{tx.split(' ').slice(0,4).join(' ')}…</button>)}</div>
+                    <textarea rows={2} value={draft} onChange={e=>setDraft(e.target.value)} maxLength={1000} placeholder="Message to the traveller" className="w-full px-3 py-2 border-2 border-gray-200 rounded-xl text-sm"/>
+                    <button onClick={()=>sendMsg(t)} disabled={sending} className="mt-2 btn-green text-white px-4 py-2 rounded-xl font-semibold text-sm disabled:opacity-60">{sending?'Sending…':'Send'}</button>
+                    <span className="text-xs text-gray-400 ml-3">They see it next time their trip screen checks (within 30s while open).</span></div>}
+                {tm.length>0&&<div className="mt-3 space-y-2">{tm.map(m=><div key={m.id} className="bg-white rounded-xl p-3 text-sm border border-gray-100">
+                    <div className="flex justify-between gap-2"><p className="text-gray-700 whitespace-pre-wrap">{m.message}</p>
+                        <span className={`shrink-0 px-2 py-0.5 rounded-full text-xs font-bold h-fit ${m.acknowledged_at?'bg-green-100 text-green-700':m.read_at?'bg-blue-100 text-blue-700':'bg-amber-100 text-amber-700'}`}>{m.acknowledged_at?`✓ Acknowledged ${tripTime(m.acknowledged_at)}`:m.read_at?`Seen ${tripTime(m.read_at)}`:'Not seen yet'}</span></div>
+                    <p className="text-xs text-gray-400 mt-1">{m.from_name} · {tripTime(m.sent_at)}</p>
+                    {m.reply&&<p className="text-xs text-green-800 bg-green-50 rounded-lg p-2 mt-1"><b>Reply:</b> {m.reply}</p>}</div>)}</div>}
             </div>;})}</div>}
         </div>
         <div className="glass rounded-2xl p-6">
@@ -3454,7 +3535,7 @@ function QuarterlyOverview({notify,onBack}) {
 
 function SuperDash({user,onLogout,notify}) {
     const [allApps,setAllApps]=useState([]);const [selected,setSelected]=useState(null);const [names,setNames]=useState({});const [showPw,setShowPw]=useState(false);const [tab,setTab]=useState('pending');
-    const [showAttendance,setShowAttendance]=useState(false);const [showLeave,setShowLeave]=useState(false);const [showHR,setShowHR]=useState(false);const [showLoginLogs,setShowLoginLogs]=useState(false);const [showMandE,setShowMandE]=useState(false);const [showMyActs,setShowMyActs]=useState(false);const [showDeadline,setShowDeadline]=useState(false);const [showQuarterly,setShowQuarterly]=useState(false);const [showFieldTrip,setShowFieldTrip]=useState(false);const [showMyFieldTrip,setShowMyFieldTrip]=useState(false);
+    const [showAttendance,setShowAttendance]=useState(false);const [showLeave,setShowLeave]=useState(false);const [showHR,setShowHR]=useState(false);const [showLoginLogs,setShowLoginLogs]=useState(false);const [showMandE,setShowMandE]=useState(false);const [showMyActs,setShowMyActs]=useState(false);const [showDeadline,setShowDeadline]=useState(false);const [showQuarterly,setShowQuarterly]=useState(false);const [showFieldTrip,setShowFieldTrip]=useState(false);const [showMyFieldTrip,setShowMyFieldTrip]=useState(false);const [showMyPol,setShowMyPol]=useState(false);const [showHrDash,setShowHrDash]=useState(false);const [showPolComp,setShowPolComp]=useState(false);
     const load=()=>{fetch(`${SB}/rest/v1/appraisals?order=created_at.desc`,{headers:H}).then(r=>r.json()).then(data=>{setAllApps(data);const ids=[...new Set(data.map(a=>a.employee_id))];if(ids.length>0)fetch(`${SB}/rest/v1/users?select=id,name&id=in.(${ids.join(',')})`,{headers:H}).then(r=>r.json()).then(users=>{const n={};users.forEach(u=>n[u.id]=u.name);setNames(n);});});};
     useEffect(()=>{load();},[]);
     if(showAttendance) return <AttendanceAdmin notify={notify} onBack={()=>setShowAttendance(false)}/>;
@@ -3466,8 +3547,11 @@ function SuperDash({user,onLogout,notify}) {
     if(showMyActs) return <MyActivities user={user} notify={notify} onBack={()=>setShowMyActs(false)}/>;
     if(showDeadline) return <DeadlineSettings user={user} notify={notify} onBack={()=>setShowDeadline(false)}/>;
     if(showQuarterly) return <QuarterlyOverview notify={notify} onBack={()=>setShowQuarterly(false)}/>;
-    if(showFieldTrip) return <FieldTripAdmin notify={notify} onBack={()=>setShowFieldTrip(false)}/>;
+    if(showFieldTrip) return <FieldTripAdmin user={user} notify={notify} onBack={()=>setShowFieldTrip(false)}/>;
     if(showMyFieldTrip) return <FieldTrip user={user} notify={notify} onBack={()=>setShowMyFieldTrip(false)}/>;
+    if(showMyPol) return <MyPolicies user={user} notify={notify} onBack={()=>setShowMyPol(false)}/>;
+    if(showHrDash) return <HRDashboard user={user} notify={notify} access="supervisor" onBack={()=>setShowHrDash(false)}/>;
+    if(showPolComp) return <PolicyAdmin user={user} notify={notify} readOnly onBack={()=>setShowPolComp(false)}/>;
     // Withdrawn submissions (duplicates, mistakes) are kept for audit but
     // dropped out of the normal Pending/Completed/Disputed working queues.
     const activeApps=allApps.filter(a=>!a.withdrawn);
@@ -3492,7 +3576,8 @@ function SuperDash({user,onLogout,notify}) {
         {/* Action buttons */}
         {[{fn:()=>setShowAttendance(true),icon:'fa-clock',bg:'linear-gradient(135deg,#3b82f6,#1d4ed8)',title:'Team Attendance',sub:'View daily and monthly attendance records',hov:'text-blue-600'},
           {fn:()=>setShowLeave(true),icon:'fa-plane',bg:'linear-gradient(135deg,#8b5cf6,#6d28d9)',title:'Leave Management',sub:'Approve or reject leave applications',hov:'text-purple-600'},
-          {fn:()=>setShowHR(true),icon:'fa-id-badge',bg:'linear-gradient(135deg,#0ea5e9,#0369a1)',title:'HR Staff Profiles',sub:'Add or edit personnel information',hov:'text-blue-600'},
+          {fn:()=>setShowHrDash(true),icon:'fa-people-group',bg:'linear-gradient(135deg,#7c3aed,#4c1d95)',title:'HR Dashboard',sub:'Appraisal findings, promotion decisions, staff profiles & policy compliance',hov:'text-violet-600'},
+          {fn:()=>setShowMyPol(true),icon:'fa-file-signature',bg:'linear-gradient(135deg,#e11d48,#9f1239)',title:'My Policies',sub:'Read and sign policies assigned to you',hov:'text-rose-600'},
           {fn:()=>setShowLoginLogs(true),icon:'fa-shield-halved',bg:'linear-gradient(135deg,#dc2626,#991b1b)',title:'Login Activity Logs',sub:'View login history, devices & failed attempts',hov:'text-red-600'},
           {fn:()=>setShowMyActs(true),icon:'fa-list-check',bg:'linear-gradient(135deg,#0891b2,#0e7490)',title:'My Work Plan Activities',sub:'Report on activities assigned to you',hov:'text-cyan-600'},
           {fn:()=>setShowMandE(true),icon:'fa-chart-pie',bg:'linear-gradient(135deg,#0891b2,#0e7490)',title:'Monitoring & Evaluation',sub:user.is_mne?'Work plans, data, indicators & completion rates':'View work plans, data and indicator dashboards',hov:'text-cyan-600'},
@@ -3653,6 +3738,527 @@ function SupReview({app,name,user,notify,onDone}) {
         <div className="glass rounded-xl p-6 flex gap-4"><button onClick={()=>{if(revising){setRevising(false);}else{onDone();}}} disabled={busy} className="flex-1 bg-gray-100 py-4 rounded-xl font-bold hover:bg-gray-200">Cancel</button><button onClick={submit} disabled={busy||progress<100||!allComm||!overall.trim()} className="flex-1 btn-green text-white py-4 rounded-xl font-bold disabled:opacity-50">{busy?'Submitting...':progress<100?`Rate All (${rated}/${comps.length})`:!allComm?'Add Feedback':!overall.trim()?'Add Assessment':revising?'Resubmit Revised Review':'Complete Review'}</button></div>
         </>:overall&&<div className="glass rounded-2xl p-6 mb-6"><h3 className="font-bold mb-3"><i className="fas fa-award text-green-600 mr-2"/>Supervisor's Overall Assessment</h3><div className="bg-green-50 border border-green-200 rounded-xl p-5"><p className="text-gray-700 whitespace-pre-wrap text-sm">{overall}</p></div></div>}
     </div></div>;
+}
+
+/* ==================== POLICY SIGN-OFF (HR) ====================
+   HR (users.is_hr) publishes a policy and assigns it to staff, like
+   work plan activities. Staff open it, tick the declaration and sign
+   under "My Policies". Signed records are insert-only in the database.
+   The PDF is fetched only when someone opens it, never in list loads. */
+const POLICY_DECLARATION='I confirm that I have read and understood this policy, and I agree to comply with it in my work with RAHAMA Girl Child and Women Empowerment Initiative.';
+const POLICY_CATEGORIES=['Safeguarding & PSEAH','Human Resources','Finance','Procurement','Security & Safety','Compliance (AML/CFT)','Programme','Other'];
+const HRep={...H,'Content-Type':'application/json','Prefer':'return=representation'};
+const polToday=()=>new Date().toISOString().slice(0,10);
+const polFmt=d=>d?new Date(d).toLocaleDateString():'—';
+const polStatusOf=(pol,ack)=>ack?'signed':(pol&&pol.deadline&&pol.deadline<polToday()?'overdue':'pending');
+const POL_BADGE={signed:'bg-green-100 text-green-700',pending:'bg-amber-100 text-amber-700',overdue:'bg-red-100 text-red-700'};
+const POL_LABEL={signed:'✓ Signed',pending:'⏳ Pending',overdue:'⚠ Overdue'};
+const polSafeLink=l=>typeof l==='string'&&/^https:\/\//i.test(l.trim());
+
+/* Open the policy document. The new tab is opened immediately (before
+   any await) so phone browsers don't block it as a popup. */
+async function openPolicyDoc(pol,notify){
+    if(pol.file_link){
+        if(!polSafeLink(pol.file_link)){notify('This policy link is not a valid https:// link','error');return false;}
+        window.open(pol.file_link.trim(),'_blank','noopener');return true;
+    }
+    const w=window.open('','_blank');
+    try{
+        const r=await fetch(`${SB}/rest/v1/policy_files?policy_id=eq.${pol.id}&select=file_data`,{headers:H});
+        const d=r.ok?await r.json():[];
+        if(!Array.isArray(d)||!d.length||!d[0].file_data) throw new Error('missing');
+        const blob=await (await fetch(d[0].file_data)).blob();
+        const url=URL.createObjectURL(blob);
+        if(w) w.location.href=url; else window.open(url,'_blank');
+        return true;
+    }catch(e){if(w)w.close();notify('Could not open the policy document','error');return false;}
+}
+
+/* Everything assigned to one person, with status. Used by My Policies
+   and by the dashboard counter. Unsigned items on retired policies are
+   dropped (nobody needs to sign a retired version). */
+async function loadMyPolicyItems(userId){
+    const a=await fetch(`${SB}/rest/v1/policy_assignments?user_id=eq.${userId}&select=id,policy_id,assigned_at,opened_at`,{headers:H}).then(r=>r.ok?r.json():[]);
+    const asg=Array.isArray(a)?a:[];
+    if(!asg.length) return [];
+    const ids=[...new Set(asg.map(x=>x.policy_id))];
+    const p=await fetch(`${SB}/rest/v1/policies?id=in.(${ids.join(',')})&select=id,title,version,category,description,file_name,file_link,effective_date,deadline,status`,{headers:H}).then(r=>r.ok?r.json():[]);
+    const k=await fetch(`${SB}/rest/v1/policy_acknowledgements?user_id=eq.${userId}&select=id,assignment_id,signed_at`,{headers:H}).then(r=>r.ok?r.json():[]);
+    const pm={};(Array.isArray(p)?p:[]).forEach(x=>pm[x.id]=x);
+    const km={};(Array.isArray(k)?k:[]).forEach(x=>km[x.assignment_id]=x);
+    const order={overdue:0,pending:1,signed:2};
+    return asg.map(x=>{const pol=pm[x.policy_id];const ack=km[x.id];return {asg:x,pol,ack,status:polStatusOf(pol,ack)};})
+        .filter(it=>it.pol&&(it.ack||it.pol.status==='active'))
+        .sort((a,b)=>order[a.status]-order[b.status]);
+}
+
+function SignaturePad({onChange}) {
+    const ref=useRef(null);const drawing=useRef(false);const has=useRef(false);
+    const setup=()=>{const c=ref.current;if(!c)return;const ratio=window.devicePixelRatio||1;const w=c.offsetWidth||300;const h=160;
+        c.width=w*ratio;c.height=h*ratio;const ctx=c.getContext('2d');ctx.setTransform(ratio,0,0,ratio,0,0);
+        ctx.lineWidth=2.2;ctx.lineCap='round';ctx.lineJoin='round';ctx.strokeStyle='#111827';};
+    useEffect(()=>{setup();},[]);
+    const pos=e=>{const r=ref.current.getBoundingClientRect();return {x:e.clientX-r.left,y:e.clientY-r.top};};
+    /* Small white-background JPEG (~10 KB) so signatures stay light */
+    const exportSig=()=>{const c=ref.current;const out=document.createElement('canvas');const W=400;const SH=Math.round(W*c.height/c.width);
+        out.width=W;out.height=SH;const o=out.getContext('2d');o.fillStyle='#ffffff';o.fillRect(0,0,W,SH);o.drawImage(c,0,0,W,SH);return out.toDataURL('image/jpeg',0.7);};
+    const down=e=>{e.preventDefault();try{ref.current.setPointerCapture(e.pointerId);}catch(_){}drawing.current=true;const p=pos(e);const ctx=ref.current.getContext('2d');ctx.beginPath();ctx.moveTo(p.x,p.y);};
+    const move=e=>{if(!drawing.current)return;e.preventDefault();const p=pos(e);const ctx=ref.current.getContext('2d');ctx.lineTo(p.x,p.y);ctx.stroke();has.current=true;};
+    const up=()=>{if(!drawing.current)return;drawing.current=false;if(has.current)onChange(exportSig());};
+    const clear=()=>{setup();has.current=false;onChange(null);};
+    return <div>
+        <canvas ref={ref} onPointerDown={down} onPointerMove={move} onPointerUp={up} onPointerLeave={up}
+            className="w-full bg-white border-2 border-dashed border-gray-300 rounded-xl" style={{height:160,touchAction:'none',cursor:'crosshair'}}/>
+        <div className="flex justify-between items-center mt-2"><p className="text-xs text-gray-400">Sign inside the box with your finger or mouse</p>
+            <button type="button" onClick={clear} className="text-sm text-red-500 font-semibold hover:underline"><i className="fas fa-eraser mr-1"/>Clear</button></div>
+    </div>;
+}
+
+function MyPolicies({user,notify,onBack}) {
+    const [items,setItems]=useState([]);const [loading,setLoading]=useState(true);const [sel,setSel]=useState(null);
+    const load=async()=>{setLoading(true);try{setItems(await loadMyPolicyItems(user.id));}catch(e){setItems([]);}setLoading(false);};
+    useEffect(()=>{load();},[]);
+    if(sel) return <PolicySign item={sel} user={user} notify={notify} onDone={()=>{setSel(null);load();}}/>;
+    const open=items.filter(i=>i.status!=='signed');const signed=items.filter(i=>i.status==='signed');
+    const card=it=><div key={it.asg.id} className="border-2 border-gray-100 rounded-xl p-4 flex flex-wrap justify-between items-center gap-3 hover:border-green-200">
+        <div><p className="font-bold text-gray-800">{it.pol.title} <span className="text-xs font-semibold text-gray-400">v{it.pol.version}</span></p>
+            <p className="text-xs text-gray-500 mt-1">{it.pol.category||'Policy'}{it.status==='signed'?` · Signed ${polFmt(it.ack.signed_at)}`:` · Sign by ${polFmt(it.pol.deadline)}`}</p></div>
+        <div className="flex items-center gap-2"><span className={`px-3 py-1 rounded-full text-xs font-bold ${POL_BADGE[it.status]}`}>{POL_LABEL[it.status]}</span>
+            <button onClick={()=>setSel(it)} className={`${it.status==='signed'?'bg-gray-100 text-gray-600 hover:bg-gray-200':'btn-green text-white'} px-4 py-2 rounded-xl font-semibold text-sm`}>
+                <i className={`fas ${it.status==='signed'?'fa-eye':'fa-file-signature'} mr-2`}/>{it.status==='signed'?'View':'Read & Sign'}</button></div>
+    </div>;
+    return <div className="min-h-screen p-4 md:p-8"><div className="max-w-4xl mx-auto">
+        <div className="glass rounded-2xl p-6 mb-6"><button onClick={onBack} className="text-blue-600 font-semibold text-sm mb-3 hover:underline"><i className="fas fa-arrow-left mr-2"/>Back</button>
+            <h1 className="text-2xl font-extrabold">My Policies</h1><p className="text-gray-500 text-sm mt-1">Policies HR has asked you to read and sign</p></div>
+        {loading?<div className="text-center py-10"><i className="fas fa-spinner fa-spin"/></div>:<>
+        <div className="glass rounded-2xl p-6 mb-6"><h2 className="text-lg font-bold mb-4"><i className="fas fa-hourglass-half text-amber-500 mr-2"/>To sign ({open.length})</h2>
+            {open.length===0?<div className="text-center py-6 text-gray-400"><i className="fas fa-check-double text-3xl mb-2 text-green-400"/><p className="font-semibold">Nothing waiting for you</p></div>
+            :<div className="space-y-3">{open.map(card)}</div>}</div>
+        <div className="glass rounded-2xl p-6"><h2 className="text-lg font-bold mb-4"><i className="fas fa-circle-check text-green-600 mr-2"/>Signed ({signed.length})</h2>
+            {signed.length===0?<p className="text-center py-6 text-gray-400 font-semibold">No signed policies yet</p>:<div className="space-y-3">{signed.map(card)}</div>}</div></>}
+    </div></div>;
+}
+
+function PolicySign({item,user,notify,onDone}) {
+    const {asg,pol,ack}=item;const done=!!ack;
+    const [opened,setOpened]=useState(!!asg.opened_at);const [agreed,setAgreed]=useState(false);const [sig,setSig]=useState(null);const [busy,setBusy]=useState(false);
+    const openDoc=async()=>{const ok=await openPolicyDoc(pol,notify);
+        if(ok&&!opened){setOpened(true);fetch(`${SB}/rest/v1/policy_assignments?id=eq.${asg.id}`,{method:'PATCH',headers:HJ,body:JSON.stringify({opened_at:new Date().toISOString()})}).catch(()=>{});}};
+    const sign=async()=>{
+        if(!opened){notify('Please open and read the policy first','error');return;}
+        if(!agreed){notify('Please tick the declaration','error');return;}
+        if(!sig){notify('Please add your signature','error');return;}
+        setBusy(true);
+        try{
+            const r=await fetch(`${SB}/rest/v1/policy_acknowledgements`,{method:'POST',headers:HJ,body:JSON.stringify({
+                policy_id:pol.id,assignment_id:asg.id,user_id:user.id,declaration:POLICY_DECLARATION,signature_data:sig,user_agent:navigator.userAgent.slice(0,300)})});
+            if(r.ok){notify('Policy signed. Thank you.');onDone();}
+            else if(r.status===409){notify('You have already signed this policy');onDone();}
+            else notify('Signing failed — please try again','error');
+        }catch(e){notify('Signing failed — check your connection','error');}
+        setBusy(false);
+    };
+    return <div className="min-h-screen p-4 md:p-8"><div className="max-w-3xl mx-auto">
+        <div className="glass rounded-2xl p-6 mb-6"><button onClick={onDone} className="text-blue-600 font-semibold text-sm mb-3 hover:underline"><i className="fas fa-arrow-left mr-2"/>Back</button>
+            <h1 className="text-2xl font-extrabold">{pol.title}</h1>
+            <p className="text-gray-500 text-sm mt-1">Version {pol.version} · {pol.category||'Policy'} · Effective {polFmt(pol.effective_date)}</p>
+            {pol.description&&<p className="text-sm text-gray-600 mt-3">{pol.description}</p>}</div>
+        <div className="glass rounded-2xl p-6 mb-6"><h2 className="font-bold mb-3"><span className="w-7 h-7 inline-flex items-center justify-center rounded-full bg-green-100 text-green-700 text-sm mr-2">1</span>Read the policy</h2>
+            <button onClick={openDoc} className="btn-green text-white px-5 py-2.5 rounded-xl font-semibold text-sm"><i className="fas fa-file-pdf mr-2"/>Open policy document</button>
+            {opened&&<span className="ml-3 text-sm text-green-700 font-semibold"><i className="fas fa-check mr-1"/>Opened</span>}</div>
+        {done?<div className="glass rounded-2xl p-6"><div className="bg-green-50 border-2 border-green-200 rounded-xl p-4">
+                <p className="font-bold text-green-800"><i className="fas fa-circle-check mr-2"/>You signed this policy on {new Date(ack.signed_at).toLocaleString()}</p>
+                <p className="text-sm text-green-700 mt-1">Your signed record is kept by HR and cannot be changed.</p></div></div>
+        :<div className={`glass rounded-2xl p-6 ${opened?'':'opacity-50 pointer-events-none'}`}>
+            <h2 className="font-bold mb-3"><span className="w-7 h-7 inline-flex items-center justify-center rounded-full bg-green-100 text-green-700 text-sm mr-2">2</span>Confirm and sign</h2>
+            {!opened&&<p className="text-sm text-amber-600 mb-3">Open the policy document first to unlock this step.</p>}
+            <label className="flex items-start gap-3 bg-gray-50 rounded-xl p-4 mb-4 cursor-pointer"><input type="checkbox" checked={agreed} onChange={e=>setAgreed(e.target.checked)} className="mt-1 w-5 h-5"/>
+                <span className="text-sm text-gray-700">{POLICY_DECLARATION}</span></label>
+            <SignaturePad onChange={setSig}/>
+            <p className="text-xs text-gray-400 mt-3">Signing as <b>{user.name}</b> ({user.email}). The date and time are recorded by the system.</p>
+            <button onClick={sign} disabled={busy} className="btn-green text-white px-6 py-3 rounded-xl font-bold mt-4 w-full disabled:opacity-60">
+                {busy?<><i className="fas fa-spinner fa-spin mr-2"/>Signing…</>:<><i className="fas fa-file-signature mr-2"/>Sign policy</>}</button>
+        </div>}
+    </div></div>;
+}
+
+/* HR management (is_hr) — or read-only compliance view for the supervisor */
+function PolicyAdmin({user,notify,onBack,readOnly}) {
+    const [pols,setPols]=useState([]);const [asg,setAsg]=useState([]);const [acks,setAcks]=useState([]);const [staff,setStaff]=useState([]);
+    const [loading,setLoading]=useState(true);const [view,setView]=useState('list');const [selId,setSelId]=useState(null);const [tab,setTab]=useState('active');
+    const load=async()=>{setLoading(true);
+        try{
+            const [p,a,k,u]=await Promise.all([
+                fetch(`${SB}/rest/v1/policies?select=id,title,version,category,description,file_name,file_link,effective_date,deadline,status,supersedes_id,created_by,created_at&order=created_at.desc`,{headers:H}).then(r=>r.ok?r.json():[]),
+                fetch(`${SB}/rest/v1/policy_assignments?select=id,policy_id,user_id,assigned_at,opened_at`,{headers:H}).then(r=>r.ok?r.json():[]),
+                fetch(`${SB}/rest/v1/policy_acknowledgements?select=id,policy_id,assignment_id,user_id,signed_at`,{headers:H}).then(r=>r.ok?r.json():[]),
+                fetch(`${SB}/rest/v1/users?select=id,name,email,role,is_active&order=name.asc`,{headers:H}).then(r=>r.ok?r.json():[])]);
+            setPols(Array.isArray(p)?p:[]);setAsg(Array.isArray(a)?a:[]);setAcks(Array.isArray(k)?k:[]);setStaff(Array.isArray(u)?u:[]);
+        }catch(e){notify('Could not load policies','error');}
+        setLoading(false);};
+    useEffect(()=>{load();},[]);
+    const ackByAsg={};acks.forEach(k=>ackByAsg[k.assignment_id]=k);
+    const statsFor=pol=>{const rows=asg.filter(a=>a.policy_id===pol.id);let s=0,p=0,o=0;rows.forEach(a=>{const st=polStatusOf(pol,ackByAsg[a.id]);if(st==='signed')s++;else if(st==='overdue')o++;else p++;});return {total:rows.length,signed:s,pending:p,overdue:o};};
+    if(view==='publish') return <PolicyPublish user={user} staff={staff} pols={pols} notify={notify} onDone={()=>{setView('list');load();}}/>;
+    if(view==='detail'){const pol=pols.find(x=>x.id===selId);if(pol) return <PolicyDetail pol={pol} asg={asg.filter(a=>a.policy_id===pol.id)} ackByAsg={ackByAsg} staff={staff} user={user} readOnly={readOnly} notify={notify} onBack={()=>{setView('list');load();}}/>;}
+    const list=pols.filter(p=>tab==='active'?p.status==='active':p.status!=='active');
+    const allActive=pols.filter(p=>p.status==='active').map(statsFor);
+    const tot=allActive.reduce((t,s)=>({total:t.total+s.total,signed:t.signed+s.signed,overdue:t.overdue+s.overdue}),{total:0,signed:0,overdue:0});
+    return <div className="min-h-screen p-4 md:p-8"><div className="max-w-5xl mx-auto">
+        <div className="glass rounded-2xl p-6 mb-6"><button onClick={onBack} className="text-blue-600 font-semibold text-sm mb-3 hover:underline"><i className="fas fa-arrow-left mr-2"/>Back</button>
+            <div className="flex flex-wrap justify-between items-center gap-3"><div><h1 className="text-2xl font-extrabold">{readOnly?'Policy Compliance':'HR — Policy Management'}</h1>
+                <p className="text-gray-500 text-sm mt-1">{readOnly?'Who has read and signed each RAHAMA policy':'Publish policies, assign staff and track sign-off'}</p></div>
+            {!readOnly&&<button onClick={()=>setView('publish')} className="btn-green text-white px-5 py-2.5 rounded-xl font-semibold text-sm"><i className="fas fa-plus mr-2"/>Publish policy</button>}</div></div>
+        <div className="grid grid-cols-3 gap-4 mb-6">{[{l:'Active policies',v:allActive.length,c:'text-gray-800'},{l:'Sign-off rate',v:tot.total?Math.round(100*tot.signed/tot.total)+'%':'—',c:'text-green-600'},{l:'Overdue signatures',v:tot.overdue,c:'text-red-600'}]
+            .map((s,i)=><div key={i} className="glass rounded-xl p-5"><p className="text-xs font-bold text-gray-400 uppercase tracking-wider">{s.l}</p><p className={`text-3xl font-extrabold mt-1 ${s.c}`}>{s.v}</p></div>)}</div>
+        <div className="glass rounded-2xl p-6">
+            <div className="flex gap-2 mb-5 border-b pb-4">{[['active','Active'],['archive','Retired / Drafts']].map(([k,l])=><button key={k} onClick={()=>setTab(k)} className={`px-4 py-2 rounded-xl text-sm font-bold ${tab===k?'btn-green text-white':'text-gray-500 hover:bg-gray-100'}`}>{l}</button>)}</div>
+            {loading?<div className="text-center py-10"><i className="fas fa-spinner fa-spin"/></div>
+            :list.length===0?<div className="text-center py-10 text-gray-400"><i className="fas fa-file-shield text-4xl mb-3"/><p className="font-semibold">No policies here yet</p></div>
+            :<div className="space-y-3">{list.map(pol=>{const s=statsFor(pol);const pct=s.total?Math.round(100*s.signed/s.total):0;
+                return <div key={pol.id} onClick={()=>{setSelId(pol.id);setView('detail');}} className="border-2 border-gray-100 rounded-xl p-5 cursor-pointer hover:border-green-200">
+                    <div className="flex flex-wrap justify-between items-start gap-3"><div>
+                        <p className="font-bold text-gray-800">{pol.title} <span className="text-xs font-semibold text-gray-400">v{pol.version}</span>
+                            {pol.status!=='active'&&<span className="ml-2 px-2 py-0.5 rounded-full text-xs font-bold bg-gray-200 text-gray-600">{pol.status==='draft'?'Incomplete draft':'Retired'}</span>}</p>
+                        <p className="text-xs text-gray-500 mt-1">{pol.category||'Policy'} · Deadline {polFmt(pol.deadline)}</p></div>
+                        <div className="text-right text-sm"><span className="font-bold text-green-700">{s.signed}</span><span className="text-gray-400">/{s.total} signed</span>
+                            {s.overdue>0&&<span className="ml-2 px-2 py-0.5 rounded-full text-xs font-bold bg-red-100 text-red-700">{s.overdue} overdue</span>}</div></div>
+                    <div className="w-full bg-gray-100 rounded-full h-2 mt-3"><div className="h-2 rounded-full bg-green-500" style={{width:pct+'%'}}/></div>
+                </div>;})}</div>}
+        </div>
+    </div></div>;
+}
+
+function StaffPicker({staff,selected,setSelected,exclude}) {
+    const avail=staff.filter(s=>s.is_active!==false&&!(exclude||[]).includes(s.id));
+    const toggle=id=>setSelected(selected.includes(id)?selected.filter(x=>x!==id):[...selected,id]);
+    return <div>
+        <div className="flex gap-3 mb-2 text-sm"><button type="button" onClick={()=>setSelected(avail.map(s=>s.id))} className="text-blue-600 font-semibold hover:underline">Select all</button>
+            <button type="button" onClick={()=>setSelected([])} className="text-gray-500 font-semibold hover:underline">Clear</button><span className="text-gray-400 ml-auto">{selected.length} selected</span></div>
+        <div className="max-h-72 overflow-y-auto border-2 border-gray-100 rounded-xl divide-y">{avail.length===0?<p className="p-4 text-sm text-gray-400">Everyone is already assigned.</p>
+            :avail.map(s=><label key={s.id} className="flex items-center gap-3 p-3 cursor-pointer hover:bg-gray-50"><input type="checkbox" checked={selected.includes(s.id)} onChange={()=>toggle(s.id)} className="w-4 h-4"/>
+                <span className="text-sm font-semibold text-gray-700">{s.name}</span><span className="text-xs text-gray-400 ml-auto">{s.email}</span></label>)}</div>
+    </div>;
+}
+
+function PolicyPublish({user,staff,pols,notify,onDone}) {
+    const [f,setF]=useState({title:'',version:'1.0',category:POLICY_CATEGORIES[0],description:'',effective_date:polToday(),deadline:'',file_link:'',supersedes_id:''});
+    const [file,setFile]=useState(null);const [mode,setMode]=useState('upload');const [who,setWho]=useState('all');const [sel,setSel]=useState([]);const [busy,setBusy]=useState(false);
+    const fileRef=useRef(null);
+    const set=(k,v)=>setF(x=>({...x,[k]:v}));
+    const activeStaff=staff.filter(s=>s.is_active!==false);
+    const toB64=fl=>new Promise((res,rej)=>{const r=new FileReader();r.onload=()=>res(r.result);r.onerror=rej;r.readAsDataURL(fl);});
+    const publish=async()=>{
+        if(!f.title.trim()||!f.version.trim()){notify('Title and version are required','error');return;}
+        if(!f.deadline){notify('Set a deadline for signing','error');return;}
+        if(mode==='upload'){if(!file){notify('Upload the policy PDF','error');return;}if(file.size>5*1024*1024){notify('File too large (max 5MB)','error');return;}}
+        else if(!polSafeLink(f.file_link)){notify('Paste a full link starting with https://','error');return;}
+        const ids=who==='all'?activeStaff.map(s=>s.id):sel;
+        if(!ids.length){notify('Choose at least one staff member','error');return;}
+        if(!confirm(`Publish "${f.title}" v${f.version} and assign it to ${ids.length} staff?`))return;
+        setBusy(true);
+        try{
+            const pr=await fetch(`${SB}/rest/v1/policies`,{method:'POST',headers:HRep,body:JSON.stringify({
+                title:f.title.trim(),version:f.version.trim(),category:f.category,description:f.description.trim()||null,
+                file_name:mode==='upload'?file.name:null,file_link:mode==='link'?f.file_link.trim():null,
+                effective_date:f.effective_date||null,deadline:f.deadline,status:'draft',
+                supersedes_id:f.supersedes_id?Number(f.supersedes_id):null,created_by:user.name})});
+            const pd=pr.ok?await pr.json():null;const pol=Array.isArray(pd)?pd[0]:null;
+            if(!pol){throw new Error('policy');}
+            if(mode==='upload'){
+                const fr=await fetch(`${SB}/rest/v1/policy_files`,{method:'POST',headers:HJ,body:JSON.stringify({policy_id:pol.id,file_name:file.name,file_type:file.type,file_data:await toB64(file)})});
+                if(!fr.ok) throw new Error('file');
+            }
+            const ar=await fetch(`${SB}/rest/v1/policy_assignments`,{method:'POST',headers:HJ,body:JSON.stringify(ids.map(id=>({policy_id:pol.id,user_id:id,assigned_by:user.name})))});
+            if(!ar.ok) throw new Error('assign');
+            if(f.supersedes_id) await fetch(`${SB}/rest/v1/policies?id=eq.${Number(f.supersedes_id)}`,{method:'PATCH',headers:HJ,body:JSON.stringify({status:'retired'})});
+            const act=await fetch(`${SB}/rest/v1/policies?id=eq.${pol.id}`,{method:'PATCH',headers:HJ,body:JSON.stringify({status:'active'})});
+            if(!act.ok) throw new Error('activate');
+            notify(`Published and assigned to ${ids.length} staff`);onDone();
+        }catch(e){notify('Publishing did not finish. Nothing was sent to staff — check "Retired / Drafts" and publish again.','error');}
+        setBusy(false);
+    };
+    const inp="w-full border-2 border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:border-green-400 outline-none";
+    return <div className="min-h-screen p-4 md:p-8"><div className="max-w-3xl mx-auto">
+        <div className="glass rounded-2xl p-6 mb-6"><button onClick={onDone} className="text-blue-600 font-semibold text-sm mb-3 hover:underline"><i className="fas fa-arrow-left mr-2"/>Back</button><h1 className="text-2xl font-extrabold">Publish a policy</h1></div>
+        <div className="glass rounded-2xl p-6 mb-6 space-y-4">
+            <h2 className="font-bold">Policy details</h2>
+            <div className="grid md:grid-cols-3 gap-3"><div className="md:col-span-2"><label className="text-xs font-bold text-gray-500">Title *</label><input className={inp} value={f.title} onChange={e=>set('title',e.target.value)} placeholder="e.g. PSEAH Policy"/></div>
+                <div><label className="text-xs font-bold text-gray-500">Version *</label><input className={inp} value={f.version} onChange={e=>set('version',e.target.value)}/></div></div>
+            <div className="grid md:grid-cols-3 gap-3"><div><label className="text-xs font-bold text-gray-500">Category</label><select className={inp} value={f.category} onChange={e=>set('category',e.target.value)}>{POLICY_CATEGORIES.map(c=><option key={c}>{c}</option>)}</select></div>
+                <div><label className="text-xs font-bold text-gray-500">Effective date</label><input type="date" className={inp} value={f.effective_date} onChange={e=>set('effective_date',e.target.value)}/></div>
+                <div><label className="text-xs font-bold text-gray-500">Sign by (deadline) *</label><input type="date" className={inp} value={f.deadline} onChange={e=>set('deadline',e.target.value)}/></div></div>
+            <div><label className="text-xs font-bold text-gray-500">Short note to staff (optional)</label><textarea rows={2} className={inp} value={f.description} onChange={e=>set('description',e.target.value)} placeholder="What changed, or why this matters"/></div>
+            <div><label className="text-xs font-bold text-gray-500">Does this replace an existing policy?</label><select className={inp} value={f.supersedes_id} onChange={e=>set('supersedes_id',e.target.value)}>
+                <option value="">No — this is a new policy</option>{pols.filter(p=>p.status==='active').map(p=><option key={p.id} value={p.id}>Replaces: {p.title} v{p.version} (old version will be retired)</option>)}</select></div>
+        </div>
+        <div className="glass rounded-2xl p-6 mb-6">
+            <h2 className="font-bold mb-3">Policy document</h2>
+            <div className="flex gap-2 mb-3">{[['upload','Upload PDF'],['link','Paste a link']].map(([k,l])=><button key={k} type="button" onClick={()=>setMode(k)} className={`px-4 py-2 rounded-xl text-sm font-bold ${mode===k?'btn-green text-white':'bg-gray-100 text-gray-600'}`}>{l}</button>)}</div>
+            {mode==='upload'?<div className={`border-2 border-dashed rounded-xl p-5 text-center cursor-pointer hover:border-green-400 ${file?'border-green-400 bg-green-50':'border-gray-300'}`} onClick={()=>fileRef.current&&fileRef.current.click()}>
+                    {file?<span className="text-sm font-semibold text-green-700"><i className="fas fa-file-circle-check mr-2"/>{file.name} ({(file.size/1024).toFixed(0)} KB)</span>
+                    :<span className="text-sm text-gray-500"><i className="fas fa-cloud-arrow-up mr-2"/>Click to choose the PDF (max 5 MB)</span>}
+                    <input ref={fileRef} type="file" accept="application/pdf" className="hidden" onChange={e=>setFile(e.target.files[0]||null)}/></div>
+            :<input className={inp} value={f.file_link} onChange={e=>set('file_link',e.target.value)} placeholder="https://drive.google.com/… (make sure staff can open it)"/>}
+        </div>
+        <div className="glass rounded-2xl p-6 mb-6">
+            <h2 className="font-bold mb-3">Who must sign?</h2>
+            <div className="flex gap-2 mb-3">{[['all',`All active staff (${activeStaff.length})`],['some','Selected staff']].map(([k,l])=><button key={k} type="button" onClick={()=>setWho(k)} className={`px-4 py-2 rounded-xl text-sm font-bold ${who===k?'btn-green text-white':'bg-gray-100 text-gray-600'}`}>{l}</button>)}</div>
+            {who==='some'&&<StaffPicker staff={staff} selected={sel} setSelected={setSel}/>}
+        </div>
+        <button onClick={publish} disabled={busy} className="btn-green text-white px-6 py-3 rounded-xl font-bold w-full disabled:opacity-60">{busy?<><i className="fas fa-spinner fa-spin mr-2"/>Publishing…</>:<><i className="fas fa-paper-plane mr-2"/>Publish and assign</>}</button>
+    </div></div>;
+}
+
+function PolicyDetail({pol,asg,ackByAsg,staff,user,readOnly,notify,onBack}) {
+    const [adding,setAdding]=useState(false);const [sel,setSel]=useState([]);const [busy,setBusy]=useState(false);const [sigView,setSigView]=useState(null);const [filter,setFilter]=useState('all');
+    const byId={};staff.forEach(s=>byId[s.id]=s);
+    const rows=asg.map(a=>{const ack=ackByAsg[a.id];return {a,ack,s:byId[a.user_id]||{name:'Unknown',email:''},status:polStatusOf(pol,ack)};})
+        .sort((x,y)=>({overdue:0,pending:1,signed:2}[x.status]-{overdue:0,pending:1,signed:2}[y.status])||x.s.name.localeCompare(y.s.name));
+    const shown=filter==='all'?rows:rows.filter(r=>filter==='open'?r.status!=='signed':r.status===filter);
+    const unsigned=rows.filter(r=>r.status!=='signed'&&r.s.email);
+    const pmsUrl=window.location.origin+window.location.pathname;
+    const notifyStaff=()=>{
+        if(!unsigned.length){notify('Everyone has signed');return;}
+        const subject=`Action required: please read and sign the ${pol.title} (v${pol.version})`;
+        const body=`Dear colleague,\n\nHR has published the ${pol.title} (version ${pol.version}). Please log in to the PMS, open "My Policies", read the policy and sign it by ${polFmt(pol.deadline)}.\n\nPMS: ${pmsUrl}\n\nThank you,\nHR, RAHAMA Girl Child and Women Empowerment Initiative`;
+        const url=`mailto:?bcc=${unsigned.map(r=>r.s.email).join(',')}&subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+        if(url.length>1900) notify('The list is long — if your email app cuts it off, use "Copy emails" instead','error');
+        window.location.href=url;
+    };
+    const copyEmails=async()=>{try{await navigator.clipboard.writeText(unsigned.map(r=>r.s.email).join(', '));notify(`Copied ${unsigned.length} email(s)`);}catch(e){notify('Could not copy','error');}};
+    const exportXlsx=()=>{
+        const data=rows.map(r=>({'Staff':r.s.name,'Email':r.s.email,'Status':r.status==='signed'?'Signed':r.status==='overdue'?'Overdue':'Pending',
+            'Assigned':polFmt(r.a.assigned_at),'Opened document':r.a.opened_at?new Date(r.a.opened_at).toLocaleString():'','Signed at':r.ack?new Date(r.ack.signed_at).toLocaleString():''}));
+        const ws=XLSX.utils.json_to_sheet(data);const wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,ws,'Sign-off');
+        XLSX.writeFile(wb,`${pol.title.replace(/[^\w\- ]+/g,'').trim()} v${pol.version} - sign-off.xlsx`);
+    };
+    const showSig=async r=>{try{const d=await fetch(`${SB}/rest/v1/policy_acknowledgements?id=eq.${r.ack.id}&select=signer_name,signed_at,declaration,signature_data,policy_title,policy_version`,{headers:H}).then(x=>x.json());if(Array.isArray(d)&&d.length)setSigView(d[0]);}catch(e){notify('Could not load signature','error');}};
+    const assignMore=async()=>{if(!sel.length){notify('Choose staff to add','error');return;}setBusy(true);
+        const r=await fetch(`${SB}/rest/v1/policy_assignments`,{method:'POST',headers:HJ,body:JSON.stringify(sel.map(id=>({policy_id:pol.id,user_id:id,assigned_by:user.name})))});
+        setBusy(false);if(r.ok){notify(`Assigned to ${sel.length} more staff`);setAdding(false);setSel([]);onBack();}else notify('Could not assign','error');};
+    const retire=async()=>{if(!confirm(`Retire "${pol.title}" v${pol.version}? Staff who haven't signed will no longer be asked to. Signed records are kept.`))return;
+        const r=await fetch(`${SB}/rest/v1/policies?id=eq.${pol.id}`,{method:'PATCH',headers:HJ,body:JSON.stringify({status:'retired'})});if(r.ok){notify('Policy retired');onBack();}else notify('Failed','error');};
+    const reactivate=async()=>{const r=await fetch(`${SB}/rest/v1/policies?id=eq.${pol.id}`,{method:'PATCH',headers:HJ,body:JSON.stringify({status:'active'})});if(r.ok){notify('Policy is active again');onBack();}else notify('Failed','error');};
+    const btn="px-4 py-2 rounded-xl font-semibold text-sm";
+    return <div className="min-h-screen p-4 md:p-8"><div className="max-w-5xl mx-auto">
+        <div className="glass rounded-2xl p-6 mb-6"><button onClick={onBack} className="text-blue-600 font-semibold text-sm mb-3 hover:underline"><i className="fas fa-arrow-left mr-2"/>Back</button>
+            <h1 className="text-2xl font-extrabold">{pol.title} <span className="text-base text-gray-400">v{pol.version}</span></h1>
+            <p className="text-gray-500 text-sm mt-1">{pol.category||'Policy'} · Effective {polFmt(pol.effective_date)} · Sign by {polFmt(pol.deadline)} · Published by {pol.created_by||'—'}{pol.status!=='active'&&<b className="ml-2 text-gray-600">({pol.status==='draft'?'incomplete draft':'retired'})</b>}</p>
+            <div className="flex flex-wrap gap-2 mt-4">
+                <button onClick={()=>openPolicyDoc(pol,notify)} className={`${btn} bg-gray-100 text-gray-700 hover:bg-gray-200`}><i className="fas fa-file-pdf mr-2"/>Open document</button>
+                <button onClick={exportXlsx} className={`${btn} bg-green-50 text-green-700 hover:bg-green-100`}><i className="fas fa-file-excel mr-2"/>Export to Excel</button>
+                {!readOnly&&pol.status==='active'&&<><button onClick={notifyStaff} className={`${btn} bg-blue-50 text-blue-700 hover:bg-blue-100`}><i className="fas fa-envelope mr-2"/>Email unsigned staff ({unsigned.length})</button>
+                    <button onClick={copyEmails} className={`${btn} bg-blue-50 text-blue-700 hover:bg-blue-100`}><i className="fas fa-copy mr-2"/>Copy emails</button>
+                    <button onClick={()=>setAdding(!adding)} className={`${btn} bg-purple-50 text-purple-700 hover:bg-purple-100`}><i className="fas fa-user-plus mr-2"/>Assign more staff</button>
+                    <button onClick={retire} className={`${btn} bg-red-50 text-red-600 hover:bg-red-100`}><i className="fas fa-box-archive mr-2"/>Retire</button></>}
+                {!readOnly&&pol.status==='retired'&&<button onClick={reactivate} className={`${btn} bg-green-50 text-green-700 hover:bg-green-100`}><i className="fas fa-rotate-left mr-2"/>Make active again</button>}
+            </div></div>
+        {adding&&<div className="glass rounded-2xl p-6 mb-6"><h2 className="font-bold mb-3">Assign to more staff (e.g. new joiners)</h2>
+            <StaffPicker staff={staff} selected={sel} setSelected={setSel} exclude={asg.map(a=>a.user_id)}/>
+            <button onClick={assignMore} disabled={busy} className="btn-green text-white px-5 py-2.5 rounded-xl font-semibold text-sm mt-3 disabled:opacity-60">{busy?'Assigning…':'Assign'}</button></div>}
+        <div className="glass rounded-2xl p-6">
+            <div className="flex flex-wrap gap-2 mb-4">{[['all','All',rows.length],['open','Not signed',rows.filter(r=>r.status!=='signed').length],['overdue','Overdue',rows.filter(r=>r.status==='overdue').length],['signed','Signed',rows.filter(r=>r.status==='signed').length]]
+                .map(([k,l,c])=><button key={k} onClick={()=>setFilter(k)} className={`px-4 py-2 rounded-xl text-sm font-bold ${filter===k?'btn-green text-white':'text-gray-500 hover:bg-gray-100'}`}>{l} ({c})</button>)}</div>
+            {shown.length===0?<p className="text-center py-8 text-gray-400 font-semibold">No staff in this list</p>
+            :<div className="space-y-2">{shown.map(r=><div key={r.a.id} className="border-2 border-gray-100 rounded-xl p-4 flex flex-wrap justify-between items-center gap-3">
+                <div><p className="font-bold text-gray-800">{r.s.name}</p><p className="text-xs text-gray-500">{r.ack?`Signed ${new Date(r.ack.signed_at).toLocaleString()}`:r.a.opened_at?`Opened ${polFmt(r.a.opened_at)}, not signed yet`:'Has not opened it yet'}</p></div>
+                <div className="flex items-center gap-2"><span className={`px-3 py-1 rounded-full text-xs font-bold ${POL_BADGE[r.status]}`}>{POL_LABEL[r.status]}</span>
+                    {r.ack&&<button onClick={()=>showSig(r)} className="text-sm text-blue-600 font-semibold hover:underline">View signature</button>}</div>
+            </div>)}</div>}
+        </div>
+        {sigView&&<div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50" onClick={()=>setSigView(null)}>
+            <div className="bg-white rounded-2xl p-6 max-w-lg w-full" onClick={e=>e.stopPropagation()}>
+                <h3 className="font-bold text-lg">{sigView.signer_name}</h3>
+                <p className="text-sm text-gray-500">{sigView.policy_title} v{sigView.policy_version} · {new Date(sigView.signed_at).toLocaleString()}</p>
+                <p className="text-xs text-gray-600 bg-gray-50 rounded-lg p-3 my-3">{sigView.declaration}</p>
+                <img src={/^data:image\//.test(sigView.signature_data||'')?sigView.signature_data:''} alt="Signature" className="w-full border rounded-xl"/>
+                <button onClick={()=>setSigView(null)} className="mt-4 w-full bg-gray-100 rounded-xl py-2 font-semibold text-gray-700">Close</button></div></div>}
+    </div></div>;
+}
+
+/* ==================== HR DASHBOARD ====================
+   Access: HR (users.is_hr), ED (users.is_ed) and the supervisor.
+   Reads completed appraisals (read-only), flags promotion candidates
+   using the existing grade bands, and runs the HR recommendation →
+   Supervisor/ED decision step. Staff Profiles and Policies live here. */
+const HR_BANDS=[{k:'BEACON',min:90,c:'#1A3A5C'},{k:'BLAZE',min:80,c:'#C9980A'},{k:'FLAME',min:75,c:'#E8851A'},{k:'GLOW',min:70,c:'#D4651A'},{k:'SPARK',min:60,c:'#C1440E'},{k:'PIP',min:-1,c:'#CC2200'}];
+const hrBandOf=s=>HR_BANDS.find(b=>s>=b.min).k;
+const hrPeriodKey=p=>{const m=/^Q([1-4])\s+(\d{4})$/.exec((p||'').trim());return m?Number(m[2])*10+Number(m[1]):0;};
+const HR_FLAG={promotion:{l:'Promotion candidate',c:'bg-indigo-100 text-indigo-800',i:'fa-arrow-trend-up'},ontrack:{l:'On track',c:'bg-green-100 text-green-700',i:'fa-check'},
+    support:{l:'Needs support',c:'bg-amber-100 text-amber-800',i:'fa-hands-holding'},pip:{l:'PIP',c:'bg-red-100 text-red-700',i:'fa-triangle-exclamation'},none:{l:'Not appraised',c:'bg-gray-100 text-gray-500',i:'fa-minus'}};
+const HR_REC={promotion:'Recommend for promotion',not_yet:'Not yet — keep developing',support:'Needs support / training',pip:'Place on PIP'};
+const HR_DEC={pending:'bg-amber-100 text-amber-700',approved:'bg-green-100 text-green-700',rejected:'bg-red-100 text-red-700'};
+/* Flag rules (as agreed): PIP <60; Needs support <70 in the latest
+   quarter; Promotion candidate = 80+ in the two most recent appraised
+   quarters with no disputed appraisal among them. */
+const hrFlagFor=hist=>{
+    if(!hist.length) return 'none';
+    const last=hist[hist.length-1];
+    if(last.score<60) return 'pip';
+    if(last.score<70) return 'support';
+    const two=hist.slice(-2);
+    if(two.length===2&&two.every(h=>h.score>=80&&!h.disputed)) return 'promotion';
+    return 'ontrack';
+};
+
+function HRDashboard({user,notify,onBack,access}) {
+    const canRecommend=access==='hr';const canDecide=access==='ed'||access==='supervisor';
+    const [tab,setTab]=useState('performance');const [loading,setLoading]=useState(true);
+    const [apps,setApps]=useState([]);const [staff,setStaff]=useState([]);const [profiles,setProfiles]=useState({});const [recs,setRecs]=useState([]);
+    const [period,setPeriod]=useState('');const [flagF,setFlagF]=useState('all');const [dept,setDept]=useState('all');const [selStaff,setSelStaff]=useState(null);
+    const load=async()=>{setLoading(true);
+        try{
+            const [a,u,p,r]=await Promise.all([
+                fetch(`${SB}/rest/v1/appraisals?status=eq.completed&select=id,employee_id,withdrawn,final_score,grade_band,review_period,supervisor_ratings,supervisor_overall_comments,employee_review_status,completed_at,attendance_deduction`,{headers:H}).then(x=>x.ok?x.json():[]),
+                fetch(`${SB}/rest/v1/users?select=id,name,email,role,is_active&order=name.asc`,{headers:H}).then(x=>x.ok?x.json():[]),
+                fetch(`${SB}/rest/v1/staff_profiles?select=user_id,position,department`,{headers:H}).then(x=>x.ok?x.json():[]),
+                fetch(`${SB}/rest/v1/hr_recommendations?select=*&order=recommended_at.desc`,{headers:H}).then(x=>x.ok?x.json():[])]);
+            const good=(Array.isArray(a)?a:[]).filter(x=>!x.withdrawn&&x.review_period&&x.final_score!=null);
+            setApps(good);setStaff(Array.isArray(u)?u:[]);
+            const pm={};(Array.isArray(p)?p:[]).forEach(x=>pm[x.user_id]=x);setProfiles(pm);setRecs(Array.isArray(r)?r:[]);
+            const ps=[...new Set(good.map(x=>x.review_period))].sort((x,y)=>hrPeriodKey(y)-hrPeriodKey(x));
+            setPeriod(cur=>cur&&ps.includes(cur)?cur:(ps[0]||''));
+        }catch(e){notify('Could not load HR data','error');}
+        setLoading(false);};
+    useEffect(()=>{load();},[]);
+
+    if(tab==='profiles') return <HRAdmin notify={notify} onBack={()=>setTab('performance')}/>;
+    if(tab==='policies') return <PolicyAdmin user={user} notify={notify} readOnly={access!=='hr'} onBack={()=>setTab('performance')}/>;
+
+    const periods=[...new Set(apps.map(x=>x.review_period))].sort((x,y)=>hrPeriodKey(x)-hrPeriodKey(y));
+    const pk=hrPeriodKey(period);
+    /* One entry per person per quarter (latest completed review wins) */
+    const histFor=uid=>{const m={};apps.filter(a=>a.employee_id===uid&&hrPeriodKey(a.review_period)<=pk).forEach(a=>{const cur=m[a.review_period];if(!cur||new Date(a.completed_at)>new Date(cur.completed_at))m[a.review_period]=a;});
+        return Object.values(m).sort((x,y)=>hrPeriodKey(x.review_period)-hrPeriodKey(y.review_period)).map(a=>({period:a.review_period,score:Number(a.final_score),disputed:a.employee_review_status==='rejected',app:a}));};
+    const latestRec=uid=>recs.find(r=>r.user_id===uid);
+    const appraisedIds=new Set(apps.map(a=>a.employee_id));
+    const rows=staff.filter(s=>appraisedIds.has(s.id)||(s.is_active!==false&&s.role==='employee')).map(s=>{
+        const hist=histFor(s.id);const cur=hist.find(h=>h.period===period);const prev=hist.filter(h=>h.period!==period).slice(-1)[0];
+        return {s,prof:profiles[s.id]||{},hist,cur,prev,flag:cur?hrFlagFor(hist):'none',rec:latestRec(s.id)};});
+    const depts=[...new Set(rows.map(r=>r.prof.department).filter(Boolean))].sort();
+    const inDept=rows.filter(r=>dept==='all'||r.prof.department===dept);
+    const shown=inDept.filter(r=>flagF==='all'||r.flag===flagF).sort((a,b)=>(b.cur?b.cur.score:-1)-(a.cur?a.cur.score:-1));
+    const qApps=inDept.filter(r=>r.cur);
+    const avgScore=qApps.length?(qApps.reduce((t,r)=>t+r.cur.score,0)/qApps.length).toFixed(1):'—';
+    const count=f=>inDept.filter(r=>r.flag===f).length;
+    const bandCounts=HR_BANDS.map(b=>qApps.filter(r=>hrBandOf(r.cur.score)===b.k).length);
+    const trend=periods.map(p=>{const v=apps.filter(a=>a.review_period===p&&(dept==='all'||(profiles[a.employee_id]||{}).department===dept)).map(a=>Number(a.final_score));return v.length?Number((v.reduce((x,y)=>x+y,0)/v.length).toFixed(1)):0;});
+    const compAvg=comps.map(c=>{const v=qApps.map(r=>Number((r.cur.app.supervisor_ratings||{})[c.name])).filter(x=>x>0);return v.length?Number((v.reduce((x,y)=>x+y,0)/v.length).toFixed(2)):0;});
+    const pendingRecs=recs.filter(r=>r.decision==='pending').length;
+    const nameOf={};staff.forEach(s=>nameOf[s.id]=s.name);
+
+    if(selStaff){const r=rows.find(x=>x.s.id===selStaff);if(r) return <HRStaffDetail row={r} allHist={histFor} recs={recs.filter(x=>x.user_id===r.s.id)} period={period} user={user} canRecommend={canRecommend} canDecide={canDecide} notify={notify} onBack={()=>{setSelStaff(null);load();}}/>;}
+
+    const exportXlsx=()=>{const data=shown.map(r=>({'Staff':r.s.name,'Position':r.prof.position||'','Department':r.prof.department||'',[`Score ${period}`]:r.cur?r.cur.score:'',
+        'Previous score':r.prev?r.prev.score:'','Band':r.cur?hrBandOf(r.cur.score):'','Flag':HR_FLAG[r.flag].l,'Latest HR recommendation':r.rec?HR_REC[r.rec.recommendation]:'','Decision':r.rec?r.rec.decision:''}));
+        const ws=XLSX.utils.json_to_sheet(data);const wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,ws,'HR summary');XLSX.writeFile(wb,`RAHAMA HR summary ${period||''}.xlsx`);};
+
+    const tabs=[['performance','Performance','fa-chart-line'],['promotions',`Recommendations${pendingRecs?` (${pendingRecs})`:''}`,'fa-user-check'],['profiles','Staff Profiles','fa-id-badge'],['policies','Policies','fa-file-shield']];
+    return <div className="min-h-screen p-4 md:p-8"><div className="max-w-6xl mx-auto">
+        <div className="glass rounded-2xl p-6 mb-6"><button onClick={onBack} className="text-blue-600 font-semibold text-sm mb-3 hover:underline"><i className="fas fa-arrow-left mr-2"/>Back</button>
+            <div className="flex flex-wrap justify-between items-center gap-3"><div><h1 className="text-2xl md:text-3xl font-extrabold text-gray-800">HR Dashboard</h1>
+                <p className="text-gray-500 text-sm mt-1">Appraisal findings, promotion candidates and staff support · {access==='hr'?'HR Officer':access==='ed'?'Executive Director':'Supervisor'} view</p></div>
+            {tab==='performance'&&<div className="flex flex-wrap gap-2">
+                <select value={period} onChange={e=>setPeriod(e.target.value)} className="border-2 border-gray-200 rounded-xl px-3 py-2 text-sm font-semibold">{[...periods].reverse().map(p=><option key={p}>{p}</option>)}{!periods.length&&<option value="">No reviewed quarters yet</option>}</select>
+                <select value={dept} onChange={e=>setDept(e.target.value)} className="border-2 border-gray-200 rounded-xl px-3 py-2 text-sm font-semibold"><option value="all">All departments</option>{depts.map(d=><option key={d}>{d}</option>)}</select>
+                <button onClick={exportXlsx} className="px-4 py-2 rounded-xl font-semibold text-sm bg-green-50 text-green-700 hover:bg-green-100"><i className="fas fa-file-excel mr-2"/>Export</button></div>}</div>
+            <div className="flex flex-wrap gap-2 mt-5 border-t pt-4">{tabs.map(([k,l,i])=><button key={k} onClick={()=>setTab(k)} className={`px-4 py-2 rounded-xl text-sm font-bold ${tab===k?'btn-green text-white':'text-gray-500 hover:bg-gray-100'}`}><i className={`fas ${i} mr-2`}/>{l}</button>)}</div></div>
+
+        {loading?<div className="text-center py-16"><i className="fas fa-spinner fa-spin text-2xl text-gray-400"/></div>
+        :tab==='promotions'?<HRRecommendations recs={recs} nameOf={nameOf} user={user} canDecide={canDecide} canRecommend={canRecommend} candidates={rows.filter(r=>r.flag==='promotion'&&!(r.rec&&r.rec.review_period===period))} period={period} notify={notify} onOpen={id=>setSelStaff(id)} onChanged={load}/>
+        :<>
+        <div className="grid grid-cols-2 md:grid-cols-5 gap-4 mb-6">{[
+            {l:`Appraised ${period}`,v:qApps.length,c:'text-gray-800',f:'all'},{l:'Average score',v:avgScore,c:'text-gray-800',f:'all'},
+            {l:'Promotion candidates',v:count('promotion'),c:'text-indigo-700',f:'promotion'},{l:'Needs support',v:count('support'),c:'text-amber-600',f:'support'},{l:'PIP',v:count('pip'),c:'text-red-600',f:'pip'}]
+            .map((t,i)=><button key={i} onClick={()=>setFlagF(t.f)} className="glass rounded-xl p-5 text-left hover:shadow-lg"><p className="text-xs font-bold text-gray-400 uppercase tracking-wider">{t.l}</p><p className={`text-3xl font-extrabold mt-1 ${t.c}`}>{t.v}</p></button>)}</div>
+        {qApps.length>0&&<div className="grid md:grid-cols-2 gap-6 mb-6">
+            <div className="glass rounded-2xl p-6"><h2 className="font-bold mb-3"><i className="fas fa-layer-group text-green-600 mr-2"/>Staff by grade band — {period}</h2>
+                <MEChart type="bar" labels={HR_BANDS.map(b=>b.k)} data={bandCounts} colors={HR_BANDS.map(b=>b.c)} height={210}/></div>
+            <div className="glass rounded-2xl p-6"><h2 className="font-bold mb-3"><i className="fas fa-chart-line text-green-600 mr-2"/>Average score by quarter</h2>
+                <MEChart type="line" labels={periods} data={[{label:'Average',data:trend,borderColor:'#285B3C',backgroundColor:'#285B3C',tension:0.3}]} height={210}/></div>
+            <div className="glass rounded-2xl p-6 md:col-span-2"><h2 className="font-bold mb-1"><i className="fas fa-brain text-green-600 mr-2"/>Competency averages — {period} (out of 5)</h2>
+                <p className="text-xs text-gray-400 mb-3">Lowest bars show where training is most needed across the team</p>
+                <MEChart type="bar" horizontal labels={comps.map(c=>c.name)} data={compAvg} colors={compAvg.map(v=>v<3?'#CC2200':v<3.5?'#E8851A':'#285B3C')} height={300}/></div>
+        </div>}
+        <div className="glass rounded-2xl p-6">
+            <div className="flex flex-wrap gap-2 mb-4">{['all','promotion','ontrack','support','pip','none'].map(f=><button key={f} onClick={()=>setFlagF(f)} className={`px-3 py-1.5 rounded-xl text-xs font-bold ${flagF===f?'btn-green text-white':'text-gray-500 hover:bg-gray-100'}`}>{f==='all'?'All staff':HR_FLAG[f].l} ({f==='all'?inDept.length:count(f)})</button>)}</div>
+            {shown.length===0?<p className="text-center py-10 text-gray-400 font-semibold">No staff in this view</p>
+            :<div className="space-y-2">{shown.map(r=>{const d=r.cur&&r.prev?r.cur.score-r.prev.score:null;
+                return <div key={r.s.id} onClick={()=>setSelStaff(r.s.id)} className="border-2 border-gray-100 rounded-xl p-4 flex flex-wrap items-center gap-3 cursor-pointer hover:border-green-200">
+                    <div className="flex-1 min-w-[180px]"><p className="font-bold text-gray-800">{r.s.name}</p><p className="text-xs text-gray-500">{[r.prof.position,r.prof.department].filter(Boolean).join(' · ')||'No HR profile yet'}</p></div>
+                    <div className="text-right w-24">{r.cur?<><p className="text-xl font-extrabold" style={{color:HR_BANDS.find(b=>b.k===hrBandOf(r.cur.score)).c}}>{r.cur.score}</p><p className="text-xs text-gray-400">{hrBandOf(r.cur.score)}</p></>:<p className="text-sm text-gray-400">—</p>}</div>
+                    <div className="w-20 text-center text-sm font-bold">{d===null?<span className="text-gray-300">—</span>:d>0?<span className="text-green-600"><i className="fas fa-arrow-up mr-1"/>{d.toFixed(1)}</span>:d<0?<span className="text-red-600"><i className="fas fa-arrow-down mr-1"/>{Math.abs(d).toFixed(1)}</span>:<span className="text-gray-400">0</span>}</div>
+                    <span className={`px-3 py-1 rounded-full text-xs font-bold ${HR_FLAG[r.flag].c}`}><i className={`fas ${HR_FLAG[r.flag].i} mr-1`}/>{HR_FLAG[r.flag].l}</span>
+                    {r.rec&&<span className={`px-3 py-1 rounded-full text-xs font-bold ${HR_DEC[r.rec.decision]}`} title={HR_REC[r.rec.recommendation]}>HR: {r.rec.recommendation.replace('_',' ')} · {r.rec.decision}</span>}
+                </div>;})}</div>}
+        </div></>}
+    </div></div>;
+}
+
+function HRStaffDetail({row,recs,period,user,canRecommend,canDecide,notify,onBack}) {
+    const {s,prof,hist,cur,flag}=row;
+    const [rec,setRec]=useState(flag==='promotion'?'promotion':flag==='pip'?'pip':flag==='support'?'support':'not_yet');const [note,setNote]=useState('');const [busy,setBusy]=useState(false);
+    const show=cur||hist[hist.length-1];const app=show?show.app:null;
+    const submit=async()=>{if(note.trim().length<10){notify('Add a short justification (at least 10 characters)','error');return;}
+        setBusy(true);const r=await fetch(`${SB}/rest/v1/hr_recommendations`,{method:'POST',headers:HJ,body:JSON.stringify({user_id:s.id,review_period:period||null,recommendation:rec,note:note.trim(),score_snapshot:cur?cur.score:null,recommended_by:user.name})});
+        setBusy(false);if(r.ok){notify('Recommendation sent to Supervisor / ED');onBack();}else notify('Could not save','error');};
+    return <div className="min-h-screen p-4 md:p-8"><div className="max-w-5xl mx-auto">
+        <div className="glass rounded-2xl p-6 mb-6"><button onClick={onBack} className="text-blue-600 font-semibold text-sm mb-3 hover:underline"><i className="fas fa-arrow-left mr-2"/>Back</button>
+            <div className="flex flex-wrap justify-between items-center gap-3"><div><h1 className="text-2xl font-extrabold">{s.name}</h1><p className="text-gray-500 text-sm">{[prof.position,prof.department].filter(Boolean).join(' · ')||'No HR profile yet'}</p></div>
+            <span className={`px-3 py-1.5 rounded-full text-sm font-bold ${HR_FLAG[flag].c}`}><i className={`fas ${HR_FLAG[flag].i} mr-1`}/>{HR_FLAG[flag].l}</span></div></div>
+        <div className="grid md:grid-cols-2 gap-6 mb-6">
+            <div className="glass rounded-2xl p-6"><h2 className="font-bold mb-3">Score history</h2>
+                {hist.length?<><MEChart type="line" labels={hist.map(h=>h.period)} data={[{label:'Score',data:hist.map(h=>h.score),borderColor:'#285B3C',backgroundColor:'#285B3C',tension:0.3}]} height={180}/>
+                <div className="mt-3 space-y-1">{[...hist].reverse().map(h=><div key={h.period} className="flex justify-between text-sm"><span className="text-gray-600">{h.period}</span><span className="font-bold">{h.score} · {hrBandOf(h.score)}{h.disputed&&<span className="ml-2 text-xs text-red-600">disputed</span>}</span></div>)}</div></>
+                :<p className="text-gray-400 text-sm">No completed appraisals yet</p>}</div>
+            <div className="glass rounded-2xl p-6"><h2 className="font-bold mb-3">Competencies {show?`— ${show.period}`:''}</h2>
+                {app?<div className="space-y-2">{comps.map(c=>{const v=Number((app.supervisor_ratings||{})[c.name])||0;return <div key={c.name}><div className="flex justify-between text-xs"><span className="text-gray-600">{c.name}</span><span className="font-bold">{v||'—'}/5</span></div>
+                    <div className="w-full bg-gray-100 rounded-full h-2"><div className="h-2 rounded-full" style={{width:(v*20)+'%',background:v<3?'#CC2200':v<3.5?'#E8851A':'#285B3C'}}/></div></div>;})}
+                    {app.attendance_deduction>0&&<p className="text-xs text-red-500 mt-2"><i className="fas fa-clock mr-1"/>−{app.attendance_deduction} pts attendance deduction</p>}</div>
+                :<p className="text-gray-400 text-sm">—</p>}</div>
+        </div>
+        {app&&app.supervisor_overall_comments&&<div className="glass rounded-2xl p-6 mb-6"><h2 className="font-bold mb-2">Supervisor's overall comments ({show.period})</h2><p className="text-sm text-gray-700 whitespace-pre-wrap">{app.supervisor_overall_comments}</p></div>}
+        {canRecommend&&<div className="glass rounded-2xl p-6 mb-6"><h2 className="font-bold mb-3"><i className="fas fa-user-check text-indigo-600 mr-2"/>HR recommendation {period?`for ${period}`:''}</h2>
+            <div className="grid md:grid-cols-2 gap-2 mb-3">{Object.entries(HR_REC).map(([k,l])=><label key={k} className={`border-2 rounded-xl p-3 cursor-pointer text-sm font-semibold ${rec===k?'border-green-500 bg-green-50':'border-gray-200'}`}><input type="radio" checked={rec===k} onChange={()=>setRec(k)} className="mr-2"/>{l}</label>)}</div>
+            <textarea rows={3} value={note} onChange={e=>setNote(e.target.value)} placeholder="Justification based on the appraisal findings" className="w-full border-2 border-gray-200 rounded-xl px-4 py-2.5 text-sm"/>
+            <button onClick={submit} disabled={busy} className="btn-green text-white px-5 py-2.5 rounded-xl font-semibold text-sm mt-3 disabled:opacity-60">{busy?'Sending…':'Send to Supervisor / ED'}</button></div>}
+        <div className="glass rounded-2xl p-6"><h2 className="font-bold mb-3">Recommendation history</h2>
+            {recs.length===0?<p className="text-gray-400 text-sm">None yet</p>:<HRRecList recs={recs} nameOf={{[s.id]:s.name}} user={user} canDecide={canDecide} notify={notify} onChanged={onBack} hideName/>}</div>
+    </div></div>;
+}
+
+function HRRecList({recs,nameOf,user,canDecide,notify,onChanged,onOpen,hideName}) {
+    const [noteFor,setNoteFor]=useState({});
+    const decide=async(r,decision)=>{if(!confirm(`${decision==='approved'?'Approve':'Reject'} this recommendation? It cannot be changed afterwards.`))return;
+        const res=await fetch(`${SB}/rest/v1/hr_recommendations?id=eq.${r.id}`,{method:'PATCH',headers:HJ,body:JSON.stringify({decision,decided_by:user.name,decision_note:(noteFor[r.id]||'').trim()||null})});
+        if(res.ok){notify(`Recommendation ${decision}`);onChanged();}else notify('Could not save — it may already have been decided','error');};
+    return <div className="space-y-3">{recs.map(r=><div key={r.id} className="border-2 border-gray-100 rounded-xl p-4">
+        <div className="flex flex-wrap justify-between items-start gap-2"><div>
+            {!hideName&&<p className="font-bold text-gray-800 cursor-pointer hover:underline" onClick={()=>onOpen&&onOpen(r.user_id)}>{nameOf[r.user_id]||'Staff'}</p>}
+            <p className="text-sm font-semibold text-gray-700">{HR_REC[r.recommendation]}{r.review_period?` · ${r.review_period}`:''}{r.score_snapshot!=null?` · score ${r.score_snapshot}`:''}</p>
+            <p className="text-xs text-gray-500 mt-1">By {r.recommended_by||'HR'} on {polFmt(r.recommended_at)}</p></div>
+            <span className={`px-3 py-1 rounded-full text-xs font-bold ${HR_DEC[r.decision]}`}>{r.decision}</span></div>
+        {r.note&&<p className="text-sm text-gray-600 mt-2 bg-gray-50 rounded-lg p-3 whitespace-pre-wrap">{r.note}</p>}
+        {r.decision!=='pending'&&<p className="text-xs text-gray-500 mt-2">{r.decision==='approved'?'Approved':'Rejected'} by {r.decided_by||'—'} on {polFmt(r.decided_at)}{r.decision_note?` — "${r.decision_note}"`:''}</p>}
+        {r.decision==='pending'&&canDecide&&<div className="flex flex-wrap gap-2 mt-3">
+            <input value={noteFor[r.id]||''} onChange={e=>setNoteFor({...noteFor,[r.id]:e.target.value})} placeholder="Decision note (optional)" className="flex-1 min-w-[200px] border-2 border-gray-200 rounded-xl px-3 py-2 text-sm"/>
+            <button onClick={()=>decide(r,'approved')} className="btn-green text-white px-4 py-2 rounded-xl font-semibold text-sm"><i className="fas fa-check mr-1"/>Approve</button>
+            <button onClick={()=>decide(r,'rejected')} className="bg-red-50 text-red-600 hover:bg-red-100 px-4 py-2 rounded-xl font-semibold text-sm"><i className="fas fa-xmark mr-1"/>Reject</button></div>}
+    </div>)}</div>;
+}
+
+function HRRecommendations({recs,nameOf,user,canDecide,canRecommend,candidates,period,notify,onOpen,onChanged}) {
+    const pending=recs.filter(r=>r.decision==='pending');const decided=recs.filter(r=>r.decision!=='pending');
+    return <>
+        {canRecommend&&candidates.length>0&&<div className="glass rounded-2xl p-6 mb-6"><h2 className="font-bold mb-1"><i className="fas fa-arrow-trend-up text-indigo-600 mr-2"/>Promotion candidates without a recommendation for {period}</h2>
+            <p className="text-xs text-gray-400 mb-3">80+ in the last two appraised quarters, no disputes. Open each to record your recommendation.</p>
+            <div className="flex flex-wrap gap-2">{candidates.map(c=><button key={c.s.id} onClick={()=>onOpen(c.s.id)} className="px-4 py-2 rounded-xl text-sm font-semibold bg-indigo-50 text-indigo-700 hover:bg-indigo-100">{c.s.name} · {c.cur.score}</button>)}</div></div>}
+        <div className="glass rounded-2xl p-6 mb-6"><h2 className="font-bold mb-3"><i className="fas fa-hourglass-half text-amber-500 mr-2"/>Awaiting decision ({pending.length}){canDecide?'':' — Supervisor or ED decides'}</h2>
+            {pending.length===0?<p className="text-gray-400 text-sm">Nothing pending</p>:<HRRecList recs={pending} nameOf={nameOf} user={user} canDecide={canDecide} notify={notify} onChanged={onChanged} onOpen={onOpen}/>}</div>
+        <div className="glass rounded-2xl p-6"><h2 className="font-bold mb-3"><i className="fas fa-clock-rotate-left text-gray-500 mr-2"/>Decided ({decided.length})</h2>
+            {decided.length===0?<p className="text-gray-400 text-sm">None yet</p>:<HRRecList recs={decided} nameOf={nameOf} user={user} canDecide={false} notify={notify} onChanged={onChanged} onOpen={onOpen}/>}</div>
+    </>;
 }
 
 function LeaveRequest({user,notify,onBack}) {
