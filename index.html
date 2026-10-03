@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>RAHAMA Performance Management System</title>
+    <title>RAHAMA Staff Portal</title>
    <script crossorigin src="https://unpkg.com/react@18.3.1/umd/react.production.min.js"></script>
 <script crossorigin src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.production.min.js"></script>
     <script src="https://unpkg.com/@babel/standalone@7.23.6/babel.min.js"></script>
@@ -61,6 +61,8 @@ const HR = {...H,'Content-Type':'application/json'};   // for RPC calls (needs r
    calls. Every other data read or write in this file still goes
    through the plain REST calls above (H/HJ/HR) exactly as before;
    this is additive, not a rewrite of the app's data layer. */
+/* Fallback: add ?classic=1 to the address to open the old dashboards */
+const CLASSIC_VIEW = new URLSearchParams(window.location.search).get('classic')==='1';
 const supabaseClient = window.supabase ? window.supabase.createClient(SB, SK) : null;
 
 const comps = [
@@ -298,8 +300,8 @@ function App() {
     return <>
         {toast&&<Toast {...toast} onClose={()=>setToast(null)}/>}
         {view==='login'&&<Login onLogin={login}/>}
-        {view==='dashboard'&&<Dashboard user={user} onLogout={logout} notify={notify}/>}
-        {view==='supervisor'&&<SuperDash user={user} onLogout={logout} notify={notify}/>}
+        {view==='dashboard'&&(CLASSIC_VIEW?<Dashboard user={user} onLogout={logout} notify={notify}/>:<StaffPortal user={user} onLogout={logout} notify={notify}/>)}
+        {view==='supervisor'&&(CLASSIC_VIEW?<SuperDash user={user} onLogout={logout} notify={notify}/>:<StaffPortal user={user} onLogout={logout} notify={notify}/>)}
     </>;
 }
 
@@ -319,7 +321,7 @@ function Login({onLogin}) {
                     <i className="fas fa-chart-line text-white text-3xl"/>
                 </div>
                 <h1 className="text-3xl font-extrabold text-gray-800 mb-1">RAHAMA</h1>
-                <p className="text-sm font-medium text-gray-500 tracking-wide uppercase">Performance Management System</p>
+                <p className="text-sm font-medium text-gray-500 tracking-wide uppercase">Staff Portal</p>
             </div>
             <div className="mb-6">
                 <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-3">Sign in as</label>
@@ -3240,7 +3242,7 @@ function FieldTripAdmin({user,notify,onBack}) {
     const mapObj=useRef(null);
     const markersRef=useRef({});
     const polylinesRef=useRef({});
-    const [msgsByTrip,setMsgsByTrip]=useState({});const [phones,setPhones]=useState({});const [lastUpdated,setLastUpdated]=useState(null);
+    const [msgsByTrip,setMsgsByTrip]=useState({});const [phones,setPhones]=useState({});const [emerg,setEmerg]=useState({});const [lastUpdated,setLastUpdated]=useState(null);
     const [refreshing,setRefreshing]=useState(false);const [composeFor,setComposeFor]=useState(null);const [draft,setDraft]=useState('');const [sending,setSending]=useState(false);
 
     const load=async()=>{
@@ -3269,6 +3271,8 @@ function FieldTripAdmin({user,notify,onBack}) {
                     fetch(`${SB}/rest/v1/staff_profiles?user_id=in.(${uids.join(',')})&select=user_id,phone`,{headers:H}).then(r=>r.ok?r.json():[]).catch(()=>[]),
                     fetch(`${SB}/rest/v1/trip_messages?trip_id=in.(${activeArr.map(t=>encodeURIComponent(String(t.id))).join(',')})&order=sent_at.asc`,{headers:H}).then(r=>r.ok?r.json():[]).catch(()=>[])]);
                 const pm={};(Array.isArray(ph)?ph:[]).forEach(p=>{if(p.phone)pm[p.user_id]=p.phone;});setPhones(pm);
+                const ec=await fetch(`${SB}/rest/v1/staff_emergency_contacts?user_id=in.(${uids.join(',')})&select=user_id,contact_name,relationship,phone,medical_note`,{headers:H}).then(r=>r.ok?r.json():[]).catch(()=>[]);
+                const em={};(Array.isArray(ec)?ec:[]).forEach(x=>em[x.user_id]=x);setEmerg(em);
                 const mm={};(Array.isArray(ms)?ms:[]).forEach(m=>{(mm[m.trip_id]=mm[m.trip_id]||[]).push(m);});setMsgsByTrip(mm);
             } else setMsgsByTrip({});
             setLastUpdated(new Date());
@@ -3342,6 +3346,8 @@ function FieldTripAdmin({user,notify,onBack}) {
                     :<span className="px-3 py-1.5 rounded-xl text-xs font-semibold bg-gray-100 text-gray-500">No phone number in HR profile</span>}
                     <button onClick={()=>{setComposeFor(composeFor===t.id?null:t.id);setDraft('');}} className="px-3 py-1.5 rounded-xl text-xs font-bold bg-red-50 text-red-700 hover:bg-red-100"><i className="fas fa-message mr-1"/>Send message</button>
                 </div>
+                {emerg[t.employee_id]?<p className="text-xs text-gray-600 mt-2"><i className="fas fa-user-shield text-red-500 mr-1"/>Emergency contact: {emerg[t.employee_id].contact_name}{emerg[t.employee_id].relationship?` (${emerg[t.employee_id].relationship})`:''}{emerg[t.employee_id].phone&&<> · <a href={`tel:${String(emerg[t.employee_id].phone).replace(/[^\d+]/g,'')}`} className="text-blue-600 font-semibold">{emerg[t.employee_id].phone}</a></>}{emerg[t.employee_id].medical_note?` · ${emerg[t.employee_id].medical_note}`:''}</p>
+                :<p className="text-xs text-gray-400 mt-2"><i className="fas fa-user-shield mr-1"/>No emergency contact on file</p>}
                 {composeFor===t.id&&<div className="mt-3 bg-white rounded-xl p-3 border-2 border-gray-100">
                     <div className="flex flex-wrap gap-1 mb-2">{TRIP_TEMPLATES.map((tx,i)=><button key={i} onClick={()=>setDraft(tx)} className="px-2 py-1 rounded-lg text-xs bg-gray-100 text-gray-600 hover:bg-gray-200">{tx.split(' ').slice(0,4).join(' ')}…</button>)}</div>
                     <textarea rows={2} value={draft} onChange={e=>setDraft(e.target.value)} maxLength={1000} placeholder="Message to the traveller" className="w-full px-3 py-2 border-2 border-gray-200 rounded-xl text-sm"/>
@@ -4021,7 +4027,7 @@ function PolicyDetail({pol,asg,ackByAsg,staff,user,readOnly,notify,onBack}) {
     const notifyStaff=()=>{
         if(!unsigned.length){notify('Everyone has signed');return;}
         const subject=`Action required: please read and sign the ${pol.title} (v${pol.version})`;
-        const body=`Dear colleague,\n\nHR has published the ${pol.title} (version ${pol.version}). Please log in to the PMS, open "My Policies", read the policy and sign it by ${polFmt(pol.deadline)}.\n\nPMS: ${pmsUrl}\n\nThank you,\nHR, RAHAMA Girl Child and Women Empowerment Initiative`;
+        const body=`Dear colleague,\n\nHR has published the ${pol.title} (version ${pol.version}). Please log in to the RAHAMA Staff Portal, open "My Policies", read the policy and sign it by ${polFmt(pol.deadline)}.\n\nStaff Portal: ${pmsUrl}\n\nThank you,\nHR, RAHAMA Girl Child and Women Empowerment Initiative`;
         const url=`mailto:?bcc=${unsigned.map(r=>r.s.email).join(',')}&subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
         if(url.length>1900) notify('The list is long — if your email app cuts it off, use "Copy emails" instead','error');
         window.location.href=url;
@@ -4076,6 +4082,403 @@ function PolicyDetail({pol,asg,ackByAsg,staff,user,readOnly,notify,onBack}) {
                 <button onClick={()=>setSigView(null)} className="mt-4 w-full bg-gray-100 rounded-xl py-2 font-semibold text-gray-700">Close</button></div></div>}
     </div></div>;
 }
+
+/* ==================== STAFF PORTAL ====================
+   New home for everyone. Reuses every existing screen unchanged —
+   this only regroups them into My Workspace + HR / M&E / Security
+   portals + FMS. The old dashboards are kept and can be opened with
+   ?classic=1 in the address as a fallback. */
+const LEAVE_ENTITLEMENT=22, LATES_PER_LEAVE_DAY=5;
+const PORTAL_KEYS=[['story','Our Story: why RAHAMA was founded'],['mission','Our Mission'],['vision','Our Vision'],['values','Core Values (one per line)'],['where_we_work','Where We Work (one per line)'],['projects','Current Projects (one per line)'],['contacts','Who To Contact (one per line)'],['safeguarding','How to Report a Safeguarding / PSEAH Concern']];
+const portalToday=()=>new Date().toISOString().slice(0,10);
+const weekdaysInYear=(a,b,yr)=>{if(!a)return 0;let s=new Date(String(a).slice(0,10)+'T12:00:00'),e=new Date(String(b||a).slice(0,10)+'T12:00:00');
+    const ys=new Date(yr+'-01-01T12:00:00'),ye=new Date(yr+'-12-31T12:00:00');if(s<ys)s=ys;if(e>ye)e=ye;let n=0;
+    for(let d=new Date(s);d<=e;d.setDate(d.getDate()+1)){const w=d.getDay();if(w!==0&&w!==6)n++;}return n;};
+const datesInRange=(a,b)=>{const out=[];if(!a)return out;let d=new Date(String(a).slice(0,10)+'T12:00:00');const e=new Date(String(b||a).slice(0,10)+'T12:00:00');
+    while(d<=e){out.push(d.toISOString().slice(0,10));d.setDate(d.getDate()+1);}return out;};
+const PortalBack=({onBack,label})=><button onClick={onBack} className="text-green-600 font-semibold text-sm mb-3 hover:underline"><i className="fas fa-arrow-left mr-2"/>{label||'Back to Staff Portal'}</button>;
+
+function MyAppraisals({user,notify,onBack}) {
+    const [view,setView]=useState('list');const [apps,setApps]=useState([]);const [loading,setLoading]=useState(true);const [selApp,setSelApp]=useState(null);
+    const load=()=>{setLoading(true);fetch(`${SB}/rest/v1/appraisals?employee_id=eq.${user.id}&order=created_at.desc`,{headers:H}).then(r=>r.json()).then(d=>{setApps(Array.isArray(d)?d:[]);}).catch(()=>{}).finally(()=>setLoading(false));};
+    useEffect(()=>{load();},[]);
+    if(view==='create') return <Assessment user={user} notify={notify} onDone={()=>{setView('list');load();}}/>;
+    if(view==='review') return <EmpReview appraisal={selApp} user={user} notify={notify} onDone={()=>{setView('list');load();}}/>;
+    const activeApps=apps.filter(a=>!a.withdrawn);
+    const pending=activeApps.filter(a=>a.status==='pending');const completed=activeApps.filter(a=>a.status==='completed');const needsResponse=activeApps.filter(a=>a.status==='completed'&&(!a.employee_review_status||a.employee_review_status==='pending'));
+    return <div className="min-h-screen p-4 md:p-8"><div className="max-w-6xl mx-auto">
+        <div className="glass rounded-2xl p-6 mb-6 animate-in"><PortalBack onBack={onBack}/>
+            <h1 className="text-2xl md:text-3xl font-extrabold text-gray-800">My Appraisals</h1><p className="text-gray-500 mt-1">Self-assessment, supervisor reviews and your responses</p></div>
+        {needsResponse.length>0&&<div className="bg-blue-50 border-2 border-blue-200 rounded-2xl p-5 mb-6"><div className="flex items-start gap-3"><div className="w-10 h-10 bg-blue-100 rounded-xl flex items-center justify-center flex-shrink-0"><i className="fas fa-bell text-blue-600"/></div><div><h3 className="font-bold text-blue-800">Supervisor Review Available</h3><p className="text-sm text-blue-600 mt-1">You have {needsResponse.length} review(s) to respond to.</p></div></div></div>}
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+            {[{label:'Total',val:apps.length,icon:'fa-clipboard-list',bg:'bg-blue-50',color:'text-blue-600'},{label:'Pending',val:pending.length,icon:'fa-clock',bg:'bg-amber-50',color:'text-amber-600'},{label:'Completed',val:completed.length,icon:'fa-check-circle',bg:'bg-green-50',color:'text-green-600'},{label:'Needs Response',val:needsResponse.length,icon:'fa-reply',bg:'bg-purple-50',color:'text-purple-600'}
+            ].map((s,i)=><div key={i} className="glass rounded-xl p-5 stat"><div className="flex justify-between items-start"><div><p className="text-xs font-bold text-gray-400 uppercase tracking-wider">{s.label}</p><p className="text-3xl font-extrabold text-gray-800 mt-1">{s.val}</p></div><div className={`w-10 h-10 ${s.bg} rounded-lg flex items-center justify-center`}><i className={`fas ${s.icon} ${s.color}`}/></div></div></div>)}
+        </div>
+        <button onClick={()=>setView('create')} className="w-full glass rounded-2xl p-5 mb-6 hover:shadow-xl stat group">
+            <div className="flex items-center gap-4">
+                <div className="w-14 h-14 rounded-xl flex items-center justify-center shadow-lg btn-green"><i className="fas fa-plus text-white text-xl"/></div>
+                <div className="text-left"><p className="text-lg font-bold text-gray-800">Start New Self-Assessment</p><p className="text-sm text-gray-500">Rate yourself across 9 competencies</p></div>
+                <i className="fas fa-arrow-right text-gray-300 ml-auto group-hover:text-green-600 transition"/>
+            </div>
+        </button>
+        <div className="glass rounded-2xl p-6">
+            <h2 className="text-lg font-bold mb-4"><i className="fas fa-history text-green-600 mr-2"/>Assessment History</h2>
+            {loading?<div className="text-center py-12 text-gray-400"><i className="fas fa-spinner fa-spin text-2xl"/></div>
+            :apps.length===0?<div className="text-center py-12 text-gray-400"><i className="fas fa-clipboard-list text-4xl mb-3"/><p className="font-semibold">No assessments yet</p></div>
+            :<div className="space-y-3">{apps.map(a=><div key={a.id} className={`border-2 rounded-xl p-5 transition ${a.withdrawn?'border-gray-200 bg-gray-50':'border-gray-100 hover:border-green-200'}`}>
+                <div className="flex flex-wrap justify-between items-start gap-3">
+                    <div><div className="flex flex-wrap items-center gap-2 mb-2">
+                        {a.withdrawn
+                            ? <span className="px-3 py-1 rounded-full text-xs font-bold bg-gray-200 text-gray-600">⊘ Withdrawn</span>
+                            : <><span className={`px-3 py-1 rounded-full text-xs font-bold ${a.status==='completed'?'bg-green-100 text-green-700':'bg-amber-100 text-amber-700'}`}>{a.status==='completed'?'✓ Reviewed':'⏳ Awaiting Review'}</span>
+                        {a.employee_review_status==='accepted'&&<span className="px-3 py-1 rounded-full text-xs font-bold bg-blue-100 text-blue-700">✓ Accepted</span>}
+                        {a.employee_review_status==='rejected'&&<span className="px-3 py-1 rounded-full text-xs font-bold bg-red-100 text-red-700">⚠ Disputed</span>}</>}
+                    </div>
+                    <p className="text-sm text-gray-500">Submitted: {new Date(a.created_at).toLocaleDateString()}</p>
+                    {a.completed_at&&!a.withdrawn&&<p className="text-sm text-gray-500">Reviewed: {new Date(a.completed_at).toLocaleDateString()}</p>}
+                    {a.withdrawn&&<p className="text-xs text-gray-400 mt-1">This submission was withdrawn by your supervisor{a.withdrawal_reason?`: "${a.withdrawal_reason}"`:''}. No action needed.</p>}</div>
+                    {!a.withdrawn&&<div className="flex items-center gap-3">
+                        {a.status==='completed'&&<div className="text-right mr-2"><p className="text-xs text-gray-400 font-bold uppercase">Score</p><p className="text-2xl font-extrabold text-green-600">{avg(a.supervisor_ratings)}<span className="text-sm text-gray-400">/5</span></p></div>}
+                        {a.status==='completed'&&(!a.employee_review_status||a.employee_review_status==='pending')&&<button onClick={()=>{setSelApp(a);setView('review');}} className="btn-green text-white px-5 py-2.5 rounded-xl font-semibold text-sm"><i className="fas fa-eye mr-2"/>Review</button>}
+                        {a.status==='completed'&&a.employee_review_status&&a.employee_review_status!=='pending'&&<button onClick={()=>{setSelApp(a);setView('review');}} className="bg-gray-100 text-gray-600 px-5 py-2.5 rounded-xl font-semibold text-sm hover:bg-gray-200"><i className="fas fa-eye mr-2"/>View</button>}
+                    </div>}
+                </div>
+            </div>)}</div>}
+        </div>
+    </div></div>;
+}
+
+function MyLeave({user,notify,onBack}) {
+    const [view,setView]=useState('list');const [leaves,setLeaves]=useState([]);const [lates,setLates]=useState([]);const [loading,setLoading]=useState(true);
+    const yr=new Date().getFullYear();
+    const load=async()=>{setLoading(true);
+        try{const [l,a]=await Promise.all([
+            fetch(`${SB}/rest/v1/leave_requests?employee_id=eq.${user.id}&order=created_at.desc`,{headers:H}).then(r=>r.ok?r.json():[]),
+            fetch(`${SB}/rest/v1/attendance?employee_id=eq.${user.id}&status=eq.late&date=gte.${yr}-01-01&select=date`,{headers:H}).then(r=>r.ok?r.json():[])]);
+            setLeaves(Array.isArray(l)?l:[]);setLates(Array.isArray(a)?a:[]);}catch(e){}
+        setLoading(false);};
+    useEffect(()=>{load();},[]);
+    if(view==='request') return <LeaveRequest user={user} notify={notify} onBack={()=>{setView('list');load();}}/>;
+    const inYr=l=>String(l.start_date||'').slice(0,4)<=String(yr)&&String(l.end_date||l.start_date||'').slice(0,4)>=String(yr);
+    const annual=leaves.filter(l=>l.leave_type==='Annual Leave'&&inYr(l));
+    const taken=annual.filter(l=>l.status==='approved').reduce((t,l)=>t+weekdaysInYear(l.start_date,l.end_date,yr),0);
+    const pendingDays=annual.filter(l=>!l.status||l.status==='pending').reduce((t,l)=>t+weekdaysInYear(l.start_date,l.end_date,yr),0);
+    const excused=new Set();leaves.filter(l=>l.leave_type==='Late Arrival'&&l.status==='approved').forEach(l=>datesInRange(l.start_date,l.end_date).forEach(d=>excused.add(d)));
+    const lateCount=lates.filter(x=>!excused.has(String(x.date).slice(0,10))).length;
+    const lateDed=Math.floor(lateCount/LATES_PER_LEAVE_DAY);
+    const remaining=LEAVE_ENTITLEMENT-taken-lateDed;
+    return <div className="min-h-screen p-4 md:p-8"><div className="max-w-5xl mx-auto">
+        <div className="glass rounded-2xl p-6 mb-6 animate-in"><PortalBack onBack={onBack}/>
+            <h1 className="text-2xl md:text-3xl font-extrabold text-gray-800">My Leave</h1><p className="text-gray-500 mt-1">Your {yr} balance, requests and decisions</p></div>
+        {loading?<div className="glass rounded-2xl p-12 text-center text-gray-400"><i className="fas fa-spinner fa-spin text-2xl"/></div>:<>
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-3">{[
+            {l:'Annual entitlement',v:LEAVE_ENTITLEMENT,c:'text-gray-800'},{l:'Annual leave taken',v:taken,c:'text-blue-600'},
+            {l:`Late deduction (${lateCount} late${lateCount!==1?'s':''})`,v:lateDed,c:'text-amber-600'},{l:'Days remaining',v:remaining,c:remaining<0?'text-red-600':'text-green-600'}]
+            .map((t,i)=><div key={i} className="glass rounded-xl p-5"><p className="text-xs font-bold text-gray-400 uppercase tracking-wider">{t.l}</p><p className={`text-3xl font-extrabold mt-1 ${t.c}`}>{t.v}</p></div>)}</div>
+        <p className="text-xs text-gray-500 mb-6 px-1">{pendingDays>0?`${pendingDays} more day${pendingDays!==1?'s':''} of annual leave awaiting approval. `:''}Every {LATES_PER_LEAVE_DAY} late clock-ins this year count as 1 day of annual leave (lates covered by an approved "Late Arrival" permission are not counted). Days are counted Monday–Friday; public holidays and part-year entitlement for new staff are not adjusted here, so HR's records are final.</p>
+        <button onClick={()=>setView('request')} className="w-full glass rounded-2xl p-5 mb-6 hover:shadow-xl stat group">
+            <div className="flex items-center gap-4">
+                <div className="w-14 h-14 rounded-xl flex items-center justify-center shadow-lg" style={{background:'linear-gradient(135deg,#8b5cf6,#6d28d9)'}}><i className="fas fa-plane-departure text-white text-xl"/></div>
+                <div className="text-left"><p className="text-lg font-bold text-gray-800">Request Leave / Permission</p><p className="text-sm text-gray-500">Submit absence or time-off requests</p></div>
+                <i className="fas fa-arrow-right text-gray-300 ml-auto group-hover:text-purple-600 transition"/>
+            </div>
+        </button>
+        <div className="glass rounded-2xl p-6 mt-6">
+            <h2 className="text-lg font-bold mb-4"><i className="fas fa-plane-departure text-blue-600 mr-2"/>My Leave Requests</h2>
+            {leaves.length===0?<div className="text-center py-8 text-gray-400"><i className="fas fa-calendar-xmark text-3xl mb-2"/><p className="font-semibold">No leave applications yet</p></div>
+            :<div className="space-y-3">{leaves.map(l=><div key={l.id} className="border-2 border-gray-100 rounded-xl p-4 flex justify-between items-center">
+                <div><p className="font-semibold text-gray-800">{l.leave_type}</p><p className="text-sm text-gray-500">{new Date(l.start_date).toLocaleDateString()} → {new Date(l.end_date).toLocaleDateString()}</p>{l.reason&&<p className="text-xs text-gray-400 mt-1">{l.reason}</p>}</div>
+                <span className={`px-3 py-1 rounded-full text-xs font-bold ${l.status==='approved'?'bg-green-100 text-green-700':l.status==='rejected'?'bg-red-100 text-red-700':'bg-amber-100 text-amber-700'}`}>{l.status||'pending'}</span>
+            </div>)}</div>}
+        </div>
+        </>}
+    </div></div>;
+}
+
+function EmergencyContactCard({userId,editorName,notify,title,note}) {
+    const [f,setF]=useState({contact_name:'',relationship:'',phone:'',alt_phone:'',address:'',medical_note:''});const [loaded,setLoaded]=useState(false);const [busy,setBusy]=useState(false);const [upd,setUpd]=useState(null);
+    useEffect(()=>{(async()=>{try{const r=await fetch(`${SB}/rest/v1/staff_emergency_contacts?user_id=eq.${userId}`,{headers:H});const d=r.ok?await r.json():[];
+        if(Array.isArray(d)&&d.length){const x=d[0];setF({contact_name:x.contact_name||'',relationship:x.relationship||'',phone:x.phone||'',alt_phone:x.alt_phone||'',address:x.address||'',medical_note:x.medical_note||''});setUpd(x);}}catch(e){}setLoaded(true);})();},[userId]);
+    const set=(k,v)=>setF(x=>({...x,[k]:v}));
+    const save=async()=>{if(!f.contact_name.trim()||!f.phone.trim()){notify('Name and phone number are required','error');return;}setBusy(true);
+        try{const r=await fetch(`${SB}/rest/v1/staff_emergency_contacts`,{method:'POST',headers:{...HJ,'Prefer':'resolution=merge-duplicates,return=minimal'},
+            body:JSON.stringify({user_id:userId,...Object.fromEntries(Object.entries(f).map(([k,v])=>[k,v.trim()||null])),updated_by:editorName||null,updated_at:new Date().toISOString()})});
+            if(r.ok){notify('Emergency contact saved');setUpd({updated_by:editorName,updated_at:new Date().toISOString()});}else notify('Could not save','error');}catch(e){notify('Could not save','error');}
+        setBusy(false);};
+    const inp="w-full px-4 py-3 border-2 border-gray-200 rounded-xl text-sm";
+    return <div className="glass rounded-2xl p-6 mt-6"><h2 className="text-lg font-bold mb-1"><i className="fas fa-user-shield text-red-500 mr-2"/>{title||'Emergency contact / next of kin'}</h2>
+        <p className="text-xs text-gray-500 mb-4">{note||'Visible only to HR, Security and the supervisor — never shown in the Staff Directory.'}</p>
+        {!loaded?<div className="text-center py-4 text-gray-400"><i className="fas fa-spinner fa-spin"/></div>:<div className="space-y-3">
+            <div className="grid md:grid-cols-2 gap-3"><input className={inp} value={f.contact_name} onChange={e=>set('contact_name',e.target.value)} placeholder="Full name *"/>
+                <input className={inp} value={f.relationship} onChange={e=>set('relationship',e.target.value)} placeholder="Relationship (e.g. spouse, brother)"/></div>
+            <div className="grid md:grid-cols-2 gap-3"><input className={inp} value={f.phone} onChange={e=>set('phone',e.target.value)} placeholder="Phone number *"/>
+                <input className={inp} value={f.alt_phone} onChange={e=>set('alt_phone',e.target.value)} placeholder="Alternative phone (optional)"/></div>
+            <input className={inp} value={f.address} onChange={e=>set('address',e.target.value)} placeholder="Address (optional)"/>
+            <input className={inp} value={f.medical_note} onChange={e=>set('medical_note',e.target.value)} placeholder="Anything responders must know, e.g. a serious allergy (optional)"/>
+            {upd&&upd.updated_at&&<p className="text-xs text-gray-400">Last updated {new Date(upd.updated_at).toLocaleDateString()}{upd.updated_by?` by ${upd.updated_by}`:''}</p>}
+            <button onClick={save} disabled={busy} className="btn-green text-white px-6 py-3 rounded-xl font-bold disabled:opacity-60">{busy?'Saving…':'Save emergency contact'}</button>
+        </div>}
+    </div>;
+}
+
+function MyEmergencyContact({user,notify,onBack}) {
+    return <div className="min-h-screen p-4 md:p-8"><div className="max-w-3xl mx-auto">
+        <div className="glass rounded-2xl p-6 animate-in"><PortalBack onBack={onBack}/><h1 className="text-2xl md:text-3xl font-extrabold text-gray-800">My Emergency Contact</h1>
+            <p className="text-gray-500 mt-1">Who RAHAMA should contact if something happens to you, especially during field work.</p></div>
+        <EmergencyContactCard userId={user.id} editorName={user.name} notify={notify}/>
+    </div></div>;
+}
+
+function AppraisalQueue({user,notify,onBack}) {
+    const [allApps,setAllApps]=useState([]);const [selected,setSelected]=useState(null);const [names,setNames]=useState({});const [tab,setTab]=useState('pending');
+    const load=()=>{fetch(`${SB}/rest/v1/appraisals?order=created_at.desc`,{headers:H}).then(r=>r.json()).then(data=>{setAllApps(data);const ids=[...new Set(data.map(a=>a.employee_id))];if(ids.length>0)fetch(`${SB}/rest/v1/users?select=id,name&id=in.(${ids.join(',')})`,{headers:H}).then(r=>r.json()).then(users=>{const n={};users.forEach(u=>n[u.id]=u.name);setNames(n);});});};
+    useEffect(()=>{load();},[]);
+    if(selected) return <SupReview app={selected} name={names[selected.employee_id]} user={user} notify={notify} onDone={()=>{setSelected(null);load();}}/>;
+    const activeApps=allApps.filter(a=>!a.withdrawn);
+    const withdrawnApps=allApps.filter(a=>a.withdrawn);
+    const pending=activeApps.filter(a=>a.status==='pending'),completed=activeApps.filter(a=>a.status==='completed'),disputed=activeApps.filter(a=>a.employee_review_status==='rejected');const list=tab==='pending'?pending:tab==='completed'?completed:tab==='withdrawn'?withdrawnApps:disputed;
+    const restore=async(a)=>{
+        if(!confirm(`Restore this appraisal for ${names[a.employee_id]||'this employee'}? It will return to the active queues.`))return;
+        const r=await fetch(`${SB}/rest/v1/appraisals?id=eq.${a.id}`,{method:'PATCH',headers:HJ,body:JSON.stringify({withdrawn:false,withdrawn_by:null,withdrawn_at:null,withdrawal_reason:null})});
+        if(r.ok){notify('Appraisal restored');load();}else notify('Failed','error');
+    };
+    return <div className="min-h-screen p-4 md:p-8"><div className="max-w-6xl mx-auto">
+        <div className="glass rounded-2xl p-6 mb-6 animate-in"><PortalBack onBack={onBack} label="Back to HR Portal"/>
+            <h1 className="text-2xl md:text-3xl font-extrabold text-gray-800">Appraisal Reviews</h1><p className="text-gray-500 mt-1">Review staff self-assessments and score them</p></div>
+        <div className="grid grid-cols-3 gap-4 mb-6">
+            {[{label:'Pending',val:pending.length,icon:'fa-clock',bg:'bg-amber-50',color:'text-amber-600'},{label:'Completed',val:completed.length,icon:'fa-check-circle',bg:'bg-green-50',color:'text-green-600'},{label:'Disputed',val:disputed.length,icon:'fa-flag',bg:'bg-red-50',color:'text-red-600'}
+            ].map((s,i)=><div key={i} className="glass rounded-xl p-5 stat"><div className="flex justify-between items-start"><div><p className="text-xs font-bold text-gray-400 uppercase tracking-wider">{s.label}</p><p className="text-3xl font-extrabold text-gray-800 mt-1">{s.val}</p></div><div className={`w-10 h-10 ${s.bg} rounded-lg flex items-center justify-center`}><i className={`fas ${s.icon} ${s.color}`}/></div></div></div>)}
+        </div>
+        <div className="glass rounded-2xl p-6">
+            <div className="flex gap-2 mb-6 border-b pb-4 flex-wrap">{[['pending','Pending',pending.length],['completed','Completed',completed.length],['disputed','Disputed',disputed.length],['withdrawn','Withdrawn',withdrawnApps.length]].map(([k,l,c])=><button key={k} onClick={()=>setTab(k)} className={`px-4 py-2 rounded-xl text-sm font-bold transition ${tab===k?'btn-green text-white':'text-gray-500 hover:bg-gray-100'}`}>{l} ({c})</button>)}</div>
+            {list.length===0?<div className="text-center py-12 text-gray-400"><i className="fas fa-check-double text-4xl mb-3 text-green-400"/><p className="font-semibold">No items</p></div>
+            :<div className="space-y-3">{list.map(a=><div key={a.id} className={`border-2 border-gray-100 rounded-xl p-5 transition ${tab==='withdrawn'?'':'hover:border-green-200 cursor-pointer'}`} onClick={()=>{if(tab!=='withdrawn')setSelected(a);}}>
+                <div className="flex flex-wrap justify-between items-center gap-3">
+                    <div><h3 className="font-bold text-gray-800"><i className="fas fa-user-circle text-green-600 mr-2"/>{names[a.employee_id]||'Employee'}</h3>
+                        <div className="flex items-center gap-2 mt-1"><p className="text-sm text-gray-500">{new Date(a.created_at).toLocaleDateString()}</p>{a.employee_review_status==='rejected'&&<span className="px-2 py-0.5 bg-red-100 text-red-700 text-xs font-bold rounded-full">Disputed</span>}{a.employee_review_status==='accepted'&&<span className="px-2 py-0.5 bg-green-100 text-green-700 text-xs font-bold rounded-full">Accepted</span>}</div>
+                        {tab==='withdrawn'&&<p className="text-xs text-gray-400 mt-1">Withdrawn by {a.withdrawn_by||'—'} on {a.withdrawn_at?new Date(a.withdrawn_at).toLocaleDateString():'—'}{a.withdrawal_reason?` — "${a.withdrawal_reason}"`:''}</p>}</div>
+                    {tab==='withdrawn'
+                        ?<button onClick={(e)=>{e.stopPropagation();restore(a);}} className="px-5 py-2.5 bg-blue-50 text-blue-700 hover:bg-blue-100 rounded-xl font-semibold text-sm"><i className="fas fa-rotate-left mr-2"/>Restore</button>
+                        :<button className="btn-green text-white px-5 py-2.5 rounded-xl font-semibold text-sm"><i className="fas fa-eye mr-2"/>{a.status==='pending'?'Review':'View'}</button>}
+                </div>
+            </div>)}</div>}
+        </div>
+    </div></div>;
+}
+
+function PortalContentAdmin({user,notify,onBack}) {
+    const [content,setContent]=useState({});const [notices,setNotices]=useState([]);const [loading,setLoading]=useState(true);const [savingKey,setSavingKey]=useState(null);
+    const [n,setN]=useState({title:'',body:'',pinned:false,expires_on:''});const [posting,setPosting]=useState(false);
+    const load=async()=>{setLoading(true);
+        try{const [c,nt]=await Promise.all([fetch(`${SB}/rest/v1/portal_content?select=key,body,updated_by,updated_at`,{headers:H}).then(r=>r.ok?r.json():[]),
+            fetch(`${SB}/rest/v1/portal_notices?select=*&order=posted_at.desc`,{headers:H}).then(r=>r.ok?r.json():[])]);
+            const m={};(Array.isArray(c)?c:[]).forEach(x=>m[x.key]=x);setContent(m);setNotices(Array.isArray(nt)?nt:[]);}catch(e){notify('Could not load portal content','error');}
+        setLoading(false);};
+    useEffect(()=>{load();},[]);
+    const setBody=(k,v)=>setContent(c=>({...c,[k]:{...(c[k]||{key:k}),body:v}}));
+    const saveKey=async k=>{setSavingKey(k);
+        try{const r=await fetch(`${SB}/rest/v1/portal_content`,{method:'POST',headers:{...HJ,'Prefer':'resolution=merge-duplicates,return=minimal'},
+            body:JSON.stringify({key:k,body:((content[k]||{}).body||'').trim()||null,updated_by:user.name,updated_at:new Date().toISOString()})});
+            if(r.ok){notify('Saved');load();}else notify('Could not save','error');}catch(e){notify('Could not save','error');}
+        setSavingKey(null);};
+    const post=async()=>{if(!n.title.trim()){notify('Give the notice a title','error');return;}setPosting(true);
+        try{const r=await fetch(`${SB}/rest/v1/portal_notices`,{method:'POST',headers:HJ,body:JSON.stringify({title:n.title.trim().slice(0,150),body:n.body.trim().slice(0,3000)||null,pinned:n.pinned,expires_on:n.expires_on||null,posted_by:user.name})});
+            if(r.ok){notify('Notice posted');setN({title:'',body:'',pinned:false,expires_on:''});load();}else notify('Could not post','error');}catch(e){notify('Could not post','error');}
+        setPosting(false);};
+    const toggle=async(x,patch)=>{const r=await fetch(`${SB}/rest/v1/portal_notices?id=eq.${x.id}`,{method:'PATCH',headers:HJ,body:JSON.stringify(patch)});if(r.ok)load();else notify('Failed','error');};
+    const inp="w-full px-4 py-3 border-2 border-gray-200 rounded-xl text-sm";
+    return <div className="min-h-screen p-4 md:p-8"><div className="max-w-4xl mx-auto">
+        <div className="glass rounded-2xl p-6 mb-6 animate-in"><PortalBack onBack={onBack} label="Back to HR Portal"/>
+            <h1 className="text-2xl md:text-3xl font-extrabold text-gray-800">Portal Content & Notices</h1><p className="text-gray-500 mt-1">What every staff member sees on the Staff Portal home page</p></div>
+        {loading?<div className="text-center py-10"><i className="fas fa-spinner fa-spin"/></div>:<>
+        <div className="glass rounded-2xl p-6 mb-6"><h2 className="text-lg font-bold mb-4"><i className="fas fa-bullhorn text-green-600 mr-2"/>Notice board</h2>
+            <input className={inp+' mb-3'} value={n.title} onChange={e=>setN({...n,title:e.target.value})} maxLength={150} placeholder="Title, e.g. Office closed for Eid on Monday"/>
+            <textarea rows={3} className={inp+' mb-3'} value={n.body} onChange={e=>setN({...n,body:e.target.value})} maxLength={3000} placeholder="Details (optional)"/>
+            <div className="flex flex-wrap items-center gap-4 mb-3"><label className="flex items-center gap-2 text-sm font-semibold text-gray-600"><input type="checkbox" checked={n.pinned} onChange={e=>setN({...n,pinned:e.target.checked})} className="w-4 h-4"/>Pin to top</label>
+                <label className="flex items-center gap-2 text-sm font-semibold text-gray-600">Hide after<input type="date" value={n.expires_on} onChange={e=>setN({...n,expires_on:e.target.value})} className="px-3 py-2 border-2 border-gray-200 rounded-xl text-sm"/></label></div>
+            <button onClick={post} disabled={posting} className="btn-green text-white px-5 py-2.5 rounded-xl font-semibold text-sm disabled:opacity-60">{posting?'Posting…':'Post notice'}</button>
+            <div className="space-y-2 mt-5">{notices.length===0?<p className="text-sm text-gray-400">No notices yet</p>:notices.map(x=><div key={x.id} className={`border-2 rounded-xl p-3 flex flex-wrap justify-between gap-2 ${x.active?'border-gray-100':'border-gray-100 opacity-50'}`}>
+                <div><p className="font-semibold text-gray-800">{x.pinned&&<i className="fas fa-thumbtack text-green-600 mr-1"/>}{x.title}</p><p className="text-xs text-gray-400">{x.posted_by||'—'} · {new Date(x.posted_at).toLocaleDateString()}{x.expires_on?` · hides after ${new Date(x.expires_on+'T12:00:00').toLocaleDateString()}`:''}{!x.active?' · hidden':''}</p></div>
+                <div className="flex gap-2"><button onClick={()=>toggle(x,{pinned:!x.pinned})} className="text-xs font-semibold text-gray-600 hover:underline">{x.pinned?'Unpin':'Pin'}</button>
+                    <button onClick={()=>toggle(x,{active:!x.active})} className={`text-xs font-semibold hover:underline ${x.active?'text-red-600':'text-green-700'}`}>{x.active?'Hide':'Show again'}</button></div>
+            </div>)}</div></div>
+        <div className="glass rounded-2xl p-6"><h2 className="text-lg font-bold mb-1"><i className="fas fa-circle-info text-green-600 mr-2"/>About RAHAMA</h2>
+            <p className="text-xs text-gray-500 mb-4">Our Story appears first on the home page. Copy mission, vision, values and the safeguarding reporting channel from RAHAMA's official documents. Empty sections are hidden from staff, except safeguarding, which tells staff to contact HR until it is filled in.</p>
+            <div className="space-y-5">{PORTAL_KEYS.map(([k,label])=><div key={k}><label className="text-sm font-bold text-gray-700">{label}</label>
+                <textarea rows={k==='story'?10:k==='mission'||k==='vision'?3:5} className={inp+' mt-1'} value={(content[k]||{}).body||''} onChange={e=>setBody(k,e.target.value)}/>
+                <div className="flex items-center gap-3 mt-1"><button onClick={()=>saveKey(k)} disabled={savingKey===k} className="px-4 py-1.5 rounded-xl text-xs font-bold bg-green-50 text-green-700 hover:bg-green-100 disabled:opacity-60">{savingKey===k?'Saving…':'Save'}</button>
+                    {content[k]&&content[k].updated_at&&<span className="text-xs text-gray-400">Last saved {new Date(content[k].updated_at).toLocaleDateString()} by {content[k].updated_by||'—'}</span>}</div></div>)}</div></div>
+        </>}
+    </div></div>;
+}
+
+function PortalTile({icon,grad,title,sub,onClick,badge}) {
+    return <button onClick={onClick} className="glass rounded-2xl p-5 hover:shadow-xl stat group text-left w-full">
+        <div className="flex items-center gap-4">
+            <div className="w-12 h-12 rounded-xl flex items-center justify-center shadow-lg flex-shrink-0" style={{background:grad}}><i className={`fas ${icon} text-white text-lg`}/></div>
+            <div className="min-w-0"><p className="font-bold text-gray-800">{title}{badge>0&&<span className="ml-2 px-2 py-0.5 rounded-full text-xs font-bold bg-red-500 text-white">{badge}</span>}</p><p className="text-xs text-gray-500">{sub}</p></div>
+            <i className="fas fa-arrow-right text-gray-300 ml-auto group-hover:text-green-600 transition"/>
+        </div></button>;
+}
+
+function StaffPortal({user,onLogout,notify}) {
+    const isSup=user.role==='supervisor';const isEmp=user.role==='employee';
+    const [flags,setFlags]=useState({is_hr:false,is_ed:false});
+    const [section,setSection]=useState('home');const [screen,setScreen]=useState(null);const [showPw,setShowPw]=useState(false);
+    const [attn,setAttn]=useState([]);const [counts,setCounts]=useState({});const [content,setContent]=useState({});const [notices,setNotices]=useState([]);
+    const hrAccess=isSup?'supervisor':flags.is_hr?'hr':flags.is_ed?'ed':null;
+    const secAccess=isSup||!!user.is_security;const meAccess=isSup||!!user.is_mne;
+
+    /* Access flags are read here, after login — the login flow itself is untouched.
+       Each is fetched on its own so a missing column can't break the others. */
+    const flag=async col=>{try{const r=await fetch(`${SB}/rest/v1/users?id=eq.${user.id}&select=${col}`,{headers:H});if(!r.ok)return undefined;const d=await r.json();return Array.isArray(d)&&d.length?d[0][col]:undefined;}catch(e){return undefined;}};
+    useEffect(()=>{(async()=>{
+        const active=await flag('is_active');
+        if(active===false){notify('This account has been deactivated. Please contact HR.','error');onLogout();return;}
+        const [hr,ed]=await Promise.all([flag('is_hr'),flag('is_ed')]);setFlags({is_hr:!!hr,is_ed:!!ed});
+    })();},[]);
+    useEffect(()=>{(async()=>{try{const [c,n]=await Promise.all([
+        fetch(`${SB}/rest/v1/portal_content?select=key,body`,{headers:H}).then(r=>r.ok?r.json():[]),
+        fetch(`${SB}/rest/v1/portal_notices?active=eq.true&select=id,title,body,pinned,expires_on,posted_by,posted_at&order=pinned.desc,posted_at.desc`,{headers:H}).then(r=>r.ok?r.json():[])]);
+        const m={};(Array.isArray(c)?c:[]).forEach(x=>{if(x.body)m[x.key]=x.body;});setContent(m);
+        setNotices((Array.isArray(n)?n:[]).filter(x=>!x.expires_on||x.expires_on>=portalToday()));}catch(e){}})();},[]);
+
+    /* "Needs your attention" — every query is independent and fails quietly */
+    const loadAttn=async()=>{
+        const items=[];const c={};const safe=async(fn)=>{try{return await fn();}catch(e){return null;}};
+        const j=url=>fetch(url,{headers:H}).then(r=>r.ok?r.json():[]);
+        const pol=await safe(async()=>(await loadMyPolicyItems(user.id)).filter(x=>x.status!=='signed'));
+        if(pol&&pol.length){const od=pol.filter(x=>x.status==='overdue').length;c.policies=pol.length;items.push({icon:'fa-file-signature',tone:od?'red':'amber',text:`${pol.length} ${pol.length===1?'policy':'policies'} to read and sign${od?` (${od} overdue)`:''}`,go:()=>setScreen('mypolicies')});}
+        const msgs=await safe(()=>j(`${SB}/rest/v1/trip_messages?to_user_id=eq.${user.id}&acknowledged_at=is.null&select=id`));
+        if(Array.isArray(msgs)&&msgs.length) items.push({icon:'fa-shield-halved',tone:'red',text:`${msgs.length} message${msgs.length>1?'s':''} from Security on your trip`,go:()=>setScreen('myfieldtrip')});
+        if(isEmp){const ap=await safe(()=>j(`${SB}/rest/v1/appraisals?employee_id=eq.${user.id}&status=eq.completed&select=id,withdrawn,employee_review_status`));
+            const nr=(Array.isArray(ap)?ap:[]).filter(a=>!a.withdrawn&&(!a.employee_review_status||a.employee_review_status==='pending')).length;
+            if(nr){c.appraisals=nr;items.push({icon:'fa-bell',tone:'blue',text:`Your supervisor's review is ready — ${nr} to respond to`,go:()=>setScreen('myappraisals')});}}
+        if(isSup){const pa=await safe(()=>j(`${SB}/rest/v1/appraisals?status=eq.pending&select=id,withdrawn`));const np=(Array.isArray(pa)?pa:[]).filter(a=>!a.withdrawn).length;
+            if(np){c.queue=np;items.push({icon:'fa-clipboard-check',tone:'amber',text:`${np} self-assessment${np>1?'s':''} waiting for your review`,go:()=>{setSection('hr');setScreen('appraisalqueue');}});}
+            const lv=await safe(()=>j(`${SB}/rest/v1/leave_requests?select=id,status`));const nl=(Array.isArray(lv)?lv:[]).filter(l=>!l.status||l.status==='pending').length;
+            if(nl){c.leave=nl;items.push({icon:'fa-plane',tone:'amber',text:`${nl} leave request${nl>1?'s':''} waiting for a decision`,go:()=>{setSection('hr');setScreen('leaveadmin');}});}}
+        if(hrAccess){const rec=await safe(()=>j(`${SB}/rest/v1/hr_recommendations?decision=eq.pending&select=id`));const nrec=Array.isArray(rec)?rec.length:0;
+            if(nrec){c.recs=nrec;items.push({icon:'fa-user-check',tone:'blue',text:hrAccess==='hr'?`${nrec} of your recommendation${nrec>1?'s are':'s is'} awaiting a Supervisor/ED decision`:`${nrec} HR recommendation${nrec>1?'s':''} waiting for your decision`,go:()=>{setSection('hr');setScreen('hrdash');}});}}
+        if(secAccess){const tr=await safe(()=>j(`${SB}/rest/v1/field_trips?status=eq.active&select=id`));const nt=Array.isArray(tr)?tr.length:0;
+            if(nt){c.trips=nt;items.push({icon:'fa-route',tone:'green',text:`${nt} staff on an active field trip now`,go:()=>{setSection('security');setScreen('tripmon');}});}}
+        setAttn(items);setCounts(c);};
+    useEffect(()=>{loadAttn();},[hrAccess]);
+    const back=()=>{setScreen(null);loadAttn();};
+
+    const openFms=()=>{if(isEmp){const u=localStorage.getItem('pms_user');if(!u){alert('Session expired. Please login again.');return;}window.open('https://rahamaorg.github.io/rahamafms/?session='+encodeURIComponent(u),'_blank');}
+        else window.open('https://rahamaorg.github.io/rahamafms/','_blank');};
+
+    /* ---------- screens: every one is an existing component ---------- */
+    if(screen){
+        const toHr=()=>{setScreen(null);setSection('hr');loadAttn();};const toSec=()=>{setScreen(null);setSection('security');loadAttn();};
+        switch(screen){
+            case 'myappraisals': return <MyAppraisals user={user} notify={notify} onBack={back}/>;
+            case 'attendance': return <Attendance user={user} notify={notify} onBack={back}/>;
+            case 'myleave': return <MyLeave user={user} notify={notify} onBack={back}/>;
+            case 'myacts': return <MyActivities user={user} notify={notify} onBack={back}/>;
+            case 'myfieldtrip': return <FieldTrip user={user} notify={notify} onBack={back}/>;
+            case 'mypolicies': return <MyPolicies user={user} notify={notify} onBack={back}/>;
+            case 'directory': return <Directory user={user} notify={notify} onBack={back}/>;
+            case 'myemergency': return <MyEmergencyContact user={user} notify={notify} onBack={back}/>;
+            case 'mande': return <MandE user={user} notify={notify} readOnlyView={!user.is_mne} onBack={back}/>;
+        }
+        if(hrAccess) switch(screen){
+            case 'hrdash': return <HRDashboard user={user} notify={notify} access={hrAccess} onBack={toHr}/>;
+            case 'quarterly': return <QuarterlyOverview notify={notify} onBack={toHr}/>;
+            case 'teamattendance': return <AttendanceAdmin notify={notify} onBack={toHr}/>;
+            case 'leaveadmin': return <LeaveAdmin notify={notify} readOnly={!isSup} onBack={toHr}/>;
+            case 'profiles': return <HRAdmin notify={notify} onBack={toHr}/>;
+            case 'policies': return <PolicyAdmin user={user} notify={notify} readOnly={hrAccess!=='hr'} onBack={toHr}/>;
+        }
+        if(isSup) switch(screen){
+            case 'appraisalqueue': return <AppraisalQueue user={user} notify={notify} onBack={toHr}/>;
+            case 'deadline': return <DeadlineSettings user={user} notify={notify} onBack={toHr}/>;
+        }
+        if(hrAccess==='hr'||isSup) if(screen==='portalcontent') return <PortalContentAdmin user={user} notify={notify} onBack={toHr}/>;
+        if(secAccess) switch(screen){
+            case 'tripmon': return <FieldTripAdmin user={user} notify={notify} onBack={toSec}/>;
+            case 'loginlogs': return <LoginLogs notify={notify} onBack={toSec}/>;
+        }
+    }
+
+    const G={green:'linear-gradient(135deg,#16a34a,#166534)',blue:'linear-gradient(135deg,#3b82f6,#1d4ed8)',purple:'linear-gradient(135deg,#8b5cf6,#6d28d9)',cyan:'linear-gradient(135deg,#0891b2,#0e7490)',
+        amber:'linear-gradient(135deg,#f59e0b,#b45309)',rose:'linear-gradient(135deg,#e11d48,#9f1239)',sky:'linear-gradient(135deg,#0ea5e9,#0369a1)',red:'linear-gradient(135deg,#dc2626,#991b1b)',
+        violet:'linear-gradient(135deg,#7c3aed,#4c1d95)',orange:'linear-gradient(135deg,#ea580c,#9a3412)',emerald:'linear-gradient(135deg,#059669,#065f46)',teal:'linear-gradient(135deg,#0d9488,#0f766e)',slate:'linear-gradient(135deg,#475569,#1e293b)'};
+    const workspace=[
+        isEmp&&{k:'myappraisals',icon:'fa-clipboard-list',g:G.green,t:'My Appraisals',s:'Self-assessment, reviews & responses',b:counts.appraisals},
+        isEmp&&{k:'attendance',icon:'fa-clock',g:G.blue,t:'My Attendance',s:'Clock in, clock out & history'},
+        isEmp&&{k:'myleave',icon:'fa-plane-departure',g:G.purple,t:'My Leave',s:'Balance, requests & decisions'},
+        {k:'myacts',icon:'fa-list-check',g:G.cyan,t:'My Work Plan Activities',s:'Report on activities assigned to you'},
+        {k:'myfieldtrip',icon:'fa-route',g:G.amber,t:'My Field Trips',s:'Start a tracked trip & see Security messages'},
+        {k:'mypolicies',icon:'fa-file-signature',g:G.rose,t:'My Policies',s:'Read and sign RAHAMA policies',b:counts.policies},
+        {k:'directory',icon:'fa-address-book',g:G.sky,t:'Staff Directory',s:'Find and contact colleagues'},
+        {k:'myemergency',icon:'fa-user-shield',g:G.red,t:'My Emergency Contact',s:'Next of kin for duty of care'}].filter(Boolean);
+    const hrTiles=[
+        {k:'hrdash',icon:'fa-people-group',g:G.violet,t:'Performance & Promotions',s:'Appraisal findings, flags & HR recommendations',b:counts.recs},
+        isSup&&{k:'appraisalqueue',icon:'fa-clipboard-check',g:G.green,t:'Appraisal Reviews',s:'Review and score staff self-assessments',b:counts.queue},
+        {k:'quarterly',icon:'fa-calendar-check',g:G.emerald,t:'Submissions by Quarter',s:'Who has submitted, who is pending'},
+        isSup&&{k:'deadline',icon:'fa-hourglass-half',g:G.orange,t:'Self-Assessment Deadline',s:'Set or reopen the submission deadline'},
+        {k:'teamattendance',icon:'fa-users-viewfinder',g:G.blue,t:'Team Attendance',s:'Daily and monthly records'},
+        {k:'leaveadmin',icon:'fa-plane',g:G.purple,t:'Leave Management',s:isSup?'Approve or reject leave applications':'View leave applications and decisions',b:counts.leave},
+        {k:'profiles',icon:'fa-id-badge',g:G.sky,t:'Staff Profiles',s:'Personnel details & emergency contacts'},
+        {k:'policies',icon:'fa-file-shield',g:G.rose,t:'Policies',s:hrAccess==='hr'?'Publish, assign & track sign-off':'Policy sign-off compliance'},
+        (hrAccess==='hr'||isSup)&&{k:'portalcontent',icon:'fa-bullhorn',g:G.slate,t:'Portal Content & Notices',s:'About RAHAMA text and the notice board'}].filter(Boolean);
+    const secTiles=[{k:'tripmon',icon:'fa-map-location-dot',g:G.red,t:'Field Trip Monitoring',s:'Live map, messages, call & stale-location alerts',b:counts.trips},
+        {k:'loginlogs',icon:'fa-shield-halved',g:G.slate,t:'Login Activity Logs',s:'Login history, devices & failed attempts'}];
+
+    const Header=({sub})=><div className="glass rounded-2xl p-6 mb-6 animate-in"><div className="flex flex-wrap justify-between items-center gap-4">
+        <div><p className="text-xs font-bold text-green-700 uppercase tracking-widest">RAHAMA Staff Portal</p><h1 className="text-2xl md:text-3xl font-extrabold text-gray-800 mt-1">{sub}</h1>
+            <p className="text-gray-500 font-medium mt-1"><i className={`fas ${isSup?'fa-user-tie':'fa-user'} text-green-600 mr-2`}/>{user.name}{hrAccess==='hr'?' · HR Officer':hrAccess==='ed'?' · Executive Director':isSup?' · Supervisor':''}{user.is_security?' · Security':''}{user.is_mne?' · M&E':''}</p></div>
+        <div className="flex gap-2"><button onClick={()=>setShowPw(true)} className="px-4 py-2 bg-green-50 text-green-700 hover:bg-green-100 rounded-xl font-medium text-sm"><i className="fas fa-key mr-2"/>Password</button>
+            <button onClick={onLogout} className="px-4 py-2 text-gray-500 hover:bg-gray-100 rounded-xl text-sm"><i className="fas fa-sign-out-alt mr-2"/>Logout</button></div></div></div>;
+    const Grid=({tiles})=><div className="grid md:grid-cols-2 gap-4">{tiles.map(x=><PortalTile key={x.k} icon={x.icon} grad={x.g} title={x.t} sub={x.s} badge={x.b} onClick={()=>setScreen(x.k)}/>)}</div>;
+
+    if(section==='hr'&&hrAccess) return <div className="min-h-screen p-4 md:p-8"><div className="max-w-5xl mx-auto">
+        <button onClick={()=>setSection('home')} className="text-green-600 font-semibold text-sm mb-3 hover:underline"><i className="fas fa-arrow-left mr-2"/>Back to Staff Portal home</button>
+        <Header sub="HR Portal"/>{hrAccess!=='supervisor'&&<p className="text-xs text-gray-500 mb-4 px-1">{hrAccess==='hr'?'Appraisal scoring and leave approval stay with the supervisor; you see the findings and records.':'Leave approval stays with the supervisor; you see the records.'}</p>}
+        <Grid tiles={hrTiles}/>{showPw&&<ChangePw user={user} onClose={()=>setShowPw(false)} notify={notify}/>}</div></div>;
+    if(section==='security'&&secAccess) return <div className="min-h-screen p-4 md:p-8"><div className="max-w-5xl mx-auto">
+        <button onClick={()=>setSection('home')} className="text-green-600 font-semibold text-sm mb-3 hover:underline"><i className="fas fa-arrow-left mr-2"/>Back to Staff Portal home</button>
+        <Header sub="Security Portal"/><Grid tiles={secTiles}/>{showPw&&<ChangePw user={user} onClose={()=>setShowPw(false)} notify={notify}/>}</div></div>;
+
+    const tone={red:'bg-red-50 border-red-200 text-red-800',amber:'bg-amber-50 border-amber-200 text-amber-800',blue:'bg-blue-50 border-blue-200 text-blue-800',green:'bg-green-50 border-green-200 text-green-800'};
+    const hour=new Date().getHours();const greet=hour<12?'Good morning':hour<16?'Good afternoon':'Good evening';
+    const lines=k=>(content[k]||'').split('\n').map(x=>x.trim()).filter(Boolean);
+    const portals=[hrAccess&&{t:'HR Portal',s:'Performance, attendance, leave, profiles & policies',icon:'fa-people-group',g:G.violet,go:()=>setSection('hr'),b:(counts.queue||0)+(counts.leave||0)+(hrAccess!=='hr'?(counts.recs||0):0)},
+        meAccess&&{t:'M&E Portal',s:user.is_mne?'Work plans, data, indicators & completion rates':'View work plans, data and indicator dashboards',icon:'fa-chart-pie',g:G.cyan,go:()=>setScreen('mande')},
+        secAccess&&{t:'Security Portal',s:'Field trip monitoring & login activity',icon:'fa-shield-halved',g:G.red,go:()=>setSection('security'),b:counts.trips},
+        {t:'Financial Management System',s:'Budgets, payments & approvals (opens in a new tab)',icon:'fa-coins',g:G.green,go:openFms}].filter(Boolean);
+    return <div className="min-h-screen p-4 md:p-8"><div className="max-w-6xl mx-auto">
+        <Header sub={`${greet}, ${(user.name||'').split(' ')[0]}`}/>
+        <div className="glass rounded-2xl p-6 mb-6"><h2 className="text-lg font-bold mb-3"><i className="fas fa-bell text-amber-500 mr-2"/>Needs your attention</h2>
+            {attn.length===0?<p className="text-sm text-gray-500"><i className="fas fa-check-circle text-green-500 mr-2"/>You're all caught up.</p>
+            :<div className="space-y-2">{attn.map((a,i)=><button key={i} onClick={a.go} className={`w-full text-left border-2 rounded-xl px-4 py-3 text-sm font-semibold flex items-center gap-3 hover:shadow ${tone[a.tone]}`}><i className={`fas ${a.icon}`}/><span className="flex-1">{a.text}</span><i className="fas fa-arrow-right opacity-50"/></button>)}</div>}</div>
+        <h2 className="text-sm font-bold text-gray-500 uppercase tracking-widest mb-3 px-1">My Workspace</h2>
+        <div className="mb-8"><Grid tiles={workspace}/></div>
+        <h2 className="text-sm font-bold text-gray-500 uppercase tracking-widest mb-3 px-1">{portals.length>1?'Portals':'Systems'}</h2>
+        <div className="grid md:grid-cols-2 gap-4 mb-8">{portals.map((p,i)=><PortalTile key={i} icon={p.icon} grad={p.g} title={p.t} sub={p.s} badge={p.b} onClick={p.go}/>)}</div>
+        {notices.length>0&&<div className="glass rounded-2xl p-6 mb-6"><h2 className="text-lg font-bold mb-3"><i className="fas fa-bullhorn text-green-600 mr-2"/>Notice board</h2>
+            <div className="space-y-3">{notices.slice(0,6).map(x=><div key={x.id} className={`rounded-xl p-4 ${x.pinned?'bg-green-50 border-2 border-green-200':'bg-gray-50'}`}>
+                <p className="font-bold text-gray-800">{x.pinned&&<i className="fas fa-thumbtack text-green-600 mr-2"/>}{x.title}</p>{x.body&&<p className="text-sm text-gray-600 mt-1 whitespace-pre-wrap">{x.body}</p>}
+                <p className="text-xs text-gray-400 mt-1">{x.posted_by||'HR'} · {new Date(x.posted_at).toLocaleDateString()}</p></div>)}</div></div>}
+        <div className="glass rounded-2xl p-6 mb-6"><h2 className="text-lg font-bold mb-4"><i className="fas fa-heart text-rose-500 mr-2"/>About RAHAMA</h2>
+            {content.story&&<div className="mb-5 border-l-4 border-rose-300 pl-4"><p className="text-xs font-bold text-rose-700 uppercase tracking-wider mb-2">Our Story</p><p className="text-sm text-gray-700 whitespace-pre-wrap leading-relaxed">{content.story}</p></div>}
+            {(content.mission||content.vision)&&<div className="grid md:grid-cols-2 gap-4 mb-5">
+                {content.mission&&<div className="bg-green-50 rounded-xl p-4"><p className="text-xs font-bold text-green-700 uppercase tracking-wider mb-1">Our Mission</p><p className="text-sm text-gray-700 whitespace-pre-wrap">{content.mission}</p></div>}
+                {content.vision&&<div className="bg-indigo-50 rounded-xl p-4"><p className="text-xs font-bold text-indigo-700 uppercase tracking-wider mb-1">Our Vision</p><p className="text-sm text-gray-700 whitespace-pre-wrap">{content.vision}</p></div>}</div>}
+            {lines('values').length>0&&<div className="mb-5"><p className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Core Values</p><div className="flex flex-wrap gap-2">{lines('values').map((v,i)=><span key={i} className="px-3 py-1.5 rounded-full text-sm font-semibold bg-amber-50 text-amber-800">{v}</span>)}</div></div>}
+            <div className="grid md:grid-cols-3 gap-4">{[['where_we_work','Where We Work','fa-location-dot'],['projects','Current Projects','fa-diagram-project'],['contacts','Who To Contact','fa-phone']].filter(([k])=>lines(k).length).map(([k,l,ic])=>
+                <div key={k} className="bg-gray-50 rounded-xl p-4"><p className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-2"><i className={`fas ${ic} mr-1`}/>{l}</p><ul className="space-y-1">{lines(k).map((x,i)=><li key={i} className="text-sm text-gray-700">{x}</li>)}</ul></div>)}</div>
+            {!content.story&&!content.mission&&!content.vision&&!lines('values').length&&!lines('where_we_work').length&&<p className="text-sm text-gray-400">HR has not added this section yet.</p>}
+        </div>
+        <div className="rounded-2xl p-6 mb-6 border-2 border-red-200 bg-red-50"><h2 className="text-lg font-bold text-red-800 mb-2"><i className="fas fa-hand-holding-heart mr-2"/>Report a safeguarding or PSEAH concern</h2>
+            {content.safeguarding?<p className="text-sm text-red-900 whitespace-pre-wrap">{content.safeguarding}</p>
+            :<p className="text-sm text-red-900">If you see or suspect sexual exploitation, abuse or harassment, or any harm to a child or vulnerable adult, report it. The official reporting channel has not been added here yet. Until it is, report directly to HR.</p>}</div>
+        {showPw&&<ChangePw user={user} onClose={()=>setShowPw(false)} notify={notify}/>}
+    </div></div>;
+}
+
 
 /* ==================== HR DASHBOARD ====================
    Access: HR (users.is_hr), ED (users.is_ed) and the supervisor.
@@ -4277,16 +4680,16 @@ function LeaveRequest({user,notify,onBack}) {
     </div></div>;
 }
 
-function LeaveAdmin({notify,onBack}) {
+function LeaveAdmin({notify,onBack,readOnly}) {
     const [list,setList]=useState([]);const [names,setNames]=useState({});const [selected,setSelected]=useState(null);
     const load=()=>{fetch(`${SB}/rest/v1/leave_requests?order=created_at.desc`,{headers:H}).then(r=>r.json()).then(d=>{setList(d||[]);const ids=[...new Set(d.map(a=>a.employee_id))];if(ids.length>0)fetch(`${SB}/rest/v1/users?select=id,name&id=in.(${ids.join(',')})`,{headers:H}).then(r=>r.json()).then(us=>{const n={};us.forEach(u=>n[u.id]=u.name);setNames(n);});});};
     useEffect(()=>{load();},[]);
     if(selected) return <LeaveReview req={selected} name={names[selected.employee_id]} notify={notify} onDone={()=>{setSelected(null);load();}}/>;
     return <div className="min-h-screen p-4 md:p-8"><div className="max-w-5xl mx-auto">
-        <div className="glass rounded-2xl p-6 mb-6"><button onClick={onBack} className="text-green-600 font-semibold text-sm mb-3 hover:underline"><i className="fas fa-arrow-left mr-2"/>Back</button><h1 className="text-2xl font-extrabold">Leave Requests</h1></div>
+        <div className="glass rounded-2xl p-6 mb-6"><button onClick={onBack} className="text-green-600 font-semibold text-sm mb-3 hover:underline"><i className="fas fa-arrow-left mr-2"/>Back</button><h1 className="text-2xl font-extrabold">Leave Requests</h1>{readOnly&&<p className="text-sm text-gray-500 mt-1">View only. Decisions are made by the supervisor.</p>}</div>
         {list.length===0?<div className="glass p-10 text-center text-gray-400">No leave requests</div>
-        :<div className="space-y-3">{list.map(l=><div key={l.id} className="glass p-4 rounded-xl flex justify-between items-center cursor-pointer hover:shadow" onClick={()=>setSelected(l)}>
-            <div><p className="font-bold">{names[l.employee_id]||'Employee'}</p><p className="text-sm text-gray-500">{new Date(l.start_date).toLocaleDateString()} → {new Date(l.end_date).toLocaleDateString()}</p></div>
+        :<div className="space-y-3">{list.map(l=><div key={l.id} className="glass p-4 rounded-xl flex justify-between items-center cursor-pointer hover:shadow" onClick={()=>{if(!readOnly)setSelected(l);}}>
+            <div><p className="font-bold">{names[l.employee_id]||'Employee'}</p><p className="text-sm text-gray-500">{l.leave_type?`${l.leave_type} · `:''}{new Date(l.start_date).toLocaleDateString()} → {new Date(l.end_date).toLocaleDateString()}</p>{readOnly&&l.reason&&<p className="text-xs text-gray-500 mt-1">{l.reason}</p>}{readOnly&&l.supervisor_comment&&<p className="text-xs text-gray-400 mt-1">Supervisor: {l.supervisor_comment}</p>}</div>
             <span className={`px-3 py-1 rounded-full text-xs font-bold ${l.status==='approved'?'bg-green-100 text-green-700':l.status==='rejected'?'bg-red-100 text-red-700':'bg-amber-100 text-amber-700'}`}>{l.status||'pending'}</span>
         </div>)}</div>}
     </div></div>;
@@ -4342,6 +4745,7 @@ function HRProfileEdit({staff,profile,notify,onDone}) {
             <input value={supervisor} onChange={e=>setSupervisor(e.target.value)} placeholder="Supervisor" className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl"/>
         </div>
         <button onClick={save} disabled={busy} className="w-full btn-green text-white py-4 rounded-xl font-bold mt-4 disabled:opacity-50">{busy?'Saving...':'Save Profile'}</button>
+        <EmergencyContactCard userId={staff.id} editorName="HR" notify={notify} note="Staff can fill this in themselves under My Emergency Contact. Visible to HR, Security and the supervisor only."/>
     </div></div>;
 }
 
