@@ -4089,7 +4089,8 @@ function PolicyDetail({pol,asg,ackByAsg,staff,user,readOnly,notify,onBack}) {
    portals + FMS. The old dashboards are kept and can be opened with
    ?classic=1 in the address as a fallback. */
 const LEAVE_ENTITLEMENT=22, LATES_PER_LEAVE_DAY=5;
-const PORTAL_KEYS=[['story','Our Story: why RAHAMA was founded'],['mission','Our Mission'],['vision','Our Vision'],['values','Core Values (one per line)'],['where_we_work','Where We Work (one per line)'],['contacts','Who To Contact (one per line)'],['safeguarding','How to Report a Safeguarding / PSEAH Concern']];
+const PORTAL_KEYS=[['mission','Our Mission'],['vision','Our Vision'],['values','Core Values (one per line)'],['where_we_work','Where We Work (one per line)'],['contacts','Who To Contact (one per line)'],['safeguarding','How to Report a Safeguarding / PSEAH Concern']];
+const SAFEGUARDING_DEFAULT='If you see or suspect sexual exploitation, abuse or harassment, or any harm to a child or vulnerable adult, report it. Send an email to psea@rgcweinigeria.org IMMEDIATELY or report directly to HR.';
 const portalToday=()=>new Date().toISOString().slice(0,10);
 const weekdaysInYear=(a,b,yr)=>{if(!a)return 0;let s=new Date(String(a).slice(0,10)+'T12:00:00'),e=new Date(String(b||a).slice(0,10)+'T12:00:00');
     const ys=new Date(yr+'-01-01T12:00:00'),ye=new Date(yr+'-12-31T12:00:00');if(s<ys)s=ys;if(e>ye)e=ye;let n=0;
@@ -4303,9 +4304,9 @@ function PortalContentAdmin({user,notify,onBack}) {
                     <button onClick={()=>toggle(x,{active:!x.active})} className={`text-xs font-semibold hover:underline ${x.active?'text-red-600':'text-green-700'}`}>{x.active?'Hide':'Show again'}</button></div>
             </div>)}</div></div>
         <div className="glass rounded-2xl p-6"><h2 className="text-lg font-bold mb-1"><i className="fas fa-circle-info text-green-600 mr-2"/>About RAHAMA</h2>
-            <p className="text-xs text-gray-500 mb-4">Our Story appears first on the home page. Copy mission, vision, values and the safeguarding reporting channel from RAHAMA's official documents. Empty sections are hidden from staff, except safeguarding, which tells staff to contact HR until it is filled in.</p>
+            <p className="text-xs text-gray-500 mb-4">Copy mission, vision, values and the safeguarding reporting channel from RAHAMA's official documents. Empty sections are hidden from staff, except safeguarding, which tells staff to contact HR until it is filled in.</p>
             <div className="space-y-5">{PORTAL_KEYS.map(([k,label])=><div key={k}><label className="text-sm font-bold text-gray-700">{label}</label>
-                <textarea rows={k==='story'?10:k==='mission'||k==='vision'?3:5} className={inp+' mt-1'} value={(content[k]||{}).body||''} onChange={e=>setBody(k,e.target.value)}/>
+                <textarea rows={k==='mission'||k==='vision'?3:5} className={inp+' mt-1'} value={(content[k]||{}).body||''} onChange={e=>setBody(k,e.target.value)}/>
                 <div className="flex items-center gap-3 mt-1"><button onClick={()=>saveKey(k)} disabled={savingKey===k} className="px-4 py-1.5 rounded-xl text-xs font-bold bg-green-50 text-green-700 hover:bg-green-100 disabled:opacity-60">{savingKey===k?'Saving…':'Save'}</button>
                     {content[k]&&content[k].updated_at&&<span className="text-xs text-gray-400">Last saved {new Date(content[k].updated_at).toLocaleDateString()} by {content[k].updated_by||'—'}</span>}</div></div>)}</div></div>
         </>}
@@ -4464,18 +4465,16 @@ function StaffPortal({user,onLogout,notify}) {
                 <p className="font-bold text-gray-800">{x.pinned&&<i className="fas fa-thumbtack text-green-600 mr-2"/>}{x.title}</p>{x.body&&<p className="text-sm text-gray-600 mt-1 whitespace-pre-wrap">{x.body}</p>}
                 <p className="text-xs text-gray-400 mt-1">{x.posted_by||'HR'} · {new Date(x.posted_at).toLocaleDateString()}</p></div>)}</div></div>}
         <div className="glass rounded-2xl p-6 mb-6"><h2 className="text-lg font-bold mb-4"><i className="fas fa-heart text-rose-500 mr-2"/>About RAHAMA</h2>
-            {content.story&&<div className="mb-5 border-l-4 border-rose-300 pl-4"><p className="text-xs font-bold text-rose-700 uppercase tracking-wider mb-2">Our Story</p><p className="text-sm text-gray-700 whitespace-pre-wrap leading-relaxed">{content.story}</p></div>}
             {(content.mission||content.vision)&&<div className="grid md:grid-cols-2 gap-4 mb-5">
                 {content.mission&&<div className="bg-green-50 rounded-xl p-4"><p className="text-xs font-bold text-green-700 uppercase tracking-wider mb-1">Our Mission</p><p className="text-sm text-gray-700 whitespace-pre-wrap">{content.mission}</p></div>}
                 {content.vision&&<div className="bg-indigo-50 rounded-xl p-4"><p className="text-xs font-bold text-indigo-700 uppercase tracking-wider mb-1">Our Vision</p><p className="text-sm text-gray-700 whitespace-pre-wrap">{content.vision}</p></div>}</div>}
             {lines('values').length>0&&<div className="mb-5"><p className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Core Values</p><div className="flex flex-wrap gap-2">{lines('values').map((v,i)=><span key={i} className="px-3 py-1.5 rounded-full text-sm font-semibold bg-amber-50 text-amber-800">{v}</span>)}</div></div>}
             <div className="grid md:grid-cols-2 gap-4">{[['where_we_work','Where We Work','fa-location-dot'],['contacts','Who To Contact','fa-phone']].filter(([k])=>lines(k).length).map(([k,l,ic])=>
                 <div key={k} className="bg-gray-50 rounded-xl p-4"><p className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-2"><i className={`fas ${ic} mr-1`}/>{l}</p><ul className="space-y-1">{lines(k).map((x,i)=><li key={i} className="text-sm text-gray-700">{x}</li>)}</ul></div>)}</div>
-            {!content.story&&!content.mission&&!content.vision&&!lines('values').length&&!lines('where_we_work').length&&<p className="text-sm text-gray-400">HR has not added this section yet.</p>}
+            {!content.mission&&!content.vision&&!lines('values').length&&!lines('where_we_work').length&&<p className="text-sm text-gray-400">HR has not added this section yet.</p>}
         </div>
         <div className="rounded-2xl p-6 mb-6 border-2 border-red-200 bg-red-50"><h2 className="text-lg font-bold text-red-800 mb-2"><i className="fas fa-hand-holding-heart mr-2"/>Report a safeguarding or PSEAH concern</h2>
-            {content.safeguarding?<p className="text-sm text-red-900 whitespace-pre-wrap">{content.safeguarding}</p>
-            :<p className="text-sm text-red-900">If you see or suspect sexual exploitation, abuse or harassment, or any harm to a child or vulnerable adult, report it. Send an email to psea@rgcweinigeria.org IMMEDIATELY or report directly to HR.</p>}</div>
+            <p className="text-sm text-red-900 whitespace-pre-wrap">{(content.safeguarding||SAFEGUARDING_DEFAULT).split(/([\w.+-]+@[\w-]+\.[\w.]+)/).map((part,i)=>/^[\w.+-]+@[\w-]+\.[\w.]+$/.test(part)?<a key={i} href={`mailto:${part}`} className="font-bold underline">{part}</a>:<span key={i}>{part}</span>)}</p></div>
         {showPw&&<ChangePw user={user} onClose={()=>setShowPw(false)} notify={notify}/>}
     </div></div>;
 }
@@ -4490,7 +4489,8 @@ const HR_BANDS=[{k:'BEACON',min:90,c:'#1A3A5C'},{k:'BLAZE',min:80,c:'#C9980A'},{
 const hrBandOf=s=>HR_BANDS.find(b=>s>=b.min).k;
 const hrPeriodKey=p=>{const m=/^Q([1-4])\s+(\d{4})$/.exec((p||'').trim());return m?Number(m[2])*10+Number(m[1]):0;};
 const HR_FLAG={promotion:{l:'Promotion candidate',c:'bg-indigo-100 text-indigo-800',i:'fa-arrow-trend-up'},ontrack:{l:'On track',c:'bg-green-100 text-green-700',i:'fa-check'},
-    support:{l:'Needs support',c:'bg-amber-100 text-amber-800',i:'fa-hands-holding'},pip:{l:'PIP',c:'bg-red-100 text-red-700',i:'fa-triangle-exclamation'},none:{l:'Not appraised',c:'bg-gray-100 text-gray-500',i:'fa-minus'}};
+    support:{l:'Needs support',c:'bg-amber-100 text-amber-800',i:'fa-hands-holding'},pip:{l:'PIP',c:'bg-red-100 text-red-700',i:'fa-triangle-exclamation'},none:{l:'Not appraised',c:'bg-gray-100 text-gray-500',i:'fa-minus'},
+    awaiting:{l:'Awaiting supervisor review',c:'bg-blue-100 text-blue-700',i:'fa-hourglass-half'},notthisq:{l:'No review this quarter',c:'bg-gray-100 text-gray-600',i:'fa-calendar-xmark'},never:{l:'Never appraised',c:'bg-gray-100 text-gray-500',i:'fa-minus'},legacy:{l:'Older review only (no score)',c:'bg-gray-100 text-gray-600',i:'fa-box-archive'}};
 const HR_REC={promotion:'Recommend for promotion',not_yet:'Not yet — keep developing',support:'Needs support / training',pip:'Place on PIP'};
 const HR_DEC={pending:'bg-amber-100 text-amber-700',approved:'bg-green-100 text-green-700',rejected:'bg-red-100 text-red-700'};
 /* Flag rules (as agreed): PIP <60; Needs support <70 in the latest
@@ -4509,7 +4509,7 @@ const hrFlagFor=hist=>{
 function HRDashboard({user,notify,onBack,access}) {
     const canRecommend=access==='hr';const canDecide=access==='ed'||access==='supervisor';
     const [tab,setTab]=useState('performance');const [loading,setLoading]=useState(true);
-    const [apps,setApps]=useState([]);const [staff,setStaff]=useState([]);const [profiles,setProfiles]=useState({});const [recs,setRecs]=useState([]);
+    const [apps,setApps]=useState([]);const [staff,setStaff]=useState([]);const [profiles,setProfiles]=useState({});const [recs,setRecs]=useState([]);const [pendingIds,setPendingIds]=useState(new Set());const [legacy,setLegacy]=useState(0);const [legacyIds,setLegacyIds]=useState(new Set());
     const [period,setPeriod]=useState('');const [flagF,setFlagF]=useState('all');const [dept,setDept]=useState('all');const [selStaff,setSelStaff]=useState(null);
     const load=async()=>{setLoading(true);
         try{
@@ -4518,7 +4518,12 @@ function HRDashboard({user,notify,onBack,access}) {
                 fetch(`${SB}/rest/v1/users?select=id,name,email,role,is_active&order=name.asc`,{headers:H}).then(x=>x.ok?x.json():[]),
                 fetch(`${SB}/rest/v1/staff_profiles?select=user_id,position,department`,{headers:H}).then(x=>x.ok?x.json():[]),
                 fetch(`${SB}/rest/v1/hr_recommendations?select=*&order=recommended_at.desc`,{headers:H}).then(x=>x.ok?x.json():[])]);
-            const good=(Array.isArray(a)?a:[]).filter(x=>!x.withdrawn&&x.review_period&&x.final_score!=null);
+            const all=(Array.isArray(a)?a:[]).filter(x=>!x.withdrawn);
+            /* A review saved without a quarter is placed in the quarter it was completed — the same default the review screen uses */
+            const good=all.filter(x=>x.final_score!=null&&(x.review_period||x.completed_at)).map(x=>x.review_period?x:{...x,review_period:quarterLabel(new Date(x.completed_at))});
+            setLegacy(all.filter(x=>x.final_score==null).length);setLegacyIds(new Set(all.filter(x=>x.final_score==null).map(x=>x.employee_id)));
+            const pend=await fetch(`${SB}/rest/v1/appraisals?status=eq.pending&select=employee_id,withdrawn`,{headers:H}).then(x=>x.ok?x.json():[]).catch(()=>[]);
+            setPendingIds(new Set((Array.isArray(pend)?pend:[]).filter(x=>!x.withdrawn).map(x=>x.employee_id)));
             setApps(good);setStaff(Array.isArray(u)?u:[]);
             const pm={};(Array.isArray(p)?p:[]).forEach(x=>pm[x.user_id]=x);setProfiles(pm);setRecs(Array.isArray(r)?r:[]);
             const ps=[...new Set(good.map(x=>x.review_period))].sort((x,y)=>hrPeriodKey(y)-hrPeriodKey(x));
@@ -4539,7 +4544,7 @@ function HRDashboard({user,notify,onBack,access}) {
     const appraisedIds=new Set(apps.map(a=>a.employee_id));
     const rows=staff.filter(s=>appraisedIds.has(s.id)||(s.is_active!==false&&s.role==='employee')).map(s=>{
         const hist=histFor(s.id);const cur=hist.find(h=>h.period===period);const prev=hist.filter(h=>h.period!==period).slice(-1)[0];
-        return {s,prof:profiles[s.id]||{},hist,cur,prev,flag:cur?hrFlagFor(hist):'none',rec:latestRec(s.id)};});
+        return {s,prof:profiles[s.id]||{},hist,cur,prev,flag:cur?hrFlagFor(hist):pendingIds.has(s.id)?'awaiting':hist.length?'notthisq':legacyIds.has(s.id)?'legacy':'never',rec:latestRec(s.id)};});
     const depts=[...new Set(rows.map(r=>r.prof.department).filter(Boolean))].sort();
     const inDept=rows.filter(r=>dept==='all'||r.prof.department===dept);
     const shown=inDept.filter(r=>flagF==='all'||r.flag===flagF).sort((a,b)=>(b.cur?b.cur.score:-1)-(a.cur?a.cur.score:-1));
@@ -4586,7 +4591,8 @@ function HRDashboard({user,notify,onBack,access}) {
                 <MEChart type="bar" horizontal labels={comps.map(c=>c.name)} data={compAvg} colors={compAvg.map(v=>v<3?'#CC2200':v<3.5?'#E8851A':'#285B3C')} height={300}/></div>
         </div>}
         <div className="glass rounded-2xl p-6">
-            <div className="flex flex-wrap gap-2 mb-4">{['all','promotion','ontrack','support','pip','none'].map(f=><button key={f} onClick={()=>setFlagF(f)} className={`px-3 py-1.5 rounded-xl text-xs font-bold ${flagF===f?'btn-green text-white':'text-gray-500 hover:bg-gray-100'}`}>{f==='all'?'All staff':HR_FLAG[f].l} ({f==='all'?inDept.length:count(f)})</button>)}</div>
+            <div className="flex flex-wrap gap-2 mb-4">{['all','promotion','ontrack','support','pip','awaiting','notthisq','legacy','never'].filter(f=>f==='all'||['promotion','ontrack','support','pip'].includes(f)||count(f)>0).map(f=><button key={f} onClick={()=>setFlagF(f)} className={`px-3 py-1.5 rounded-xl text-xs font-bold ${flagF===f?'btn-green text-white':'text-gray-500 hover:bg-gray-100'}`}>{f==='all'?'All staff':HR_FLAG[f].l} ({f==='all'?inDept.length:count(f)})</button>)}</div>
+            {legacy>0&&<p className="text-xs text-gray-500 mb-3"><i className="fas fa-circle-info mr-1"/>{legacy} older completed review{legacy>1?'s were':' was'} scored before the 0–100 scoring and grade bands existed, so {legacy>1?'they are':'it is'} not counted here.</p>}
             {shown.length===0?<p className="text-center py-10 text-gray-400 font-semibold">No staff in this view</p>
             :<div className="space-y-2">{shown.map(r=>{const d=r.cur&&r.prev?r.cur.score-r.prev.score:null;
                 return <div key={r.s.id} onClick={()=>setSelStaff(r.s.id)} className="border-2 border-gray-100 rounded-xl p-4 flex flex-wrap items-center gap-3 cursor-pointer hover:border-green-200">
