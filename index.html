@@ -4475,7 +4475,7 @@ function StaffPortal({user,onLogout,notify}) {
         </div>
         <div className="rounded-2xl p-6 mb-6 border-2 border-red-200 bg-red-50"><h2 className="text-lg font-bold text-red-800 mb-2"><i className="fas fa-hand-holding-heart mr-2"/>Report a safeguarding or PSEAH concern</h2>
             {content.safeguarding?<p className="text-sm text-red-900 whitespace-pre-wrap">{content.safeguarding}</p>
-            :<p className="text-sm text-red-900">If you see or suspect sexual exploitation, abuse or harassment, or any harm to a child or vulnerable adult, report it. The official reporting channel has not been added here yet. Until it is, report directly to HR.</p>}</div>
+            :<p className="text-sm text-red-900">If you see or suspect sexual exploitation, abuse or harassment, or any harm to a child or vulnerable adult, report it. Send an email to psea@rgcweinigeria.org IMMEDIATELY or report directly to HR.</p>}</div>
         {showPw&&<ChangePw user={user} onClose={()=>setShowPw(false)} notify={notify}/>}
     </div></div>;
 }
