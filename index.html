@@ -4089,7 +4089,7 @@ function PolicyDetail({pol,asg,ackByAsg,staff,user,readOnly,notify,onBack}) {
    portals + FMS. The old dashboards are kept and can be opened with
    ?classic=1 in the address as a fallback. */
 const LEAVE_ENTITLEMENT=22, LATES_PER_LEAVE_DAY=5;
-const PORTAL_KEYS=[['story','Our Story: why RAHAMA was founded'],['mission','Our Mission'],['vision','Our Vision'],['values','Core Values (one per line)'],['where_we_work','Where We Work (one per line)'],['projects','Current Projects (one per line)'],['contacts','Who To Contact (one per line)'],['safeguarding','How to Report a Safeguarding / PSEAH Concern']];
+const PORTAL_KEYS=[['story','Our Story: why RAHAMA was founded'],['mission','Our Mission'],['vision','Our Vision'],['values','Core Values (one per line)'],['where_we_work','Where We Work (one per line)'],['contacts','Who To Contact (one per line)'],['safeguarding','How to Report a Safeguarding / PSEAH Concern']];
 const portalToday=()=>new Date().toISOString().slice(0,10);
 const weekdaysInYear=(a,b,yr)=>{if(!a)return 0;let s=new Date(String(a).slice(0,10)+'T12:00:00'),e=new Date(String(b||a).slice(0,10)+'T12:00:00');
     const ys=new Date(yr+'-01-01T12:00:00'),ye=new Date(yr+'-12-31T12:00:00');if(s<ys)s=ys;if(e>ye)e=ye;let n=0;
@@ -4323,11 +4323,12 @@ function PortalTile({icon,grad,title,sub,onClick,badge}) {
 
 function StaffPortal({user,onLogout,notify}) {
     const isSup=user.role==='supervisor';const isEmp=user.role==='employee';
-    const [flags,setFlags]=useState({is_hr:false,is_ed:false});
+    const [flags,setFlags]=useState({is_hr:false,is_ed:false,is_security:false,is_mne:false});
     const [section,setSection]=useState('home');const [screen,setScreen]=useState(null);const [showPw,setShowPw]=useState(false);
     const [attn,setAttn]=useState([]);const [counts,setCounts]=useState({});const [content,setContent]=useState({});const [notices,setNotices]=useState([]);
     const hrAccess=isSup?'supervisor':flags.is_hr?'hr':flags.is_ed?'ed':null;
-    const secAccess=isSup||!!user.is_security;const meAccess=isSup||!!user.is_mne;
+    const isSec=!!user.is_security||flags.is_security;const isMne=!!user.is_mne||flags.is_mne;
+    const secAccess=isSup||isSec;const meAccess=isSup||isMne;
 
     /* Access flags are read here, after login — the login flow itself is untouched.
        Each is fetched on its own so a missing column can't break the others. */
@@ -4335,7 +4336,7 @@ function StaffPortal({user,onLogout,notify}) {
     useEffect(()=>{(async()=>{
         const active=await flag('is_active');
         if(active===false){notify('This account has been deactivated. Please contact HR.','error');onLogout();return;}
-        const [hr,ed]=await Promise.all([flag('is_hr'),flag('is_ed')]);setFlags({is_hr:!!hr,is_ed:!!ed});
+        const [hr,ed,sec,mne]=await Promise.all([flag('is_hr'),flag('is_ed'),flag('is_security'),flag('is_mne')]);setFlags({is_hr:!!hr,is_ed:!!ed,is_security:!!sec,is_mne:!!mne});
     })();},[]);
     useEffect(()=>{(async()=>{try{const [c,n]=await Promise.all([
         fetch(`${SB}/rest/v1/portal_content?select=key,body`,{headers:H}).then(r=>r.ok?r.json():[]),
@@ -4363,7 +4364,7 @@ function StaffPortal({user,onLogout,notify}) {
         if(secAccess){const tr=await safe(()=>j(`${SB}/rest/v1/field_trips?status=eq.active&select=id`));const nt=Array.isArray(tr)?tr.length:0;
             if(nt){c.trips=nt;items.push({icon:'fa-route',tone:'green',text:`${nt} staff on an active field trip now`,go:()=>{setSection('security');setScreen('tripmon');}});}}
         setAttn(items);setCounts(c);};
-    useEffect(()=>{loadAttn();},[hrAccess]);
+    useEffect(()=>{loadAttn();},[hrAccess,secAccess]);
     const back=()=>{setScreen(null);loadAttn();};
 
     const openFms=()=>{if(isEmp){const u=localStorage.getItem('pms_user');if(!u){alert('Session expired. Please login again.');return;}window.open('https://rahamaorg.github.io/rahamafms/?session='+encodeURIComponent(u),'_blank');}
@@ -4381,7 +4382,7 @@ function StaffPortal({user,onLogout,notify}) {
             case 'mypolicies': return <MyPolicies user={user} notify={notify} onBack={back}/>;
             case 'directory': return <Directory user={user} notify={notify} onBack={back}/>;
             case 'myemergency': return <MyEmergencyContact user={user} notify={notify} onBack={back}/>;
-            case 'mande': return <MandE user={user} notify={notify} readOnlyView={!user.is_mne} onBack={back}/>;
+            case 'mande': return <MandE user={user} notify={notify} readOnlyView={!isMne} onBack={back}/>;
         }
         if(hrAccess) switch(screen){
             case 'hrdash': return <HRDashboard user={user} notify={notify} access={hrAccess} onBack={toHr}/>;
@@ -4429,7 +4430,7 @@ function StaffPortal({user,onLogout,notify}) {
 
     const Header=({sub})=><div className="glass rounded-2xl p-6 mb-6 animate-in"><div className="flex flex-wrap justify-between items-center gap-4">
         <div><p className="text-xs font-bold text-green-700 uppercase tracking-widest">RAHAMA Staff Portal</p><h1 className="text-2xl md:text-3xl font-extrabold text-gray-800 mt-1">{sub}</h1>
-            <p className="text-gray-500 font-medium mt-1"><i className={`fas ${isSup?'fa-user-tie':'fa-user'} text-green-600 mr-2`}/>{user.name}{hrAccess==='hr'?' · HR Officer':hrAccess==='ed'?' · Executive Director':isSup?' · Supervisor':''}{user.is_security?' · Security':''}{user.is_mne?' · M&E':''}</p></div>
+            <p className="text-gray-500 font-medium mt-1"><i className={`fas ${isSup?'fa-user-tie':'fa-user'} text-green-600 mr-2`}/>{user.name}{hrAccess==='hr'?' · HR Officer':hrAccess==='ed'?' · Executive Director':isSup?' · Supervisor':''}{isSec?' · Security':''}{isMne?' · M&E':''}</p></div>
         <div className="flex gap-2"><button onClick={()=>setShowPw(true)} className="px-4 py-2 bg-green-50 text-green-700 hover:bg-green-100 rounded-xl font-medium text-sm"><i className="fas fa-key mr-2"/>Password</button>
             <button onClick={onLogout} className="px-4 py-2 text-gray-500 hover:bg-gray-100 rounded-xl text-sm"><i className="fas fa-sign-out-alt mr-2"/>Logout</button></div></div></div>;
     const Grid=({tiles})=><div className="grid md:grid-cols-2 gap-4">{tiles.map(x=><PortalTile key={x.k} icon={x.icon} grad={x.g} title={x.t} sub={x.s} badge={x.b} onClick={()=>setScreen(x.k)}/>)}</div>;
@@ -4446,7 +4447,7 @@ function StaffPortal({user,onLogout,notify}) {
     const hour=new Date().getHours();const greet=hour<12?'Good morning':hour<16?'Good afternoon':'Good evening';
     const lines=k=>(content[k]||'').split('\n').map(x=>x.trim()).filter(Boolean);
     const portals=[hrAccess&&{t:'HR Portal',s:'Performance, attendance, leave, profiles & policies',icon:'fa-people-group',g:G.violet,go:()=>setSection('hr'),b:(counts.queue||0)+(counts.leave||0)+(hrAccess!=='hr'?(counts.recs||0):0)},
-        meAccess&&{t:'M&E Portal',s:user.is_mne?'Work plans, data, indicators & completion rates':'View work plans, data and indicator dashboards',icon:'fa-chart-pie',g:G.cyan,go:()=>setScreen('mande')},
+        meAccess&&{t:'M&E Portal',s:isMne?'Work plans, data, indicators & completion rates':'View work plans, data and indicator dashboards',icon:'fa-chart-pie',g:G.cyan,go:()=>setScreen('mande')},
         secAccess&&{t:'Security Portal',s:'Field trip monitoring & login activity',icon:'fa-shield-halved',g:G.red,go:()=>setSection('security'),b:counts.trips},
         {t:'Financial Management System',s:'Budgets, payments & approvals (opens in a new tab)',icon:'fa-coins',g:G.green,go:openFms}].filter(Boolean);
     return <div className="min-h-screen p-4 md:p-8"><div className="max-w-6xl mx-auto">
@@ -4454,9 +4455,9 @@ function StaffPortal({user,onLogout,notify}) {
         <div className="glass rounded-2xl p-6 mb-6"><h2 className="text-lg font-bold mb-3"><i className="fas fa-bell text-amber-500 mr-2"/>Needs your attention</h2>
             {attn.length===0?<p className="text-sm text-gray-500"><i className="fas fa-check-circle text-green-500 mr-2"/>You're all caught up.</p>
             :<div className="space-y-2">{attn.map((a,i)=><button key={i} onClick={a.go} className={`w-full text-left border-2 rounded-xl px-4 py-3 text-sm font-semibold flex items-center gap-3 hover:shadow ${tone[a.tone]}`}><i className={`fas ${a.icon}`}/><span className="flex-1">{a.text}</span><i className="fas fa-arrow-right opacity-50"/></button>)}</div>}</div>
-        <h2 className="text-sm font-bold text-gray-500 uppercase tracking-widest mb-3 px-1">My Workspace</h2>
+        <h2 className="text-sm font-bold text-gray-700 uppercase tracking-widest mb-3 inline-block px-4 py-1.5 rounded-full shadow" style={{background:'rgba(255,255,255,0.92)'}}>My Workspace</h2>
         <div className="mb-8"><Grid tiles={workspace}/></div>
-        <h2 className="text-sm font-bold text-gray-500 uppercase tracking-widest mb-3 px-1">{portals.length>1?'Portals':'Systems'}</h2>
+        <h2 className="text-sm font-bold text-gray-700 uppercase tracking-widest mb-3 inline-block px-4 py-1.5 rounded-full shadow" style={{background:'rgba(255,255,255,0.92)'}}>{portals.length>1?'Portals':'Systems'}</h2>
         <div className="grid md:grid-cols-2 gap-4 mb-8">{portals.map((p,i)=><PortalTile key={i} icon={p.icon} grad={p.g} title={p.t} sub={p.s} badge={p.b} onClick={p.go}/>)}</div>
         {notices.length>0&&<div className="glass rounded-2xl p-6 mb-6"><h2 className="text-lg font-bold mb-3"><i className="fas fa-bullhorn text-green-600 mr-2"/>Notice board</h2>
             <div className="space-y-3">{notices.slice(0,6).map(x=><div key={x.id} className={`rounded-xl p-4 ${x.pinned?'bg-green-50 border-2 border-green-200':'bg-gray-50'}`}>
@@ -4468,7 +4469,7 @@ function StaffPortal({user,onLogout,notify}) {
                 {content.mission&&<div className="bg-green-50 rounded-xl p-4"><p className="text-xs font-bold text-green-700 uppercase tracking-wider mb-1">Our Mission</p><p className="text-sm text-gray-700 whitespace-pre-wrap">{content.mission}</p></div>}
                 {content.vision&&<div className="bg-indigo-50 rounded-xl p-4"><p className="text-xs font-bold text-indigo-700 uppercase tracking-wider mb-1">Our Vision</p><p className="text-sm text-gray-700 whitespace-pre-wrap">{content.vision}</p></div>}</div>}
             {lines('values').length>0&&<div className="mb-5"><p className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Core Values</p><div className="flex flex-wrap gap-2">{lines('values').map((v,i)=><span key={i} className="px-3 py-1.5 rounded-full text-sm font-semibold bg-amber-50 text-amber-800">{v}</span>)}</div></div>}
-            <div className="grid md:grid-cols-3 gap-4">{[['where_we_work','Where We Work','fa-location-dot'],['projects','Current Projects','fa-diagram-project'],['contacts','Who To Contact','fa-phone']].filter(([k])=>lines(k).length).map(([k,l,ic])=>
+            <div className="grid md:grid-cols-2 gap-4">{[['where_we_work','Where We Work','fa-location-dot'],['contacts','Who To Contact','fa-phone']].filter(([k])=>lines(k).length).map(([k,l,ic])=>
                 <div key={k} className="bg-gray-50 rounded-xl p-4"><p className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-2"><i className={`fas ${ic} mr-1`}/>{l}</p><ul className="space-y-1">{lines(k).map((x,i)=><li key={i} className="text-sm text-gray-700">{x}</li>)}</ul></div>)}</div>
             {!content.story&&!content.mission&&!content.vision&&!lines('values').length&&!lines('where_we_work').length&&<p className="text-sm text-gray-400">HR has not added this section yet.</p>}
         </div>
