@@ -16546,7 +16546,8 @@ var STORY_BUCKET = 'field-stories',
 var STORY_PROGRAMMES = ['GEPP', 'ECHO HIP', 'FIFSAN', 'ASCENT', 'CDCS protection', 'Other'];
 var STORY_THEMES = ['Health', 'Education', 'Protection', 'Nutrition', 'Livelihoods', 'Other'];
 var STORY_STATUS = {
-  submitted: ['Waiting for review', 'bg-amber-100 text-amber-800'],
+  submitted: ['Waiting for Communications', 'bg-amber-100 text-amber-800'],
+  endorsed: ['Recommended, awaiting final approval', 'bg-blue-100 text-blue-800'],
   returned: ['Returned to you', 'bg-orange-100 text-orange-800'],
   published: ['On the website', 'bg-green-100 text-green-800'],
   rejected: ['Not approved', 'bg-red-100 text-red-700'],
@@ -17116,13 +17117,15 @@ function FieldStories(_ref169) {
 }
 function StoryReview(_ref171) {
   var user = _ref171.user,
+    comms = _ref171.comms,
+    _final = _ref171["final"],
     notify = _ref171.notify,
     onBack = _ref171.onBack;
   var _useState515 = useState(null),
     _useState516 = _slicedToArray(_useState515, 2),
     rows = _useState516[0],
     setRows = _useState516[1];
-  var _useState517 = useState('submitted'),
+  var _useState517 = useState('mine'),
     _useState518 = _slicedToArray(_useState517, 2),
     tab = _useState518[0],
     setTab = _useState518[1];
@@ -17168,20 +17171,33 @@ function StoryReview(_ref171) {
   if (open) return React.createElement(StoryReviewDetail, {
     story: open,
     user: user,
+    comms: comms,
+    "final": _final,
     notify: notify,
     onBack: function onBack() {
       setOpen(null);
       load();
     }
   });
-  var groups = {
-    submitted: ['submitted'],
-    published: ['published'],
-    other: ['returned', 'rejected', 'unpublished']
+  var own = function own(r) {
+    return String(r.submitted_by) === String(user.id);
   };
-  var list = (rows || []).filter(function (r) {
-    return groups[tab].includes(r.status);
-  });
+  var mine = function mine(r) {
+    return comms && r.status === 'submitted' && !r.submitter_is_comms && !own(r) || _final && (r.status === 'endorsed' || r.status === 'submitted' && r.submitter_is_comms && !own(r));
+  };
+  var tabs = [['mine', 'Waiting for you', mine]].concat(_toConsumableArray(_final && !comms ? [['comms', 'With Communications', function (r) {
+    return r.status === 'submitted' && !r.submitter_is_comms;
+  }]] : []), _toConsumableArray(comms && !_final ? [['final', 'With the supervisor', function (r) {
+    return r.status === 'endorsed' || r.status === 'submitted' && r.submitter_is_comms;
+  }]] : []), [['published', 'On the website', function (r) {
+    return r.status === 'published';
+  }], ['other', 'Returned / not approved', function (r) {
+    return ['returned', 'rejected', 'unpublished'].includes(r.status);
+  }]]);
+  var cur = tabs.find(function (t) {
+    return t[0] === tab;
+  }) || tabs[0];
+  var list = (rows || []).filter(cur[2]);
   return React.createElement("div", {
     className: "min-h-screen p-4 md:p-8"
   }, React.createElement("div", {
@@ -17196,21 +17212,20 @@ function StoryReview(_ref171) {
     className: "fas fa-newspaper text-violet-600 mr-2"
   }), "Review field stories"), React.createElement("p", {
     className: "text-sm text-gray-600 mt-1"
-  }, "Approve a story to publish it on the website's Stories page. Check consent and protection before you publish."), React.createElement("div", {
+  }, comms && !_final ? 'You review stories first: recommend them for publishing, or return them with a note. The supervisor gives final approval.' : _final && !comms ? 'Communications reviews stories first. Stories they recommend come to you for final approval and publishing.' : 'Review stories and publish them on the website.', " Check consent and protection every time."), React.createElement("div", {
     className: "flex flex-wrap gap-2 mt-4"
-  }, [['submitted', 'Waiting'], ['published', 'On the website'], ['other', 'Returned / not approved']].map(function (_ref173) {
-    var _ref174 = _slicedToArray(_ref173, 2),
+  }, tabs.map(function (_ref173) {
+    var _ref174 = _slicedToArray(_ref173, 3),
       k = _ref174[0],
-      l = _ref174[1];
+      l = _ref174[1],
+      f = _ref174[2];
     return React.createElement("button", {
       key: k,
       onClick: function onClick() {
         return setTab(k);
       },
-      className: "px-4 py-2 rounded-xl text-sm font-semibold ".concat(tab === k ? 'bg-green-600 text-white' : 'bg-gray-100')
-    }, l, " (", (rows || []).filter(function (r) {
-      return groups[k].includes(r.status);
-    }).length, ")");
+      className: "px-4 py-2 rounded-xl text-sm font-semibold ".concat(cur[0] === k ? 'bg-green-600 text-white' : 'bg-gray-100')
+    }, l, " (", (rows || []).filter(f).length, ")");
   }))), React.createElement("div", {
     className: "glass rounded-2xl p-6"
   }, rows === null ? React.createElement("p", {
@@ -17248,6 +17263,8 @@ function StoryReview(_ref171) {
 function StoryReviewDetail(_ref175) {
   var story = _ref175.story,
     user = _ref175.user,
+    comms = _ref175.comms,
+    _final2 = _ref175["final"],
     notify = _ref175.notify,
     onBack = _ref175.onBack;
   var s = story;
@@ -17340,111 +17357,126 @@ function StoryReviewDetail(_ref175) {
             notify('A reason is required', 'error');
             return _context82.abrupt("return");
           case 8:
-            if (!(decision === 'publish' && (s.involves_minor || s.sensitive_case) && !confirm('This story involves a child or a sensitive matter.\n\nHave you checked the person cannot be identified from the name, place or photo?'))) {
-              _context82.next = 10;
+            if (!(decision === 'endorse')) {
+              _context82.next = 12;
               break;
             }
-            return _context82.abrupt("return");
-          case 10:
-            if (!(decision === 'unpublish' && !confirm('Take this story off the website?'))) {
+            note = prompt('Recommend this story for publishing.\n\nNote for the supervisor (optional):', '');
+            if (!(note === null)) {
               _context82.next = 12;
               break;
             }
             return _context82.abrupt("return");
           case 12:
-            setBusy(true);
-            _context82.prev = 13;
-            url = null;
-            if (!(decision === 'publish' && s.photo_path)) {
-              _context82.next = 31;
+            if (!(decision === 'publish' && (s.involves_minor || s.sensitive_case) && !confirm('This story involves a child or a sensitive matter.\n\nHave you checked the person cannot be identified from the name, place or photo?'))) {
+              _context82.next = 14;
               break;
             }
-            _context82.next = 18;
+            return _context82.abrupt("return");
+          case 14:
+            if (!(decision === 'unpublish' && !confirm('Take this story off the website?'))) {
+              _context82.next = 16;
+              break;
+            }
+            return _context82.abrupt("return");
+          case 16:
+            setBusy(true);
+            _context82.prev = 17;
+            url = null;
+            if (!(decision === 'publish' && s.photo_path)) {
+              _context82.next = 35;
+              break;
+            }
+            _context82.next = 22;
             return supabaseClient.storage.from(STORY_BUCKET).download(s.photo_path);
-          case 18:
+          case 22:
             _yield$supabaseClient9 = _context82.sent;
             blob = _yield$supabaseClient9.data;
             dErr = _yield$supabaseClient9.error;
             if (!dErr) {
-              _context82.next = 23;
+              _context82.next = 27;
               break;
             }
             throw new Error('Could not read the photo: ' + dErr.message);
-          case 23:
+          case 27:
             pub = "stories/".concat(s.id, ".jpg");
-            _context82.next = 26;
+            _context82.next = 30;
             return supabaseClient.storage.from(STORY_PUBLIC_BUCKET).upload(pub, blob, {
               contentType: 'image/jpeg',
               upsert: true
             });
-          case 26:
+          case 30:
             _yield$supabaseClient10 = _context82.sent;
             uErr = _yield$supabaseClient10.error;
             if (!uErr) {
-              _context82.next = 30;
+              _context82.next = 34;
               break;
             }
             throw new Error('Could not publish the photo: ' + uErr.message);
-          case 30:
+          case 34:
             url = supabaseClient.storage.from(STORY_PUBLIC_BUCKET).getPublicUrl(pub).data.publicUrl + '?v=' + Date.now();
-          case 31:
-            _context82.next = 33;
+          case 35:
+            _context82.next = 37;
             return supabaseClient.rpc('review_field_story', {
               p_id: s.id,
               p_decision: decision,
               p_note: note,
               p_public_photo_url: url,
-              p_edits: decision === 'publish' ? ed : {}
+              p_edits: ['publish', 'endorse'].includes(decision) ? ed : {}
             });
-          case 33:
+          case 37:
             _yield$supabaseClient11 = _context82.sent;
             error = _yield$supabaseClient11.error;
             if (!error) {
-              _context82.next = 37;
+              _context82.next = 41;
               break;
             }
             throw new Error(error.message);
-          case 37:
+          case 41:
             if (!(decision === 'unpublish' && s.photo_path)) {
-              _context82.next = 45;
+              _context82.next = 49;
               break;
             }
-            _context82.prev = 38;
-            _context82.next = 41;
-            return supabaseClient.storage.from(STORY_PUBLIC_BUCKET).remove(["stories/".concat(s.id, ".jpg")]);
-          case 41:
+            _context82.prev = 42;
             _context82.next = 45;
-            break;
-          case 43:
-            _context82.prev = 43;
-            _context82.t0 = _context82["catch"](38);
+            return supabaseClient.storage.from(STORY_PUBLIC_BUCKET).remove(["stories/".concat(s.id, ".jpg")]);
           case 45:
+            _context82.next = 49;
+            break;
+          case 47:
+            _context82.prev = 47;
+            _context82.t0 = _context82["catch"](42);
+          case 49:
             notify({
+              endorse: 'Recommended: sent to the supervisor for final approval',
               publish: 'Published on the website',
               "return": 'Returned to the staff member',
               reject: 'Marked as not approved',
               unpublish: 'Taken off the website'
             }[decision]);
             onBack();
-            _context82.next = 52;
+            _context82.next = 56;
             break;
-          case 49:
-            _context82.prev = 49;
-            _context82.t1 = _context82["catch"](13);
-            notify(_context82.t1.message || 'Could not save', 'error');
-          case 52:
-            setBusy(false);
           case 53:
+            _context82.prev = 53;
+            _context82.t1 = _context82["catch"](17);
+            notify(_context82.t1.message || 'Could not save', 'error');
+          case 56:
+            setBusy(false);
+          case 57:
           case "end":
             return _context82.stop();
         }
-      }, _callee81, null, [[13, 49], [38, 43]]);
+      }, _callee81, null, [[17, 53], [42, 47]]);
     }));
     return function decide(_x68) {
       return _ref177.apply(this, arguments);
     };
   }();
-  var canEdit = ['submitted', 'unpublished'].includes(s.status);
+  var own = String(s.submitted_by) === String(user.id);
+  var commsTurn = comms && s.status === 'submitted' && !s.submitter_is_comms && !own;
+  var finalTurn = _final2 && (s.status === 'endorsed' || s.status === 'submitted' && s.submitter_is_comms && !own);
+  var canEdit = commsTurn || finalTurn || _final2 && s.status === 'unpublished';
   return React.createElement("div", {
     className: "min-h-screen p-4 md:p-8"
   }, React.createElement("div", {
@@ -17467,7 +17499,9 @@ function StoryReviewDetail(_ref175) {
     target: "_blank",
     rel: "noopener noreferrer",
     className: "text-blue-700 underline"
-  }, "open (private)") : 'not attached'), React.createElement("p", null, React.createElement("b", null, "Child:"), " ", s.involves_minor ? 'Yes' : 'No', " \xB7 ", React.createElement("b", null, "Sensitive:"), " ", s.sensitive_case ? 'Yes' : 'No', " \xB7 ", React.createElement("b", null, "Identity protected:"), " ", s.identity_protected ? 'Yes' : 'No')), photoUrl && React.createElement("img", {
+  }, "open (private)") : 'not attached'), React.createElement("p", null, React.createElement("b", null, "Child:"), " ", s.involves_minor ? 'Yes' : 'No', " \xB7 ", React.createElement("b", null, "Sensitive:"), " ", s.sensitive_case ? 'Yes' : 'No', " \xB7 ", React.createElement("b", null, "Identity protected:"), " ", s.identity_protected ? 'Yes' : 'No')), s.endorsed_by && React.createElement("div", {
+    className: "bg-blue-50 border-2 border-blue-200 rounded-xl p-3 mb-4 text-sm text-blue-900"
+  }, React.createElement("b", null, "Recommended by ", s.endorsed_by), s.endorsed_at ? " on ".concat(new Date(s.endorsed_at).toLocaleDateString()) : '', s.status === 'endorsed' && s.review_note ? ": \u201C".concat(s.review_note, "\u201D") : ''), photoUrl && React.createElement("img", {
     src: photoUrl,
     alt: "Story photo",
     className: "w-full max-h-96 object-cover rounded-xl mb-3"
@@ -17539,15 +17573,23 @@ function StoryReviewDetail(_ref175) {
     className: "text-sm text-orange-800 bg-orange-50 rounded-lg p-2 mt-3"
   }, React.createElement("b", null, "Note:"), " ", s.review_note)), React.createElement("div", {
     className: "flex flex-wrap gap-2 mt-5"
-  }, s.status === 'submitted' && React.createElement(React.Fragment, null, React.createElement("button", {
-    disabled: busy || String(s.submitted_by) === String(user.id),
+  }, commsTurn && React.createElement("button", {
+    disabled: busy,
+    onClick: function onClick() {
+      return decide('endorse');
+    },
+    className: "btn-green text-white px-5 py-3 rounded-xl font-bold disabled:opacity-50"
+  }, React.createElement("i", {
+    className: "fas fa-thumbs-up mr-2"
+  }), "Recommend for publishing"), finalTurn && React.createElement("button", {
+    disabled: busy,
     onClick: function onClick() {
       return decide('publish');
     },
     className: "btn-green text-white px-5 py-3 rounded-xl font-bold disabled:opacity-50"
   }, React.createElement("i", {
     className: "fas fa-globe mr-2"
-  }), "Approve and publish"), React.createElement("button", {
+  }), "Approve and publish"), (commsTurn || finalTurn) && React.createElement(React.Fragment, null, React.createElement("button", {
     disabled: busy,
     onClick: function onClick() {
       return decide('return');
@@ -17559,7 +17601,7 @@ function StoryReviewDetail(_ref175) {
       return decide('reject');
     },
     className: "px-5 py-3 rounded-xl bg-red-100 text-red-700 font-bold"
-  }, "Not approved")), s.status === 'unpublished' && React.createElement("button", {
+  }, "Not approved")), _final2 && s.status === 'unpublished' && React.createElement("button", {
     disabled: busy,
     onClick: function onClick() {
       return decide('publish');
@@ -17573,9 +17615,15 @@ function StoryReviewDetail(_ref175) {
     className: "px-5 py-3 rounded-xl bg-gray-200 font-bold"
   }, React.createElement("i", {
     className: "fas fa-eye-slash mr-2"
-  }), "Take off the website")), String(s.submitted_by) === String(user.id) && s.status === 'submitted' && React.createElement("p", {
-    className: "text-xs text-gray-500 mt-2"
-  }, "This is your own story: another reviewer must approve it."))));
+  }), "Take off the website")), s.status === 'submitted' && !commsTurn && !finalTurn && React.createElement("p", {
+    className: "text-sm text-gray-600 mt-3"
+  }, React.createElement("i", {
+    className: "fas fa-hourglass-half mr-1"
+  }), own ? 'This is your own story: it is reviewed by someone else.' : 'Waiting for Communications to review it first.'), s.status === 'endorsed' && !finalTurn && React.createElement("p", {
+    className: "text-sm text-gray-600 mt-3"
+  }, React.createElement("i", {
+    className: "fas fa-hourglass-half mr-1"
+  }), "Recommended. Waiting for the supervisor's final approval."))));
 }
 var PortalBack = function PortalBack(_ref178) {
   var onBack = _ref178.onBack,
@@ -18961,7 +19009,9 @@ function StaffPortal(_ref200) {
   var isMne = !!user.is_mne || flags.is_mne;
   var secAccess = isSup || isSec;
   var meAccess = isSup || isMne;
-  var storyReviewer = isSup || !!flags.is_story_reviewer;
+  var storyComms = !!flags.is_story_reviewer;
+  var storyFinal = isSup;
+  var storyReviewer = storyComms || storyFinal;
   var flag = function () {
     var _ref201 = _asyncToGenerator(_regeneratorRuntime().mark(function _callee90(col) {
       var r, d;
@@ -19086,7 +19136,7 @@ function StaffPortal(_ref200) {
   }, []);
   var loadAttn = function () {
     var _ref204 = _asyncToGenerator(_regeneratorRuntime().mark(function _callee96() {
-      var items, c, safe, j, pol, od, msgs, ap, nr, lmMap, headNow, pa, np, lv, lvArr, nl, rec, nrec, tr, ta, nt, goT, ns, no, nm, st, sa, ret, w;
+      var items, c, safe, j, pol, od, msgs, ap, nr, lmMap, headNow, pa, np, lv, lvArr, nl, rec, nrec, tr, ta, nt, goT, ns, no, nm, st, sa, ret, own, w;
       return _regeneratorRuntime().wrap(function _callee96$(_context97) {
         while (1) switch (_context97.prev = _context97.next) {
           case 0:
@@ -19348,7 +19398,7 @@ function StaffPortal(_ref200) {
             }
           case 52:
             if (!supabaseClient) {
-              _context97.next = 60;
+              _context97.next = 62;
               break;
             }
             _context97.next = 55;
@@ -19358,7 +19408,7 @@ function StaffPortal(_ref200) {
                 while (1) switch (_context96.prev = _context96.next) {
                   case 0:
                     _context96.next = 2;
-                    return supabaseClient.from('field_stories').select('id,status,submitted_by');
+                    return supabaseClient.from('field_stories').select('id,status,submitted_by,submitter_is_comms');
                   case 2:
                     _yield$supabaseClient12 = _context96.sent;
                     data = _yield$supabaseClient12.data;
@@ -19387,26 +19437,27 @@ function StaffPortal(_ref200) {
                 }
               });
             }
-            if (isSup || flags.is_story_reviewer) {
-              w = sa.filter(function (x) {
-                return x.status === 'submitted' && String(x.submitted_by) !== String(user.id);
-              }).length;
-              if (w) {
-                c.stories = w;
-                items.push({
-                  icon: 'fa-newspaper',
-                  tone: 'blue',
-                  text: "".concat(w, " field ").concat(w > 1 ? 'stories' : 'story', " waiting for your review"),
-                  go: function go() {
-                    return setScreen('storyreview');
-                  }
-                });
-              }
+            own = function own(x) {
+              return String(x.submitted_by) === String(user.id);
+            };
+            w = sa.filter(function (x) {
+              return flags.is_story_reviewer && x.status === 'submitted' && !x.submitter_is_comms && !own(x) || isSup && (x.status === 'endorsed' || x.status === 'submitted' && x.submitter_is_comms && !own(x));
+            }).length;
+            if (w) {
+              c.stories = w;
+              items.push({
+                icon: 'fa-newspaper',
+                tone: 'blue',
+                text: "".concat(w, " field ").concat(w > 1 ? 'stories' : 'story', " waiting for your ").concat(flags.is_story_reviewer ? 'review' : 'final approval'),
+                go: function go() {
+                  return setScreen('storyreview');
+                }
+              });
             }
-          case 60:
+          case 62:
             setAttn(items);
             setCounts(c);
-          case 62:
+          case 64:
           case "end":
             return _context97.stop();
         }
@@ -19601,6 +19652,8 @@ function StaffPortal(_ref200) {
     });
     if (storyReviewer && screen === 'storyreview') return React.createElement(StoryReview, {
       user: user,
+      comms: storyComms,
+      "final": storyFinal,
       notify: notify,
       onBack: back
     });
@@ -19695,7 +19748,7 @@ function StaffPortal(_ref200) {
     icon: 'fa-newspaper',
     g: G.violet,
     t: 'Review field stories',
-    s: 'Approve stories for the website',
+    s: storyFinal && !storyComms ? 'Final approval for the website' : 'Review stories before they go to the website',
     b: counts.stories
   }].filter(Boolean);
   var hrTiles = [{
