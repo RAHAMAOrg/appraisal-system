@@ -21569,6 +21569,7 @@ function HRRecommendations(_ref227) {
   })));
 }
 var CON_TYPES = {
+  new_contract: 'New employment contract (attach the contract)',
   renewal: 'Contract renewal (same terms)',
   renewal_changes: 'Renewal with changes',
   promotion: 'Renewal with promotion',
@@ -21768,6 +21769,8 @@ function conTemplate(f, name, app) {
   var per = app && app.period ? " for ".concat(app.period) : '';
   var close = "\n\nPlease read this letter carefully and sign it in the Staff Portal to confirm your acceptance.";
   switch (f.contract_type) {
+    case 'new_contract':
+      return "Dear ".concat(first, ",\n\nEMPLOYMENT CONTRACT\n\nWelcome to ").concat(CON_ORG, ". Please find attached your contract of employment as ").concat(role).concat(f.start_date ? ", starting on ".concat(conDate(f.start_date)) : '').concat(f.end_date ? " and ending on ".concat(conDate(f.end_date)) : '', ".\n\nPlease read the attached contract carefully, including its annexes, before you sign. If anything is unclear, contact the Program Manager before signing.\n\nYour signature in the Staff Portal confirms that you accept the terms of the attached contract.");
     case 'renewal':
       return "Dear ".concat(first, ",\n\nRENEWAL OF CONTRACT OF EMPLOYMENT\n\nFollowing the review of your performance").concat(per, ", ").concat(CON_ORG, " is pleased to renew your contract of employment as ").concat(role, " for the period ").concat(conDate(f.start_date), " to ").concat(conDate(f.end_date), ".").concat(f.remuneration ? "\n\nYour remuneration remains ".concat(f.remuneration, ".") : '', "\n\nAll other terms and conditions of your existing contract remain unchanged.\n\nThank you for your commitment to our work. We look forward to your continued contribution.").concat(close);
     case 'renewal_changes':
@@ -22445,7 +22448,7 @@ function ContractEditor(_ref237) {
     keys: ex.suggested.split(','),
     label: (conSuggest(Number(ex.appraisal_score)) || {}).label
   } : null : row.sug;
-  var defType = ex ? ex.contract_type : sug ? sug.keys[0] === 'promotion' ? 'renewal' : sug.keys[0] : 'renewal';
+  var defType = ex ? ex.contract_type : sug ? sug.keys[0] === 'promotion' ? 'renewal' : sug.keys[0] : 'new_contract';
   var _useState659 = useState(ex ? {
       contract_type: ex.contract_type,
       position: ex.position || '',
@@ -22513,7 +22516,7 @@ function ContractEditor(_ref237) {
   };
   var auto = conTemplate(f, row.s.name, app);
   var body = touched ? terms : auto;
-  var differs = sug ? !sug.keys.includes(f.contract_type) : true;
+  var differs = sug ? !sug.keys.includes(f.contract_type) : f.contract_type !== 'new_contract';
   var isNR = f.contract_type === 'non_renewal';
   var staffIsSup = row.s.role === 'supervisor';
   var nextStatus = staffIsSup ? 'awaiting_ed' : isSup ? 'issued' : 'awaiting_approval';
@@ -22577,28 +22580,35 @@ function ContractEditor(_ref237) {
             notify('Add the letter text or attach a PDF', 'error');
             return _context104.abrupt("return");
           case 18:
-            if (!(file && file.size > 5 * 1024 * 1024)) {
+            if (!(submit && f.contract_type === 'new_contract' && !file && !(ex && ex.has_file))) {
               _context104.next = 21;
+              break;
+            }
+            notify('Attach the contract PDF for a new employment contract', 'error');
+            return _context104.abrupt("return");
+          case 21:
+            if (!(file && file.size > 5 * 1024 * 1024)) {
+              _context104.next = 24;
               break;
             }
             notify('PDF too large (max 5 MB)', 'error');
             return _context104.abrupt("return");
-          case 21:
+          case 24:
             if (!(submit && mustSign && !pad)) {
-              _context104.next = 24;
+              _context104.next = 27;
               break;
             }
             notify('Please sign in the box before sending', 'error');
             return _context104.abrupt("return");
-          case 24:
+          case 27:
             if (!(submit && !confirm(nextStatus === 'issued' ? "Sign this ".concat(CON_TYPES[f.contract_type].toLowerCase(), " and send it to ").concat(row.s.name, "? The ED signs alongside.") : nextStatus === 'awaiting_ed' ? "Send this ".concat(CON_TYPES[f.contract_type].toLowerCase(), " to the ED to sign?") : "Send this ".concat(CON_TYPES[f.contract_type].toLowerCase(), " for ").concat(row.s.name, " to the supervisor for approval?")))) {
-              _context104.next = 26;
+              _context104.next = 29;
               break;
             }
             return _context104.abrupt("return");
-          case 26:
+          case 29:
             setBusy(true);
-            _context104.prev = 27;
+            _context104.prev = 30;
             payload = _objectSpread(_objectSpread({}, f), {}, {
               start_date: f.start_date || null,
               end_date: f.end_date || null,
@@ -22614,10 +22624,10 @@ function ContractEditor(_ref237) {
             });
             id = ex && ex.id;
             if (id) {
-              _context104.next = 46;
+              _context104.next = 49;
               break;
             }
-            _context104.next = 33;
+            _context104.next = 36;
             return fetch("".concat(SB, "/rest/v1/contracts"), {
               method: 'POST',
               headers: HRep,
@@ -22632,56 +22642,56 @@ function ContractEditor(_ref237) {
                 suggested: sug ? sug.keys.join(',') : null
               }))
             });
-          case 33:
+          case 36:
             r = _context104.sent;
             if (r.ok) {
-              _context104.next = 40;
+              _context104.next = 43;
               break;
             }
             _context104.t0 = Error;
-            _context104.next = 38;
+            _context104.next = 41;
             return conErr(r, 'Could not save the draft');
-          case 38:
+          case 41:
             _context104.t1 = _context104.sent;
             throw new _context104.t0(_context104.t1);
-          case 40:
-            _context104.next = 42;
+          case 43:
+            _context104.next = 45;
             return r.json();
-          case 42:
+          case 45:
             d = _context104.sent;
             id = d[0].id;
-            _context104.next = 55;
+            _context104.next = 58;
             break;
-          case 46:
-            _context104.next = 48;
+          case 49:
+            _context104.next = 51;
             return fetch("".concat(SB, "/rest/v1/contracts?id=eq.").concat(id), {
               method: 'PATCH',
               headers: HJ,
               body: JSON.stringify(payload)
             });
-          case 48:
+          case 51:
             _r3 = _context104.sent;
             if (_r3.ok) {
-              _context104.next = 55;
+              _context104.next = 58;
               break;
             }
             _context104.t2 = Error;
-            _context104.next = 53;
+            _context104.next = 56;
             return conErr(_r3, 'Could not save the draft');
-          case 53:
+          case 56:
             _context104.t3 = _context104.sent;
             throw new _context104.t2(_context104.t3);
-          case 55:
+          case 58:
             if (!file) {
-              _context104.next = 82;
+              _context104.next = 85;
               break;
             }
-            _context104.next = 58;
+            _context104.next = 61;
             return fetch("".concat(SB, "/rest/v1/contract_files?contract_id=eq.").concat(id), {
               method: 'DELETE',
               headers: HJ
             });
-          case 58:
+          case 61:
             _context104.t4 = fetch;
             _context104.t5 = "".concat(SB, "/rest/v1/contract_files");
             _context104.t6 = HJ;
@@ -22689,9 +22699,9 @@ function ContractEditor(_ref237) {
             _context104.t8 = id;
             _context104.t9 = file.name;
             _context104.t10 = file.type;
-            _context104.next = 67;
+            _context104.next = 70;
             return toB64(file);
-          case 67:
+          case 70:
             _context104.t11 = _context104.sent;
             _context104.t12 = {
               contract_id: _context104.t8,
@@ -22705,22 +22715,22 @@ function ContractEditor(_ref237) {
               headers: _context104.t6,
               body: _context104.t13
             };
-            _context104.next = 73;
+            _context104.next = 76;
             return (0, _context104.t4)(_context104.t5, _context104.t14);
-          case 73:
+          case 76:
             fr = _context104.sent;
             if (fr.ok) {
-              _context104.next = 80;
+              _context104.next = 83;
               break;
             }
             _context104.t15 = Error;
-            _context104.next = 78;
+            _context104.next = 81;
             return conErr(fr, 'The PDF did not upload');
-          case 78:
+          case 81:
             _context104.t16 = _context104.sent;
             throw new _context104.t15(_context104.t16);
-          case 80:
-            _context104.next = 82;
+          case 83:
+            _context104.next = 85;
             return fetch("".concat(SB, "/rest/v1/contracts?id=eq.").concat(id), {
               method: 'PATCH',
               headers: HJ,
@@ -22730,21 +22740,21 @@ function ContractEditor(_ref237) {
                 last_action_by: user.name
               })
             });
-          case 82:
-            if (!(submit && mustSign)) {
-              _context104.next = 85;
-              break;
-            }
-            _context104.next = 85;
-            return conPostSignoff({
-              id: id
-            }, 'approver', user, pad);
           case 85:
-            if (!submit) {
-              _context104.next = 98;
+            if (!(submit && mustSign)) {
+              _context104.next = 88;
               break;
             }
             _context104.next = 88;
+            return conPostSignoff({
+              id: id
+            }, 'approver', user, pad);
+          case 88:
+            if (!submit) {
+              _context104.next = 101;
+              break;
+            }
+            _context104.next = 91;
             return fetch("".concat(SB, "/rest/v1/contracts?id=eq.").concat(id), {
               method: 'PATCH',
               headers: HJ,
@@ -22754,39 +22764,39 @@ function ContractEditor(_ref237) {
                 last_action_note: null
               })
             });
-          case 88:
+          case 91:
             _r4 = _context104.sent;
             if (_r4.ok) {
-              _context104.next = 95;
+              _context104.next = 98;
               break;
             }
             _context104.t17 = Error;
-            _context104.next = 93;
+            _context104.next = 96;
             return conErr(_r4, 'Saved as a draft, but could not send it');
-          case 93:
+          case 96:
             _context104.t18 = _context104.sent;
             throw new _context104.t17(_context104.t18);
-          case 95:
-            notify(nextStatus === 'issued' ? "Signed and sent to ".concat(row.s.name, "; the ED has been asked to sign too") : nextStatus === 'awaiting_ed' ? 'Sent to the ED to sign' : 'Sent to the supervisor for approval');
-            _context104.next = 99;
-            break;
           case 98:
-            notify('Draft saved');
-          case 99:
-            onDone();
-            _context104.next = 105;
+            notify(nextStatus === 'issued' ? "Signed and sent to ".concat(row.s.name, "; the ED has been asked to sign too") : nextStatus === 'awaiting_ed' ? 'Sent to the ED to sign' : 'Sent to the supervisor for approval');
+            _context104.next = 102;
             break;
+          case 101:
+            notify('Draft saved');
           case 102:
-            _context104.prev = 102;
-            _context104.t19 = _context104["catch"](27);
-            notify(_context104.t19.message || 'Something went wrong', 'error');
+            onDone();
+            _context104.next = 108;
+            break;
           case 105:
+            _context104.prev = 105;
+            _context104.t19 = _context104["catch"](30);
+            notify(_context104.t19.message || 'Something went wrong', 'error');
+          case 108:
             setBusy(false);
-          case 106:
+          case 109:
           case "end":
             return _context104.stop();
         }
-      }, _callee103, null, [[27, 102]]);
+      }, _callee103, null, [[30, 105]]);
     }));
     return function save(_x96) {
       return _ref238.apply(this, arguments);
@@ -22993,7 +23003,9 @@ function ContractEditor(_ref237) {
     so: prevSo
   })), React.createElement("h3", {
     className: "font-bold text-sm mt-5 mb-2"
-  }, "Your own document (optional)"), React.createElement("div", {
+  }, f.contract_type === 'new_contract' ? React.createElement(React.Fragment, null, "The contract ", React.createElement("span", {
+    className: "text-red-600"
+  }, "(required)")) : 'Your own document (optional)'), React.createElement("div", {
     className: "border-2 border-dashed rounded-xl p-4 text-center cursor-pointer hover:border-green-400 ".concat(file ? 'border-green-400 bg-green-50' : 'border-gray-300'),
     onClick: function onClick() {
       return fileRef.current && fileRef.current.click();
