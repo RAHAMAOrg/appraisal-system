@@ -21731,13 +21731,13 @@ function conTemplate(f, name, app) {
   var close = "\n\nPlease read this letter carefully and sign it in the Staff Portal to confirm your acceptance.";
   switch (f.contract_type) {
     case 'renewal':
-      return "Dear ".concat(first, ",\n\nRENEWAL OF CONTRACT OF EMPLOYMENT\n\nFollowing the review of your performance").concat(per, ", ").concat(CON_ORG, " is pleased to renew your contract of employment as ").concat(role, " for the period ").concat(conDate(f.start_date), " to ").concat(conDate(f.end_date), ".\n\nAll other terms and conditions of your existing contract remain unchanged.\n\nThank you for your commitment to our work. We look forward to your continued contribution.").concat(close);
+      return "Dear ".concat(first, ",\n\nRENEWAL OF CONTRACT OF EMPLOYMENT\n\nFollowing the review of your performance").concat(per, ", ").concat(CON_ORG, " is pleased to renew your contract of employment as ").concat(role, " for the period ").concat(conDate(f.start_date), " to ").concat(conDate(f.end_date), ".").concat(f.remuneration ? "\n\nYour remuneration remains ".concat(f.remuneration, ".") : '', "\n\nAll other terms and conditions of your existing contract remain unchanged.\n\nThank you for your commitment to our work. We look forward to your continued contribution.").concat(close);
     case 'renewal_changes':
       return "Dear ".concat(first, ",\n\nRENEWAL OF CONTRACT OF EMPLOYMENT WITH CHANGES\n\nFollowing the review of your performance").concat(per, ", ").concat(CON_ORG, " is pleased to renew your contract of employment for the period ").concat(conDate(f.start_date), " to ").concat(conDate(f.end_date), ", with the following changes:\n\n\u2022 Position: ").concat(role).concat(f.remuneration ? "\n\u2022 Remuneration: ".concat(f.remuneration) : '', "\n\nAll other terms and conditions of your existing contract remain unchanged.").concat(close);
     case 'promotion':
       return "Dear ".concat(first, ",\n\nPROMOTION AND RENEWAL OF CONTRACT\n\nIn recognition of your strong performance").concat(per, ", ").concat(CON_ORG, " is pleased to promote you to the position of ").concat(role, ", effective ").concat(conDate(f.start_date), ". Your contract is renewed to ").concat(conDate(f.end_date), ".").concat(f.remuneration ? "\n\nYour remuneration in the new position will be ".concat(f.remuneration, ".") : '', "\n\nAll other terms and conditions of your existing contract remain unchanged. Congratulations, and thank you for your contribution to our work.").concat(close);
     case 'short_pip':
-      return "Dear ".concat(first, ",\n\nSHORT-TERM RENEWAL OF CONTRACT WITH A PERFORMANCE IMPROVEMENT PLAN\n\nYour recent performance appraisal").concat(per, " showed areas where your work did not meet the expected standard. ").concat(CON_ORG, " has decided to renew your contract as ").concat(role, " for a short term, from ").concat(conDate(f.start_date), " to ").concat(conDate(f.end_date), ", subject to the performance improvement plan below.\n\n").concat((f.improvement_plan || '[Set out what is expected, by when, and the support RAHAMA will give]').trim(), "\n\nYour progress will be reviewed on ").concat(conDate(f.review_date), ". Renewal beyond this term will depend on meeting the plan. Your line manager and HR will support you throughout.\n\nAll other terms and conditions of your existing contract remain unchanged.").concat(close);
+      return "Dear ".concat(first, ",\n\nSHORT-TERM RENEWAL OF CONTRACT WITH A PERFORMANCE IMPROVEMENT PLAN\n\nYour recent performance appraisal").concat(per, " showed areas where your work did not meet the expected standard. ").concat(CON_ORG, " has decided to renew your contract as ").concat(role, " for a short term, from ").concat(conDate(f.start_date), " to ").concat(conDate(f.end_date), ", subject to the performance improvement plan below.\n\n").concat((f.improvement_plan || '[Set out what is expected, by when, and the support RAHAMA will give]').trim(), "\n\nYour progress will be reviewed on ").concat(conDate(f.review_date), ". Renewal beyond this term will depend on meeting the plan. Your line manager and HR will support you throughout.").concat(f.remuneration ? "\n\nYour remuneration remains ".concat(f.remuneration, ".") : '', "\n\nAll other terms and conditions of your existing contract remain unchanged.").concat(close);
     case 'amendment':
       return "Dear ".concat(first, ",\n\nAMENDMENT TO YOUR CONTRACT OF EMPLOYMENT\n\nThis letter confirms the following change").concat(f.remuneration ? 's' : '', " to your contract of employment, effective ").concat(conDate(f.start_date), ":\n\n\u2022 Position: ").concat(role).concat(f.remuneration ? "\n\u2022 Remuneration: ".concat(f.remuneration) : '').concat(f.end_date ? "\n\u2022 Contract end date: ".concat(conDate(f.end_date)) : '', "\n\nAll other terms and conditions of your existing contract remain unchanged.").concat(close);
     case 'non_renewal':
@@ -22872,7 +22872,7 @@ function ContractEditor(_ref237) {
     onChange: function onChange(e) {
       return set('end_date', e.target.value);
     }
-  }))), ['renewal_changes', 'promotion', 'amendment'].includes(f.contract_type) && React.createElement("div", null, React.createElement("label", {
+  }))), f.contract_type !== 'non_renewal' && React.createElement("div", null, React.createElement("label", {
     className: "text-xs font-bold text-gray-500"
   }, "Remuneration (optional)"), React.createElement("input", {
     className: inp,
@@ -22881,7 +22881,9 @@ function ContractEditor(_ref237) {
       return set('remuneration', e.target.value);
     },
     placeholder: "e.g. \u20A6350,000 gross per month"
-  }), React.createElement("p", {
+  }), ['renewal', 'short_pip'].includes(f.contract_type) && React.createElement("p", {
+    className: "text-xs text-gray-500 mt-1"
+  }, "Fill this in if the salary on the current contract is out of date (for example it was raised by a later letter), so the letter states the salary that applies."), React.createElement("p", {
     className: "text-xs text-gray-400 mt-1"
   }, "Like the rest of the portal's records, this is readable by anyone with the portal's data key. For sensitive pay details you can put them only in an attached PDF.")), f.contract_type === 'short_pip' && React.createElement(React.Fragment, null, React.createElement("div", null, React.createElement("label", {
     className: "text-xs font-bold text-gray-500"
