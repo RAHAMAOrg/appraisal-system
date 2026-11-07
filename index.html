@@ -6191,9 +6191,20 @@ function VerifyModal(_ref68) {
     className: "flex-1 min-w-0"
   }, React.createElement("p", {
     className: "text-sm font-semibold text-gray-800 truncate"
-  }, act.mov_file_name || 'Attachment')), React.createElement("i", {
-    className: "fas fa-download text-green-600"
-  })) : React.createElement("div", {
+  }, act.mov_file_name || 'Attachment')), React.createElement("span", {
+    className: "text-xs font-semibold text-green-700"
+  }, React.createElement("i", {
+    className: "fas fa-eye mr-1"
+  }), "View"), React.createElement("span", {
+    onClick: function onClick(e) {
+      e.preventDefault();
+      e.stopPropagation();
+      downloadMov(act.mov_file_url, act.mov_file_name);
+    },
+    className: "text-xs font-semibold text-green-700 hover:underline"
+  }, React.createElement("i", {
+    className: "fas fa-download mr-1"
+  }), "Download")) : React.createElement("div", {
     className: "bg-amber-50 border border-amber-200 rounded-xl p-3"
   }, React.createElement("p", {
     className: "text-sm text-amber-700"
@@ -6574,61 +6585,248 @@ function _resolveMov() {
   }));
   return _resolveMov.apply(this, arguments);
 }
-function openMov(_x21, _x22) {
-  return _openMov.apply(this, arguments);
+function fileFromData(_x21) {
+  return _fileFromData.apply(this, arguments);
 }
-function _openMov() {
-  _openMov = _asyncToGenerator(_regeneratorRuntime().mark(function _callee114(u, name) {
-    var real, a;
+function _fileFromData() {
+  _fileFromData = _asyncToGenerator(_regeneratorRuntime().mark(function _callee114(src) {
+    var b;
     return _regeneratorRuntime().wrap(function _callee114$(_context115) {
       while (1) switch (_context115.prev = _context115.next) {
         case 0:
           _context115.next = 2;
-          return resolveMov(u);
+          return fetch(src);
         case 2:
-          real = _context115.sent;
-          if (real) {
-            _context115.next = 6;
-            break;
-          }
-          alert('Could not load the attachment. Please check your connection and try again.');
-          return _context115.abrupt("return");
+          _context115.next = 4;
+          return _context115.sent.blob();
+        case 4:
+          b = _context115.sent;
+          return _context115.abrupt("return", URL.createObjectURL(b));
         case 6:
-          a = document.createElement('a');
-          a.href = real;
-          a.download = name || 'attachment';
-          document.body.appendChild(a);
-          a.click();
-          document.body.removeChild(a);
-        case 12:
         case "end":
           return _context115.stop();
       }
     }, _callee114);
   }));
-  return _openMov.apply(this, arguments);
+  return _fileFromData.apply(this, arguments);
 }
-function downloadActivityReport(_x23) {
-  return _downloadActivityReport.apply(this, arguments);
+function viewAttachment(_x22, _x23, _x24) {
+  return _viewAttachment.apply(this, arguments);
 }
-function _downloadActivityReport() {
-  _downloadActivityReport = _asyncToGenerator(_regeneratorRuntime().mark(function _callee115(act) {
-    var real;
+function _viewAttachment() {
+  _viewAttachment = _asyncToGenerator(_regeneratorRuntime().mark(function _callee115(src, name, w) {
+    var url, viewable;
     return _regeneratorRuntime().wrap(function _callee115$(_context116) {
       while (1) switch (_context116.prev = _context116.next) {
         case 0:
-          _context116.next = 2;
+          if (src) {
+            _context116.next = 4;
+            break;
+          }
+          if (w) w.close();
+          alert('This attachment was not saved with the file. Ask the person to upload it again.');
+          return _context116.abrupt("return");
+        case 4:
+          if (!/^https?:\/\//i.test(src)) {
+            _context116.next = 7;
+            break;
+          }
+          if (w) w.location.href = src;else window.open(src, '_blank', 'noopener');
+          return _context116.abrupt("return");
+        case 7:
+          _context116.prev = 7;
+          _context116.next = 10;
+          return fileFromData(src);
+        case 10:
+          url = _context116.sent;
+          viewable = /^data:(image\/|application\/pdf|text\/plain)/i.test(src);
+          if (viewable) {
+            if (w) w.location.href = url;else window.open(url, '_blank');
+          } else {
+            if (w) w.close();
+            downloadAttachment(src, name);
+          }
+          _context116.next = 19;
+          break;
+        case 15:
+          _context116.prev = 15;
+          _context116.t0 = _context116["catch"](7);
+          if (w) w.close();
+          alert('Could not open the attachment.');
+        case 19:
+        case "end":
+          return _context116.stop();
+      }
+    }, _callee115, null, [[7, 15]]);
+  }));
+  return _viewAttachment.apply(this, arguments);
+}
+function downloadAttachment(_x25, _x26) {
+  return _downloadAttachment.apply(this, arguments);
+}
+function _downloadAttachment() {
+  _downloadAttachment = _asyncToGenerator(_regeneratorRuntime().mark(function _callee116(src, name) {
+    var url, a;
+    return _regeneratorRuntime().wrap(function _callee116$(_context117) {
+      while (1) switch (_context117.prev = _context117.next) {
+        case 0:
+          if (src) {
+            _context117.next = 3;
+            break;
+          }
+          alert('This attachment was not saved with the file. Ask the person to upload it again.');
+          return _context117.abrupt("return");
+        case 3:
+          if (!/^https?:\/\//i.test(src)) {
+            _context117.next = 6;
+            break;
+          }
+          window.open(src, '_blank', 'noopener');
+          return _context117.abrupt("return");
+        case 6:
+          _context117.prev = 6;
+          _context117.next = 9;
+          return fileFromData(src);
+        case 9:
+          url = _context117.sent;
+          a = document.createElement('a');
+          a.href = url;
+          a.download = name || 'attachment';
+          document.body.appendChild(a);
+          a.click();
+          document.body.removeChild(a);
+          setTimeout(function () {
+            return URL.revokeObjectURL(url);
+          }, 60000);
+          _context117.next = 22;
+          break;
+        case 19:
+          _context117.prev = 19;
+          _context117.t0 = _context117["catch"](6);
+          alert('Could not download the attachment.');
+        case 22:
+        case "end":
+          return _context117.stop();
+      }
+    }, _callee116, null, [[6, 19]]);
+  }));
+  return _downloadAttachment.apply(this, arguments);
+}
+function EvidenceActions(_ref71) {
+  var ev = _ref71.ev;
+  var view = function view(e) {
+    e.preventDefault();
+    var w = window.open('', '_blank');
+    viewAttachment(ev.file && ev.file.data, ev.file && ev.file.name, w);
+  };
+  var dl = function dl(e) {
+    e.preventDefault();
+    downloadAttachment(ev.file && ev.file.data, ev.file && ev.file.name);
+  };
+  return React.createElement("span", {
+    className: "flex items-center gap-3 flex-shrink-0"
+  }, ev.file && React.createElement(React.Fragment, null, React.createElement("a", {
+    href: "#",
+    onClick: view,
+    className: "text-blue-600 text-xs font-semibold hover:underline"
+  }, React.createElement("i", {
+    className: "fas fa-eye mr-1"
+  }), "View"), React.createElement("a", {
+    href: "#",
+    onClick: dl,
+    className: "text-blue-600 text-xs font-semibold hover:underline"
+  }, React.createElement("i", {
+    className: "fas fa-download mr-1"
+  }), "Download")), ev.link && React.createElement("a", {
+    href: /^https?:\/\//i.test(ev.link) ? ev.link : 'https://' + ev.link,
+    target: "_blank",
+    rel: "noreferrer",
+    className: "text-blue-600 text-xs font-semibold hover:underline"
+  }, React.createElement("i", {
+    className: "fas fa-link mr-1"
+  }), "Open link"));
+}
+function openMov(_x27, _x28) {
+  return _openMov.apply(this, arguments);
+}
+function _openMov() {
+  _openMov = _asyncToGenerator(_regeneratorRuntime().mark(function _callee117(u, name) {
+    var w, real;
+    return _regeneratorRuntime().wrap(function _callee117$(_context118) {
+      while (1) switch (_context118.prev = _context118.next) {
+        case 0:
+          w = window.open('', '_blank');
+          _context118.next = 3;
+          return resolveMov(u);
+        case 3:
+          real = _context118.sent;
+          if (real) {
+            _context118.next = 8;
+            break;
+          }
+          if (w) w.close();
+          alert('Could not load the attachment. Please check your connection and try again.');
+          return _context118.abrupt("return");
+        case 8:
+          viewAttachment(real, name, w);
+        case 9:
+        case "end":
+          return _context118.stop();
+      }
+    }, _callee117);
+  }));
+  return _openMov.apply(this, arguments);
+}
+function downloadMov(_x29, _x30) {
+  return _downloadMov.apply(this, arguments);
+}
+function _downloadMov() {
+  _downloadMov = _asyncToGenerator(_regeneratorRuntime().mark(function _callee118(u, name) {
+    var real;
+    return _regeneratorRuntime().wrap(function _callee118$(_context119) {
+      while (1) switch (_context119.prev = _context119.next) {
+        case 0:
+          _context119.next = 2;
+          return resolveMov(u);
+        case 2:
+          real = _context119.sent;
+          if (real) {
+            _context119.next = 6;
+            break;
+          }
+          alert('Could not load the attachment. Please check your connection and try again.');
+          return _context119.abrupt("return");
+        case 6:
+          downloadAttachment(real, name);
+        case 7:
+        case "end":
+          return _context119.stop();
+      }
+    }, _callee118);
+  }));
+  return _downloadMov.apply(this, arguments);
+}
+function downloadActivityReport(_x31) {
+  return _downloadActivityReport.apply(this, arguments);
+}
+function _downloadActivityReport() {
+  _downloadActivityReport = _asyncToGenerator(_regeneratorRuntime().mark(function _callee119(act) {
+    var real;
+    return _regeneratorRuntime().wrap(function _callee119$(_context120) {
+      while (1) switch (_context120.prev = _context120.next) {
+        case 0:
+          _context120.next = 2;
           return resolveMov(act.mov_file_url);
         case 2:
-          real = _context116.sent;
-          return _context116.abrupt("return", _downloadActivityReportNow(_objectSpread(_objectSpread({}, act), {}, {
+          real = _context120.sent;
+          return _context120.abrupt("return", _downloadActivityReportNow(_objectSpread(_objectSpread({}, act), {}, {
             mov_file_url: real
           })));
         case 4:
         case "end":
-          return _context116.stop();
+          return _context120.stop();
       }
-    }, _callee115);
+    }, _callee119);
   }));
   return _downloadActivityReport.apply(this, arguments);
 }
@@ -6659,11 +6857,11 @@ function _downloadActivityReportNow(act) {
   document.body.removeChild(a);
   URL.revokeObjectURL(u);
 }
-function ReportActivity(_ref71) {
-  var act = _ref71.act,
-    user = _ref71.user,
-    notify = _ref71.notify,
-    onDone = _ref71.onDone;
+function ReportActivity(_ref72) {
+  var act = _ref72.act,
+    user = _ref72.user,
+    notify = _ref72.notify,
+    onDone = _ref72.onDone;
   var routine = isRoutine(act);
   var _useState155 = useState(false),
     _useState156 = _slicedToArray(_useState155, 2),
@@ -6699,7 +6897,7 @@ function ReportActivity(_ref71) {
     });
   };
   var submit = function () {
-    var _ref72 = _asyncToGenerator(_regeneratorRuntime().mark(function _callee29() {
+    var _ref73 = _asyncToGenerator(_regeneratorRuntime().mark(function _callee29() {
       var movUrl, movName, compressed, _currentPeriod3, month, year, body, r, _body, _r2;
       return _regeneratorRuntime().wrap(function _callee29$(_context30) {
         while (1) switch (_context30.prev = _context30.next) {
@@ -6811,7 +7009,7 @@ function ReportActivity(_ref71) {
       }, _callee29, null, [[4, 35]]);
     }));
     return function submit() {
-      return _ref72.apply(this, arguments);
+      return _ref73.apply(this, arguments);
     };
   }();
   return React.createElement("div", {
@@ -6913,9 +7111,20 @@ function ReportActivity(_ref71) {
     className: "fas fa-file-circle-check text-green-600"
   }), React.createElement("span", {
     className: "text-sm font-semibold text-gray-800 flex-1 truncate"
-  }, act.mov_file_name || 'Attachment'), React.createElement("i", {
-    className: "fas fa-download text-green-600"
-  })), !readOnly && React.createElement(React.Fragment, null, React.createElement("div", {
+  }, act.mov_file_name || 'Attachment'), React.createElement("span", {
+    className: "text-xs font-semibold text-green-700"
+  }, React.createElement("i", {
+    className: "fas fa-eye mr-1"
+  }), "View"), React.createElement("span", {
+    onClick: function onClick(e) {
+      e.preventDefault();
+      e.stopPropagation();
+      downloadMov(act.mov_file_url, act.mov_file_name);
+    },
+    className: "text-xs font-semibold text-green-700 hover:underline"
+  }, React.createElement("i", {
+    className: "fas fa-download mr-1"
+  }), "Download")), !readOnly && React.createElement(React.Fragment, null, React.createElement("div", {
     onClick: function onClick() {
       return fileRef.current && fileRef.current.click();
     },
@@ -6973,10 +7182,10 @@ function ReportActivity(_ref71) {
     className: "fas fa-spinner fa-spin mr-2"
   }), "Submitting\u2026") : 'Submit to M&E'))));
 }
-function Dashboard(_ref73) {
-  var user = _ref73.user,
-    onLogout = _ref73.onLogout,
-    notify = _ref73.notify;
+function Dashboard(_ref74) {
+  var user = _ref74.user,
+    onLogout = _ref74.onLogout,
+    notify = _ref74.notify;
   var _useState165 = useState('list'),
     _useState166 = _slicedToArray(_useState165, 2),
     view = _useState166[0],
@@ -7504,10 +7713,10 @@ function Dashboard(_ref73) {
     notify: notify
   })));
 }
-function Assessment(_ref74) {
-  var user = _ref74.user,
-    notify = _ref74.notify,
-    onDone = _ref74.onDone;
+function Assessment(_ref75) {
+  var user = _ref75.user,
+    notify = _ref75.notify,
+    onDone = _ref75.onDone;
   var _useState183 = useState({}),
     _useState184 = _slicedToArray(_useState183, 2),
     rate = _useState184[0],
@@ -7593,7 +7802,7 @@ function Assessment(_ref74) {
     });
   };
   var addEv = function () {
-    var _ref75 = _asyncToGenerator(_regeneratorRuntime().mark(function _callee30() {
+    var _ref76 = _asyncToGenerator(_regeneratorRuntime().mark(function _callee30() {
       var fileData;
       return _regeneratorRuntime().wrap(function _callee30$(_context31) {
         while (1) switch (_context31.prev = _context31.next) {
@@ -7660,11 +7869,11 @@ function Assessment(_ref74) {
       }, _callee30, null, [[4, 26]]);
     }));
     return function addEv() {
-      return _ref75.apply(this, arguments);
+      return _ref76.apply(this, arguments);
     };
   }();
   var submit = function () {
-    var _ref76 = _asyncToGenerator(_regeneratorRuntime().mark(function _callee31() {
+    var _ref77 = _asyncToGenerator(_regeneratorRuntime().mark(function _callee31() {
       var payload, r;
       return _regeneratorRuntime().wrap(function _callee31$(_context32) {
         while (1) switch (_context32.prev = _context32.next) {
@@ -7734,7 +7943,7 @@ function Assessment(_ref74) {
       }, _callee31, null, [[13, 22]]);
     }));
     return function submit() {
-      return _ref76.apply(this, arguments);
+      return _ref77.apply(this, arguments);
     };
   }();
   if (checkingDeadline) return React.createElement("div", {
@@ -7916,9 +8125,13 @@ function Assessment(_ref74) {
     }), ev.file.name, " (", (ev.file.size / 1024).toFixed(0), "KB)"), ev.link && React.createElement("span", {
       className: "text-xs text-blue-600 truncate"
     }, ev.link))), ev.file && ev.file.data && React.createElement("a", {
-      href: ev.file.data,
-      download: ev.file.name,
-      className: "text-blue-500 hover:text-blue-700 flex-shrink-0"
+      href: "#",
+      onClick: function onClick(e) {
+        e.preventDefault();
+        downloadAttachment(ev.file.data, ev.file.name);
+      },
+      className: "text-blue-500 hover:text-blue-700 flex-shrink-0",
+      title: "Download"
     }, React.createElement("i", {
       className: "fas fa-download"
     })), React.createElement("button", {
@@ -8031,11 +8244,11 @@ function Assessment(_ref74) {
     className: "flex-1 btn-green text-white py-4 rounded-xl font-bold disabled:opacity-50"
   }, busy ? 'Submitting...' : progress < 100 ? "Rate All (".concat(rated, "/").concat(comps.length, ")") : !allComm ? 'Add Justifications' : !overall.trim() ? 'Add Reflection' : 'Submit Assessment'))));
 }
-function EmpReview(_ref77) {
-  var appraisal = _ref77.appraisal,
-    user = _ref77.user,
-    notify = _ref77.notify,
-    onDone = _ref77.onDone;
+function EmpReview(_ref78) {
+  var appraisal = _ref78.appraisal,
+    user = _ref78.user,
+    notify = _ref78.notify,
+    onDone = _ref78.onDone;
   var _useState205 = useState(appraisal.employee_review_status === 'pending' ? '' : appraisal.employee_review_status || ''),
     _useState206 = _slicedToArray(_useState205, 2),
     response = _useState206[0],
@@ -8096,7 +8309,7 @@ function EmpReview(_ref77) {
     });
   };
   var addEv = function () {
-    var _ref78 = _asyncToGenerator(_regeneratorRuntime().mark(function _callee32() {
+    var _ref79 = _asyncToGenerator(_regeneratorRuntime().mark(function _callee32() {
       var fileData;
       return _regeneratorRuntime().wrap(function _callee32$(_context33) {
         while (1) switch (_context33.prev = _context33.next) {
@@ -8163,11 +8376,11 @@ function EmpReview(_ref77) {
       }, _callee32, null, [[4, 26]]);
     }));
     return function addEv() {
-      return _ref78.apply(this, arguments);
+      return _ref79.apply(this, arguments);
     };
   }();
   var submit = function () {
-    var _ref79 = _asyncToGenerator(_regeneratorRuntime().mark(function _callee33() {
+    var _ref80 = _asyncToGenerator(_regeneratorRuntime().mark(function _callee33() {
       var body, r;
       return _regeneratorRuntime().wrap(function _callee33$(_context34) {
         while (1) switch (_context34.prev = _context34.next) {
@@ -8225,7 +8438,7 @@ function EmpReview(_ref77) {
       }, _callee33, null, [[7, 16]]);
     }));
     return function submit() {
-      return _ref79.apply(this, arguments);
+      return _ref80.apply(this, arguments);
     };
   }();
   return React.createElement("div", {
@@ -8432,9 +8645,13 @@ function EmpReview(_ref77) {
     }), ev.file.name, " (", (ev.file.size / 1024).toFixed(0), "KB)"), ev.link && React.createElement("span", {
       className: "text-xs text-blue-600 truncate"
     }, ev.link))), ev.file && ev.file.data && React.createElement("a", {
-      href: ev.file.data,
-      download: ev.file.name,
-      className: "text-blue-500 hover:text-blue-700 flex-shrink-0"
+      href: "#",
+      onClick: function onClick(e) {
+        e.preventDefault();
+        downloadAttachment(ev.file.data, ev.file.name);
+      },
+      className: "text-blue-500 hover:text-blue-700 flex-shrink-0",
+      title: "Download"
     }, React.createElement("i", {
       className: "fas fa-download"
     })), React.createElement("button", {
@@ -8649,18 +8866,9 @@ function EmpReview(_ref77) {
       className: "text-sm font-semibold text-gray-800"
     }, ev.description), ev.file && React.createElement("span", {
       className: "text-xs text-gray-500 ml-2"
-    }, "(", ev.file.name, ")")), ev.file && ev.file.data && React.createElement("a", {
-      href: ev.file.data,
-      download: ev.file.name,
-      className: "text-blue-600 text-xs font-semibold hover:underline flex-shrink-0"
-    }, React.createElement("i", {
-      className: "fas fa-download mr-1"
-    }), "Download"), ev.link && React.createElement("a", {
-      href: ev.link,
-      target: "_blank",
-      rel: "noreferrer",
-      className: "text-blue-600 text-xs hover:underline flex-shrink-0"
-    }, ev.link));
+    }, "(", ev.file.name, ")")), React.createElement(EvidenceActions, {
+      ev: ev
+    }));
   })), React.createElement("button", {
     onClick: onDone,
     className: "mt-4 btn-green text-white px-6 py-3 rounded-xl font-semibold"
@@ -8691,59 +8899,59 @@ function checkOfficeNetwork() {
   return _checkOfficeNetwork.apply(this, arguments);
 }
 function _checkOfficeNetwork() {
-  _checkOfficeNetwork = _asyncToGenerator(_regeneratorRuntime().mark(function _callee116() {
+  _checkOfficeNetwork = _asyncToGenerator(_regeneratorRuntime().mark(function _callee120() {
     var r, d, city, region;
-    return _regeneratorRuntime().wrap(function _callee116$(_context117) {
-      while (1) switch (_context117.prev = _context117.next) {
+    return _regeneratorRuntime().wrap(function _callee120$(_context121) {
+      while (1) switch (_context121.prev = _context121.next) {
         case 0:
-          _context117.prev = 0;
-          _context117.next = 3;
+          _context121.prev = 0;
+          _context121.next = 3;
           return fetch('https://ipapi.co/json/', {
             signal: AbortSignal.timeout(5000)
           });
         case 3:
-          r = _context117.sent;
+          r = _context121.sent;
           if (r.ok) {
-            _context117.next = 6;
+            _context121.next = 6;
             break;
           }
-          return _context117.abrupt("return", {
+          return _context121.abrupt("return", {
             ok: false,
             reason: 'Could not verify network'
           });
         case 6:
-          _context117.next = 8;
+          _context121.next = 8;
           return r.json();
         case 8:
-          d = _context117.sent;
+          d = _context121.sent;
           city = (d.city || '').toLowerCase(), region = (d.region || '').toLowerCase();
           if (!(city.includes('kano') || city.includes('katsina') || region.includes('kano') || region.includes('katsina'))) {
-            _context117.next = 12;
+            _context121.next = 12;
             break;
           }
-          return _context117.abrupt("return", {
+          return _context121.abrupt("return", {
             ok: true,
             method: 'network',
             ip: d.ip,
             city: d.city || d.region
           });
         case 12:
-          return _context117.abrupt("return", {
+          return _context121.abrupt("return", {
             ok: false,
             reason: "Network: ".concat(d.city || d.region || 'Unknown', " \u2014 not office area")
           });
         case 15:
-          _context117.prev = 15;
-          _context117.t0 = _context117["catch"](0);
-          return _context117.abrupt("return", {
+          _context121.prev = 15;
+          _context121.t0 = _context121["catch"](0);
+          return _context121.abrupt("return", {
             ok: false,
             reason: 'Network check failed'
           });
         case 18:
         case "end":
-          return _context117.stop();
+          return _context121.stop();
       }
-    }, _callee116, null, [[0, 15]]);
+    }, _callee120, null, [[0, 15]]);
   }));
   return _checkOfficeNetwork.apply(this, arguments);
 }
@@ -8806,10 +9014,10 @@ function checkGPS() {
     });
   });
 }
-function Attendance(_ref80) {
-  var user = _ref80.user,
-    notify = _ref80.notify,
-    onBack = _ref80.onBack;
+function Attendance(_ref81) {
+  var user = _ref81.user,
+    notify = _ref81.notify,
+    onBack = _ref81.onBack;
   var _useState227 = useState(null),
     _useState228 = _slicedToArray(_useState227, 2),
     today = _useState228[0],
@@ -8840,7 +9048,7 @@ function Attendance(_ref80) {
     setLocStatus = _useState240[1];
   var todayStr = new Date().toISOString().slice(0, 10);
   var load = function () {
-    var _ref81 = _asyncToGenerator(_regeneratorRuntime().mark(function _callee34() {
+    var _ref82 = _asyncToGenerator(_regeneratorRuntime().mark(function _callee34() {
       var tr, td, hr, hd;
       return _regeneratorRuntime().wrap(function _callee34$(_context35) {
         while (1) switch (_context35.prev = _context35.next) {
@@ -8892,14 +9100,14 @@ function Attendance(_ref80) {
       }, _callee34, null, [[1, 21]]);
     }));
     return function load() {
-      return _ref81.apply(this, arguments);
+      return _ref82.apply(this, arguments);
     };
   }();
   useEffect(function () {
     load();
   }, [month]);
   var verifyLocation = function () {
-    var _ref82 = _asyncToGenerator(_regeneratorRuntime().mark(function _callee35() {
+    var _ref83 = _asyncToGenerator(_regeneratorRuntime().mark(function _callee35() {
       var gps, net;
       return _regeneratorRuntime().wrap(function _callee35$(_context36) {
         while (1) switch (_context36.prev = _context36.next) {
@@ -8950,11 +9158,11 @@ function Attendance(_ref80) {
       }, _callee35);
     }));
     return function verifyLocation() {
-      return _ref82.apply(this, arguments);
+      return _ref83.apply(this, arguments);
     };
   }();
   var clockIn = function () {
-    var _ref83 = _asyncToGenerator(_regeneratorRuntime().mark(function _callee36() {
+    var _ref84 = _asyncToGenerator(_regeneratorRuntime().mark(function _callee36() {
       var allowed, now, hour, status, locInfo, r, t;
       return _regeneratorRuntime().wrap(function _callee36$(_context37) {
         while (1) switch (_context37.prev = _context37.next) {
@@ -9024,11 +9232,11 @@ function Attendance(_ref80) {
       }, _callee36, null, [[8, 28]]);
     }));
     return function clockIn() {
-      return _ref83.apply(this, arguments);
+      return _ref84.apply(this, arguments);
     };
   }();
   var clockOut = function () {
-    var _ref84 = _asyncToGenerator(_regeneratorRuntime().mark(function _callee37() {
+    var _ref85 = _asyncToGenerator(_regeneratorRuntime().mark(function _callee37() {
       var r;
       return _regeneratorRuntime().wrap(function _callee37$(_context38) {
         while (1) switch (_context38.prev = _context38.next) {
@@ -9073,7 +9281,7 @@ function Attendance(_ref80) {
       }, _callee37, null, [[4, 11]]);
     }));
     return function clockOut() {
-      return _ref84.apply(this, arguments);
+      return _ref85.apply(this, arguments);
     };
   }();
   var fmt = function fmt(ts) {
@@ -9335,9 +9543,9 @@ function Attendance(_ref80) {
     }), dur(h.clock_in, h.clock_out)))));
   }))))));
 }
-function AttendanceAdmin(_ref85) {
-  var notify = _ref85.notify,
-    onBack = _ref85.onBack;
+function AttendanceAdmin(_ref86) {
+  var notify = _ref86.notify,
+    onBack = _ref86.onBack;
   var _useState241 = useState([]),
     _useState242 = _slicedToArray(_useState241, 2),
     records = _useState242[0],
@@ -9363,7 +9571,7 @@ function AttendanceAdmin(_ref85) {
     month = _useState252[0],
     setMonth = _useState252[1];
   var load = function () {
-    var _ref86 = _asyncToGenerator(_regeneratorRuntime().mark(function _callee38() {
+    var _ref87 = _asyncToGenerator(_regeneratorRuntime().mark(function _callee38() {
       var url, r, data, ids, ur, users, n, ar, allEmp;
       return _regeneratorRuntime().wrap(function _callee38$(_context39) {
         while (1) switch (_context39.prev = _context39.next) {
@@ -9453,7 +9661,7 @@ function AttendanceAdmin(_ref85) {
       }, _callee38, null, [[1, 35]]);
     }));
     return function load() {
-      return _ref86.apply(this, arguments);
+      return _ref87.apply(this, arguments);
     };
   }();
   useEffect(function () {
@@ -9558,10 +9766,10 @@ function AttendanceAdmin(_ref85) {
       className: "text-left py-2 px-2 font-bold text-gray-500 uppercase text-xs"
     }, "Score Deduction"), React.createElement("th", {
       className: "text-left py-2 px-2 font-bold text-gray-500 uppercase text-xs"
-    }, "Impact"))), React.createElement("tbody", null, Object.entries(byEmp).map(function (_ref87) {
-      var _ref88 = _slicedToArray(_ref87, 2),
-        id = _ref88[0],
-        s = _ref88[1];
+    }, "Impact"))), React.createElement("tbody", null, Object.entries(byEmp).map(function (_ref88) {
+      var _ref89 = _slicedToArray(_ref88, 2),
+        id = _ref89[0],
+        s = _ref89[1];
       var ded = calcDeduction(s.late);
       return React.createElement("tr", {
         key: id,
@@ -9733,11 +9941,11 @@ var localInput = function localInput(d) {
   var x = new Date(d.getTime() - d.getTimezoneOffset() * 60000);
   return x.toISOString().slice(0, 16);
 };
-function compressPhoto(_x24) {
+function compressPhoto(_x32) {
   return _compressPhoto.apply(this, arguments);
 }
 function _compressPhoto() {
-  _compressPhoto = _asyncToGenerator(_regeneratorRuntime().mark(function _callee117(file) {
+  _compressPhoto = _asyncToGenerator(_regeneratorRuntime().mark(function _callee121(file) {
     var maxDim,
       quality,
       url,
@@ -9745,15 +9953,15 @@ function _compressPhoto() {
       k,
       c,
       blob,
-      _args118 = arguments;
-    return _regeneratorRuntime().wrap(function _callee117$(_context118) {
-      while (1) switch (_context118.prev = _context118.next) {
+      _args122 = arguments;
+    return _regeneratorRuntime().wrap(function _callee121$(_context122) {
+      while (1) switch (_context122.prev = _context122.next) {
         case 0:
-          maxDim = _args118.length > 1 && _args118[1] !== undefined ? _args118[1] : 1600;
-          quality = _args118.length > 2 && _args118[2] !== undefined ? _args118[2] : 0.75;
-          _context118.prev = 2;
+          maxDim = _args122.length > 1 && _args122[1] !== undefined ? _args122[1] : 1600;
+          quality = _args122.length > 2 && _args122[2] !== undefined ? _args122[2] : 0.75;
+          _context122.prev = 2;
           url = URL.createObjectURL(file);
-          _context118.next = 6;
+          _context122.next = 6;
           return new Promise(function (res, rej) {
             var i = new Image();
             i.onload = function () {
@@ -9763,114 +9971,114 @@ function _compressPhoto() {
             i.src = url;
           });
         case 6:
-          img = _context118.sent;
+          img = _context122.sent;
           k = Math.min(1, maxDim / Math.max(img.width, img.height));
           c = document.createElement('canvas');
           c.width = Math.round(img.width * k);
           c.height = Math.round(img.height * k);
           c.getContext('2d').drawImage(img, 0, 0, c.width, c.height);
           URL.revokeObjectURL(url);
-          _context118.next = 15;
+          _context122.next = 15;
           return new Promise(function (res) {
             return c.toBlob(res, 'image/jpeg', quality);
           });
         case 15:
-          blob = _context118.sent;
-          return _context118.abrupt("return", blob || file);
+          blob = _context122.sent;
+          return _context122.abrupt("return", blob || file);
         case 19:
-          _context118.prev = 19;
-          _context118.t0 = _context118["catch"](2);
-          return _context118.abrupt("return", file);
+          _context122.prev = 19;
+          _context122.t0 = _context122["catch"](2);
+          return _context122.abrupt("return", file);
         case 22:
         case "end":
-          return _context118.stop();
+          return _context122.stop();
       }
-    }, _callee117, null, [[2, 19]]);
+    }, _callee121, null, [[2, 19]]);
   }));
   return _compressPhoto.apply(this, arguments);
 }
-function uploadTripPhoto(_x25, _x26) {
+function uploadTripPhoto(_x33, _x34) {
   return _uploadTripPhoto.apply(this, arguments);
 }
 function _uploadTripPhoto() {
-  _uploadTripPhoto = _asyncToGenerator(_regeneratorRuntime().mark(function _callee118(blob, kind) {
+  _uploadTripPhoto = _asyncToGenerator(_regeneratorRuntime().mark(function _callee122(blob, kind) {
     var _yield$supabaseClient13, data, au, path, _yield$supabaseClient14, error;
-    return _regeneratorRuntime().wrap(function _callee118$(_context119) {
-      while (1) switch (_context119.prev = _context119.next) {
+    return _regeneratorRuntime().wrap(function _callee122$(_context123) {
+      while (1) switch (_context123.prev = _context123.next) {
         case 0:
           if (supabaseClient) {
-            _context119.next = 2;
+            _context123.next = 2;
             break;
           }
           throw new Error('Photo upload is not available on this page');
         case 2:
-          _context119.next = 4;
+          _context123.next = 4;
           return supabaseClient.auth.getUser();
         case 4:
-          _yield$supabaseClient13 = _context119.sent;
+          _yield$supabaseClient13 = _context123.sent;
           data = _yield$supabaseClient13.data;
           au = data && data.user;
           if (au) {
-            _context119.next = 9;
+            _context123.next = 9;
             break;
           }
           throw new Error('Please log out and log in again, then retry the photo');
         case 9:
           path = "".concat(au.id, "/").concat(Date.now(), "-").concat(kind, "-").concat(Math.random().toString(36).slice(2, 8), ".jpg");
-          _context119.next = 12;
+          _context123.next = 12;
           return supabaseClient.storage.from(TRIP_EVIDENCE_BUCKET).upload(path, blob, {
             contentType: 'image/jpeg',
             upsert: false
           });
         case 12:
-          _yield$supabaseClient14 = _context119.sent;
+          _yield$supabaseClient14 = _context123.sent;
           error = _yield$supabaseClient14.error;
           if (!error) {
-            _context119.next = 16;
+            _context123.next = 16;
             break;
           }
           throw new Error('Photo upload failed: ' + (error.message || 'check your connection'));
         case 16:
-          return _context119.abrupt("return", path);
+          return _context123.abrupt("return", path);
         case 17:
         case "end":
-          return _context119.stop();
+          return _context123.stop();
       }
-    }, _callee118);
+    }, _callee122);
   }));
   return _uploadTripPhoto.apply(this, arguments);
 }
-function tripPhotoUrl(_x27) {
+function tripPhotoUrl(_x35) {
   return _tripPhotoUrl.apply(this, arguments);
 }
 function _tripPhotoUrl() {
-  _tripPhotoUrl = _asyncToGenerator(_regeneratorRuntime().mark(function _callee119(path) {
+  _tripPhotoUrl = _asyncToGenerator(_regeneratorRuntime().mark(function _callee123(path) {
     var _yield$supabaseClient15, data;
-    return _regeneratorRuntime().wrap(function _callee119$(_context120) {
-      while (1) switch (_context120.prev = _context120.next) {
+    return _regeneratorRuntime().wrap(function _callee123$(_context124) {
+      while (1) switch (_context124.prev = _context124.next) {
         case 0:
-          _context120.prev = 0;
+          _context124.prev = 0;
           if (supabaseClient) {
-            _context120.next = 3;
+            _context124.next = 3;
             break;
           }
-          return _context120.abrupt("return", null);
+          return _context124.abrupt("return", null);
         case 3:
-          _context120.next = 5;
+          _context124.next = 5;
           return supabaseClient.storage.from(TRIP_EVIDENCE_BUCKET).createSignedUrl(path, 900);
         case 5:
-          _yield$supabaseClient15 = _context120.sent;
+          _yield$supabaseClient15 = _context124.sent;
           data = _yield$supabaseClient15.data;
-          return _context120.abrupt("return", data ? data.signedUrl : null);
+          return _context124.abrupt("return", data ? data.signedUrl : null);
         case 10:
-          _context120.prev = 10;
-          _context120.t0 = _context120["catch"](0);
-          return _context120.abrupt("return", null);
+          _context124.prev = 10;
+          _context124.t0 = _context124["catch"](0);
+          return _context124.abrupt("return", null);
         case 13:
         case "end":
-          return _context120.stop();
+          return _context124.stop();
       }
-    }, _callee119, null, [[0, 10]]);
+    }, _callee123, null, [[0, 10]]);
   }));
   return _tripPhotoUrl.apply(this, arguments);
 }
@@ -9884,64 +10092,64 @@ function matchRiskArea(dest, areas) {
   });
   return best;
 }
-function saveTrip(_x28, _x29, _x30, _x31, _x32) {
+function saveTrip(_x36, _x37, _x38, _x39, _x40) {
   return _saveTrip.apply(this, arguments);
 }
 function _saveTrip() {
-  _saveTrip = _asyncToGenerator(_regeneratorRuntime().mark(function _callee120(method, url, base, extra, headers) {
+  _saveTrip = _asyncToGenerator(_regeneratorRuntime().mark(function _callee124(method, url, base, extra, headers) {
     var r, t;
-    return _regeneratorRuntime().wrap(function _callee120$(_context121) {
-      while (1) switch (_context121.prev = _context121.next) {
+    return _regeneratorRuntime().wrap(function _callee124$(_context125) {
+      while (1) switch (_context125.prev = _context125.next) {
         case 0:
-          _context121.next = 2;
+          _context125.next = 2;
           return fetch(url, {
             method: method,
             headers: headers,
             body: JSON.stringify(_objectSpread(_objectSpread({}, base), extra))
           });
         case 2:
-          r = _context121.sent;
+          r = _context125.sent;
           if (!(!r.ok && r.status === 400)) {
-            _context121.next = 11;
+            _context125.next = 11;
             break;
           }
-          _context121.next = 6;
+          _context125.next = 6;
           return r.clone().text()["catch"](function () {
             return '';
           });
         case 6:
-          t = _context121.sent;
+          t = _context125.sent;
           if (!/column|schema cache/i.test(t)) {
-            _context121.next = 11;
+            _context125.next = 11;
             break;
           }
-          _context121.next = 10;
+          _context125.next = 10;
           return fetch(url, {
             method: method,
             headers: headers,
             body: JSON.stringify(base)
           });
         case 10:
-          r = _context121.sent;
+          r = _context125.sent;
         case 11:
-          return _context121.abrupt("return", r);
+          return _context125.abrupt("return", r);
         case 12:
         case "end":
-          return _context121.stop();
+          return _context125.stop();
       }
-    }, _callee120);
+    }, _callee124);
   }));
   return _saveTrip.apply(this, arguments);
 }
-function PhotoField(_ref89) {
-  var label = _ref89.label,
-    hint = _ref89.hint,
-    value = _ref89.value,
-    onChange = _ref89.onChange,
-    required = _ref89.required;
+function PhotoField(_ref90) {
+  var label = _ref90.label,
+    hint = _ref90.hint,
+    value = _ref90.value,
+    onChange = _ref90.onChange,
+    required = _ref90.required;
   var ref = useRef(null);
   var pick = function () {
-    var _ref90 = _asyncToGenerator(_regeneratorRuntime().mark(function _callee39(e) {
+    var _ref91 = _asyncToGenerator(_regeneratorRuntime().mark(function _callee39(e) {
       var f, blob;
       return _regeneratorRuntime().wrap(function _callee39$(_context40) {
         while (1) switch (_context40.prev = _context40.next) {
@@ -9968,8 +10176,8 @@ function PhotoField(_ref89) {
         }
       }, _callee39);
     }));
-    return function pick(_x33) {
-      return _ref90.apply(this, arguments);
+    return function pick(_x41) {
+      return _ref91.apply(this, arguments);
     };
   }();
   return React.createElement("div", {
@@ -10013,13 +10221,13 @@ function PhotoField(_ref89) {
     onChange: pick
   }));
 }
-function TransportEvidence(_ref91) {
-  var plate = _ref91.plate,
-    setPlate = _ref91.setPlate,
-    manifest = _ref91.manifest,
-    setManifest = _ref91.setManifest,
-    plateNo = _ref91.plateNo,
-    setPlateNo = _ref91.setPlateNo;
+function TransportEvidence(_ref92) {
+  var plate = _ref92.plate,
+    setPlate = _ref92.setPlate,
+    manifest = _ref92.manifest,
+    setManifest = _ref92.setManifest,
+    plateNo = _ref92.plateNo,
+    setPlateNo = _ref92.setPlateNo;
   return React.createElement("div", {
     className: "bg-amber-50 border-2 border-amber-200 rounded-xl p-4 space-y-3"
   }, React.createElement("p", {
@@ -10048,34 +10256,34 @@ function TransportEvidence(_ref91) {
     required: true
   }));
 }
-function saveTransportPhotos(_x34, _x35, _x36, _x37, _x38) {
+function saveTransportPhotos(_x42, _x43, _x44, _x45, _x46) {
   return _saveTransportPhotos.apply(this, arguments);
 }
 function _saveTransportPhotos() {
-  _saveTransportPhotos = _asyncToGenerator(_regeneratorRuntime().mark(function _callee121(tripId, employeeId, plate, manifest, plateNo) {
+  _saveTransportPhotos = _asyncToGenerator(_regeneratorRuntime().mark(function _callee125(tripId, employeeId, plate, manifest, plateNo) {
     var items, rows, _iterator6, _step6, _step6$value, kind, v, path, r;
-    return _regeneratorRuntime().wrap(function _callee121$(_context122) {
-      while (1) switch (_context122.prev = _context122.next) {
+    return _regeneratorRuntime().wrap(function _callee125$(_context126) {
+      while (1) switch (_context126.prev = _context126.next) {
         case 0:
-          items = [['plate', plate], ['manifest', manifest]].filter(function (_ref261) {
-            var _ref262 = _slicedToArray(_ref261, 2),
-              v = _ref262[1];
+          items = [['plate', plate], ['manifest', manifest]].filter(function (_ref262) {
+            var _ref263 = _slicedToArray(_ref262, 2),
+              v = _ref263[1];
             return v;
           });
           rows = [];
           _iterator6 = _createForOfIteratorHelper(items);
-          _context122.prev = 3;
+          _context126.prev = 3;
           _iterator6.s();
         case 5:
           if ((_step6 = _iterator6.n()).done) {
-            _context122.next = 13;
+            _context126.next = 13;
             break;
           }
           _step6$value = _slicedToArray(_step6.value, 2), kind = _step6$value[0], v = _step6$value[1];
-          _context122.next = 9;
+          _context126.next = 9;
           return uploadTripPhoto(v.blob, kind);
         case 9:
-          path = _context122.sent;
+          path = _context126.sent;
           rows.push({
             trip_id: String(tripId),
             employee_id: employeeId,
@@ -10084,49 +10292,49 @@ function _saveTransportPhotos() {
             plate_number: plateNo || null
           });
         case 11:
-          _context122.next = 5;
+          _context126.next = 5;
           break;
         case 13:
-          _context122.next = 18;
+          _context126.next = 18;
           break;
         case 15:
-          _context122.prev = 15;
-          _context122.t0 = _context122["catch"](3);
-          _iterator6.e(_context122.t0);
+          _context126.prev = 15;
+          _context126.t0 = _context126["catch"](3);
+          _iterator6.e(_context126.t0);
         case 18:
-          _context122.prev = 18;
+          _context126.prev = 18;
           _iterator6.f();
-          return _context122.finish(18);
+          return _context126.finish(18);
         case 21:
           if (!rows.length) {
-            _context122.next = 27;
+            _context126.next = 27;
             break;
           }
-          _context122.next = 24;
+          _context126.next = 24;
           return fetch("".concat(SB, "/rest/v1/trip_attachments"), {
             method: 'POST',
             headers: HJ,
             body: JSON.stringify(rows)
           });
         case 24:
-          r = _context122.sent;
+          r = _context126.sent;
           if (r.ok) {
-            _context122.next = 27;
+            _context126.next = 27;
             break;
           }
           throw new Error('Photos uploaded but could not be linked to the trip');
         case 27:
         case "end":
-          return _context122.stop();
+          return _context126.stop();
       }
-    }, _callee121, null, [[3, 15, 18, 21]]);
+    }, _callee125, null, [[3, 15, 18, 21]]);
   }));
   return _saveTransportPhotos.apply(this, arguments);
 }
-function FieldTrip(_ref92) {
-  var user = _ref92.user,
-    notify = _ref92.notify,
-    onBack = _ref92.onBack;
+function FieldTrip(_ref93) {
+  var user = _ref93.user,
+    notify = _ref93.notify,
+    onBack = _ref93.onBack;
   var _useState253 = useState(null),
     _useState254 = _slicedToArray(_useState253, 2),
     active = _useState254[0],
@@ -10294,7 +10502,7 @@ function FieldTrip(_ref92) {
   var markerRef = useRef(null);
   var polylineRef = useRef(null);
   var load = function () {
-    var _ref94 = _asyncToGenerator(_regeneratorRuntime().mark(function _callee41() {
+    var _ref95 = _asyncToGenerator(_regeneratorRuntime().mark(function _callee41() {
       var ar, ad, cur, pr, pd, hr, hd;
       return _regeneratorRuntime().wrap(function _callee41$(_context42) {
         while (1) switch (_context42.prev = _context42.next) {
@@ -10365,7 +10573,7 @@ function FieldTrip(_ref92) {
       }, _callee41, null, [[1, 31]]);
     }));
     return function load() {
-      return _ref94.apply(this, arguments);
+      return _ref95.apply(this, arguments);
     };
   }();
   useEffect(function () {
@@ -10381,7 +10589,7 @@ function FieldTrip(_ref92) {
     setReplies = _useState302[1];
   var seenRef = useRef(new Set());
   var loadMsgs = function () {
-    var _ref95 = _asyncToGenerator(_regeneratorRuntime().mark(function _callee42(tripId) {
+    var _ref96 = _asyncToGenerator(_regeneratorRuntime().mark(function _callee42(tripId) {
       var r, d, arr, fresh;
       return _regeneratorRuntime().wrap(function _callee42$(_context43) {
         while (1) switch (_context43.prev = _context43.next) {
@@ -10440,8 +10648,8 @@ function FieldTrip(_ref92) {
         }
       }, _callee42, null, [[0, 18]]);
     }));
-    return function loadMsgs(_x39) {
-      return _ref95.apply(this, arguments);
+    return function loadMsgs(_x47) {
+      return _ref96.apply(this, arguments);
     };
   }();
   useEffect(function () {
@@ -10458,7 +10666,7 @@ function FieldTrip(_ref92) {
     };
   }, [active && active.id]);
   var ackMsg = function () {
-    var _ref96 = _asyncToGenerator(_regeneratorRuntime().mark(function _callee43(m) {
+    var _ref97 = _asyncToGenerator(_regeneratorRuntime().mark(function _callee43(m) {
       var reply, r;
       return _regeneratorRuntime().wrap(function _callee43$(_context44) {
         while (1) switch (_context44.prev = _context44.next) {
@@ -10486,8 +10694,8 @@ function FieldTrip(_ref92) {
         }
       }, _callee43);
     }));
-    return function ackMsg(_x40) {
-      return _ref96.apply(this, arguments);
+    return function ackMsg(_x48) {
+      return _ref97.apply(this, arguments);
     };
   }();
   var lastPos = function lastPos() {
@@ -10501,7 +10709,7 @@ function FieldTrip(_ref92) {
     };
   };
   var checkIn = function () {
-    var _ref97 = _asyncToGenerator(_regeneratorRuntime().mark(function _callee44(quiet) {
+    var _ref98 = _asyncToGenerator(_regeneratorRuntime().mark(function _callee44(quiet) {
       var now, pos, r;
       return _regeneratorRuntime().wrap(function _callee44$(_context45) {
         while (1) switch (_context45.prev = _context45.next) {
@@ -10549,8 +10757,8 @@ function FieldTrip(_ref92) {
         }
       }, _callee44);
     }));
-    return function checkIn(_x41) {
-      return _ref97.apply(this, arguments);
+    return function checkIn(_x49) {
+      return _ref98.apply(this, arguments);
     };
   }();
   var sendSos = function sendSos() {
@@ -10564,7 +10772,7 @@ function FieldTrip(_ref92) {
     }
     setSosArm(false);
     var send = function () {
-      var _ref98 = _asyncToGenerator(_regeneratorRuntime().mark(function _callee45(lat, lng) {
+      var _ref99 = _asyncToGenerator(_regeneratorRuntime().mark(function _callee45(lat, lng) {
         var now, r;
         return _regeneratorRuntime().wrap(function _callee45$(_context46) {
           while (1) switch (_context46.prev = _context46.next) {
@@ -10612,8 +10820,8 @@ function FieldTrip(_ref92) {
           }
         }, _callee45);
       }));
-      return function send(_x42, _x43) {
-        return _ref98.apply(this, arguments);
+      return function send(_x50, _x51) {
+        return _ref99.apply(this, arguments);
       };
     }();
     var p = lastPos();
@@ -10627,7 +10835,7 @@ function FieldTrip(_ref92) {
     });else send(p.lat, p.lng);
   };
   var extendReturn = function () {
-    var _ref99 = _asyncToGenerator(_regeneratorRuntime().mark(function _callee46(hrs) {
+    var _ref100 = _asyncToGenerator(_regeneratorRuntime().mark(function _callee46(hrs) {
       var base, nv, r;
       return _regeneratorRuntime().wrap(function _callee46$(_context47) {
         while (1) switch (_context47.prev = _context47.next) {
@@ -10664,12 +10872,12 @@ function FieldTrip(_ref92) {
         }
       }, _callee46);
     }));
-    return function extendReturn(_x44) {
-      return _ref99.apply(this, arguments);
+    return function extendReturn(_x52) {
+      return _ref100.apply(this, arguments);
     };
   }();
   var saveLeg = function () {
-    var _ref100 = _asyncToGenerator(_regeneratorRuntime().mark(function _callee47() {
+    var _ref101 = _asyncToGenerator(_regeneratorRuntime().mark(function _callee47() {
       return _regeneratorRuntime().wrap(function _callee47$(_context48) {
         while (1) switch (_context48.prev = _context48.next) {
           case 0:
@@ -10722,7 +10930,7 @@ function FieldTrip(_ref92) {
       }, _callee47, null, [[4, 17]]);
     }));
     return function saveLeg() {
-      return _ref100.apply(this, arguments);
+      return _ref101.apply(this, arguments);
     };
   }();
   var buzzedRef = useRef('');
@@ -10861,7 +11069,7 @@ function FieldTrip(_ref92) {
     mapObj.current.setView(last, Math.max(mapObj.current.getZoom(), 15));
   }, [pings]);
   var startTrip = function () {
-    var _ref101 = _asyncToGenerator(_regeneratorRuntime().mark(function _callee49() {
+    var _ref102 = _asyncToGenerator(_regeneratorRuntime().mark(function _callee49() {
       var ret, isPublic, photos, _i4, _arr, _arr$_i, kind, v;
       return _regeneratorRuntime().wrap(function _callee49$(_context50) {
         while (1) switch (_context50.prev = _context50.next) {
@@ -10951,7 +11159,7 @@ function FieldTrip(_ref92) {
             return _context50.abrupt("return");
           case 45:
             navigator.geolocation.getCurrentPosition(function () {
-              var _ref102 = _asyncToGenerator(_regeneratorRuntime().mark(function _callee48(pos) {
+              var _ref103 = _asyncToGenerator(_regeneratorRuntime().mark(function _callee48(pos) {
                 var now, base, extra, r, d, trip, pr;
                 return _regeneratorRuntime().wrap(function _callee48$(_context49) {
                   while (1) switch (_context49.prev = _context49.next) {
@@ -11053,8 +11261,8 @@ function FieldTrip(_ref92) {
                   }
                 }, _callee48, null, [[0, 34]]);
               }));
-              return function (_x45) {
-                return _ref102.apply(this, arguments);
+              return function (_x53) {
+                return _ref103.apply(this, arguments);
               };
             }(), function (err) {
               var msgs = {
@@ -11075,7 +11283,7 @@ function FieldTrip(_ref92) {
       }, _callee49, null, [[23, 40]]);
     }));
     return function startTrip() {
-      return _ref101.apply(this, arguments);
+      return _ref102.apply(this, arguments);
     };
   }();
   var endTrip = function endTrip() {
@@ -11086,7 +11294,7 @@ function FieldTrip(_ref92) {
       watchIdRef.current = null;
     }
     var finish = function () {
-      var _ref103 = _asyncToGenerator(_regeneratorRuntime().mark(function _callee50(endLat, endLng) {
+      var _ref104 = _asyncToGenerator(_regeneratorRuntime().mark(function _callee50(endLat, endLng) {
         var all, dist, i, body, r;
         return _regeneratorRuntime().wrap(function _callee50$(_context51) {
           while (1) switch (_context51.prev = _context51.next) {
@@ -11127,8 +11335,8 @@ function FieldTrip(_ref92) {
           }
         }, _callee50);
       }));
-      return function finish(_x46, _x47) {
-        return _ref103.apply(this, arguments);
+      return function finish(_x54, _x55) {
+        return _ref104.apply(this, arguments);
       };
     }();
     navigator.geolocation.getCurrentPosition(function (pos) {
@@ -11403,10 +11611,10 @@ function FieldTrip(_ref92) {
       return setCheckEvery(e.target.value);
     },
     className: "w-full px-4 py-3 border-2 border-gray-200 rounded-xl"
-  }, [['60', 'Every hour'], ['120', 'Every 2 hours'], ['180', 'Every 3 hours'], ['240', 'Every 4 hours']].map(function (_ref104) {
-    var _ref105 = _slicedToArray(_ref104, 2),
-      v = _ref105[0],
-      l = _ref105[1];
+  }, [['60', 'Every hour'], ['120', 'Every 2 hours'], ['180', 'Every 3 hours'], ['240', 'Every 4 hours']].map(function (_ref105) {
+    var _ref106 = _slicedToArray(_ref105, 2),
+      v = _ref106[0],
+      l = _ref106[1];
     return React.createElement("option", {
       key: v,
       value: v
@@ -11463,9 +11671,9 @@ function FieldTrip(_ref92) {
     title: "My Trip History"
   }))));
 }
-function TripPhotos(_ref106) {
-  var items = _ref106.items,
-    onClose = _ref106.onClose;
+function TripPhotos(_ref107) {
+  var items = _ref107.items,
+    onClose = _ref107.onClose;
   var _useState303 = useState({}),
     _useState304 = _slicedToArray(_useState303, 2),
     urls = _useState304[0],
@@ -11564,9 +11772,9 @@ function TripPhotos(_ref106) {
     }), "Loading\u2026"));
   }))));
 }
-function TripHistory(_ref108) {
-  var employeeId = _ref108.employeeId,
-    title = _ref108.title;
+function TripHistory(_ref109) {
+  var employeeId = _ref109.employeeId,
+    title = _ref109.title;
   var all = !employeeId;
   var PAGE = 50;
   var _useState305 = useState([]),
@@ -11616,7 +11824,7 @@ function TripHistory(_ref108) {
     })["catch"](function () {});
   }, []);
   var fetchPage = function () {
-    var _ref109 = _asyncToGenerator(_regeneratorRuntime().mark(function _callee52(offset) {
+    var _ref110 = _asyncToGenerator(_regeneratorRuntime().mark(function _callee52(offset) {
       var url, emp, _month$split$map, _month$split$map2, y, m, d;
       return _regeneratorRuntime().wrap(function _callee52$(_context53) {
         while (1) switch (_context53.prev = _context53.next) {
@@ -11645,12 +11853,12 @@ function TripHistory(_ref108) {
         }
       }, _callee52);
     }));
-    return function fetchPage(_x48) {
-      return _ref109.apply(this, arguments);
+    return function fetchPage(_x56) {
+      return _ref110.apply(this, arguments);
     };
   }();
   var load = function () {
-    var _ref110 = _asyncToGenerator(_regeneratorRuntime().mark(function _callee53() {
+    var _ref111 = _asyncToGenerator(_regeneratorRuntime().mark(function _callee53() {
       var d;
       return _regeneratorRuntime().wrap(function _callee53$(_context54) {
         while (1) switch (_context54.prev = _context54.next) {
@@ -11670,11 +11878,11 @@ function TripHistory(_ref108) {
       }, _callee53);
     }));
     return function load() {
-      return _ref110.apply(this, arguments);
+      return _ref111.apply(this, arguments);
     };
   }();
   var loadMore = function () {
-    var _ref111 = _asyncToGenerator(_regeneratorRuntime().mark(function _callee54() {
+    var _ref112 = _asyncToGenerator(_regeneratorRuntime().mark(function _callee54() {
       var d;
       return _regeneratorRuntime().wrap(function _callee54$(_context55) {
         while (1) switch (_context55.prev = _context55.next) {
@@ -11696,7 +11904,7 @@ function TripHistory(_ref108) {
       }, _callee54);
     }));
     return function loadMore() {
-      return _ref111.apply(this, arguments);
+      return _ref112.apply(this, arguments);
     };
   }();
   useEffect(function () {
@@ -11744,10 +11952,10 @@ function TripHistory(_ref108) {
     value: ""
   }, "All staff"), Object.entries(names).sort(function (a, b) {
     return a[1].localeCompare(b[1]);
-  }).map(function (_ref112) {
-    var _ref113 = _slicedToArray(_ref112, 2),
-      id = _ref113[0],
-      n = _ref113[1];
+  }).map(function (_ref113) {
+    var _ref114 = _slicedToArray(_ref113, 2),
+      id = _ref114[0],
+      n = _ref114[1];
     return React.createElement("option", {
       key: id,
       value: id
@@ -11828,10 +12036,10 @@ function TripHistory(_ref108) {
     }
   }));
 }
-function TripDetail(_ref114) {
-  var trip = _ref114.trip,
-    name = _ref114.name,
-    onClose = _ref114.onClose;
+function TripDetail(_ref115) {
+  var trip = _ref115.trip,
+    name = _ref115.name,
+    onClose = _ref115.onClose;
   var t = trip;
   var _useState321 = useState(null),
     _useState322 = _slicedToArray(_useState321, 2),
@@ -11932,9 +12140,9 @@ function TripDetail(_ref114) {
   };
   var lateMin = t.expected_return_at && t.ended_at && new Date(t.ended_at) > new Date(t.expected_return_at) ? Math.round((new Date(t.ended_at) - new Date(t.expected_return_at)) / 60000) : 0;
   var hrs = t.ended_at ? ((new Date(t.ended_at) - new Date(t.started_at)) / 3600000).toFixed(1) + ' h' : '—';
-  var Row = function Row(_ref116) {
-    var k = _ref116.k,
-      v = _ref116.v;
+  var Row = function Row(_ref117) {
+    var k = _ref117.k,
+      v = _ref117.v;
     return v ? React.createElement("div", null, React.createElement("p", {
       className: "text-xs font-bold text-gray-400 uppercase"
     }, k), React.createElement("p", {
@@ -12069,9 +12277,9 @@ function TripDetail(_ref114) {
     }
   })));
 }
-function RiskAreasAdmin(_ref117) {
-  var user = _ref117.user,
-    notify = _ref117.notify;
+function RiskAreasAdmin(_ref118) {
+  var user = _ref118.user,
+    notify = _ref118.notify;
   var _useState331 = useState([]),
     _useState332 = _slicedToArray(_useState331, 2),
     list = _useState332[0],
@@ -12105,7 +12313,7 @@ function RiskAreasAdmin(_ref117) {
     load();
   }, []);
   var add = function () {
-    var _ref118 = _asyncToGenerator(_regeneratorRuntime().mark(function _callee56() {
+    var _ref119 = _asyncToGenerator(_regeneratorRuntime().mark(function _callee56() {
       var ex, body, r;
       return _regeneratorRuntime().wrap(function _callee56$(_context57) {
         while (1) switch (_context57.prev = _context57.next) {
@@ -12166,11 +12374,11 @@ function RiskAreasAdmin(_ref117) {
       }, _callee56);
     }));
     return function add() {
-      return _ref118.apply(this, arguments);
+      return _ref119.apply(this, arguments);
     };
   }();
   var toggle = function () {
-    var _ref119 = _asyncToGenerator(_regeneratorRuntime().mark(function _callee57(a) {
+    var _ref120 = _asyncToGenerator(_regeneratorRuntime().mark(function _callee57(a) {
       var r;
       return _regeneratorRuntime().wrap(function _callee57$(_context58) {
         while (1) switch (_context58.prev = _context58.next) {
@@ -12194,8 +12402,8 @@ function RiskAreasAdmin(_ref117) {
         }
       }, _callee57);
     }));
-    return function toggle(_x49) {
-      return _ref119.apply(this, arguments);
+    return function toggle(_x57) {
+      return _ref120.apply(this, arguments);
     };
   }();
   var act = list.filter(function (a) {
@@ -12275,37 +12483,37 @@ function RiskAreasAdmin(_ref117) {
     }, a.active ? 'Switch off' : 'Switch on'));
   }))));
 }
-function downloadTripReport(_x50, _x51) {
+function downloadTripReport(_x58, _x59) {
   return _downloadTripReport.apply(this, arguments);
 }
 function _downloadTripReport() {
-  _downloadTripReport = _asyncToGenerator(_regeneratorRuntime().mark(function _callee122(month, notify) {
+  _downloadTripReport = _asyncToGenerator(_regeneratorRuntime().mark(function _callee126(month, notify) {
     var _month$split$map3, _month$split$map4, y, m, from, to, trips, ids, _yield$Promise$all23, _yield$Promise$all24, us, ck, at, nm, cnt, dt, hrs, late, head, rows, csv, blob, a;
-    return _regeneratorRuntime().wrap(function _callee122$(_context123) {
-      while (1) switch (_context123.prev = _context123.next) {
+    return _regeneratorRuntime().wrap(function _callee126$(_context127) {
+      while (1) switch (_context127.prev = _context127.next) {
         case 0:
-          _context123.prev = 0;
+          _context127.prev = 0;
           _month$split$map3 = month.split('-').map(Number), _month$split$map4 = _slicedToArray(_month$split$map3, 2), y = _month$split$map4[0], m = _month$split$map4[1];
           from = new Date(y, m - 1, 1).toISOString(), to = new Date(y, m, 1).toISOString();
-          _context123.next = 5;
+          _context127.next = 5;
           return fetch("".concat(SB, "/rest/v1/field_trips?started_at=gte.").concat(from, "&started_at=lt.").concat(to, "&order=started_at.asc"), {
             headers: H
           }).then(function (r) {
             return r.ok ? r.json() : [];
           });
         case 5:
-          trips = _context123.sent;
+          trips = _context127.sent;
           if (!(!Array.isArray(trips) || !trips.length)) {
-            _context123.next = 9;
+            _context127.next = 9;
             break;
           }
           notify('No trips in that month', 'error');
-          return _context123.abrupt("return");
+          return _context127.abrupt("return");
         case 9:
           ids = trips.map(function (t) {
             return encodeURIComponent(String(t.id));
           }).join(',');
-          _context123.next = 12;
+          _context127.next = 12;
           return Promise.all([fetch("".concat(SB, "/rest/v1/users?select=id,name"), {
             headers: H
           }).then(function (r) {
@@ -12324,7 +12532,7 @@ function _downloadTripReport() {
             return [];
           })]);
         case 12:
-          _yield$Promise$all23 = _context123.sent;
+          _yield$Promise$all23 = _context127.sent;
           _yield$Promise$all24 = _slicedToArray(_yield$Promise$all23, 3);
           us = _yield$Promise$all24[0];
           ck = _yield$Promise$all24[1];
@@ -12373,24 +12581,24 @@ function _downloadTripReport() {
           document.body.appendChild(a);
           a.click();
           a.remove();
-          _context123.next = 38;
+          _context127.next = 38;
           break;
         case 35:
-          _context123.prev = 35;
-          _context123.t0 = _context123["catch"](0);
+          _context127.prev = 35;
+          _context127.t0 = _context127["catch"](0);
           notify('Could not build the report', 'error');
         case 38:
         case "end":
-          return _context123.stop();
+          return _context127.stop();
       }
-    }, _callee122, null, [[0, 35]]);
+    }, _callee126, null, [[0, 35]]);
   }));
   return _downloadTripReport.apply(this, arguments);
 }
-function FieldTripAdmin(_ref120) {
-  var user = _ref120.user,
-    notify = _ref120.notify,
-    onBack = _ref120.onBack;
+function FieldTripAdmin(_ref121) {
+  var user = _ref121.user,
+    notify = _ref121.notify,
+    onBack = _ref121.onBack;
   var _useState341 = useState([]),
     _useState342 = _slicedToArray(_useState341, 2),
     activeTrips = _useState342[0],
@@ -12463,7 +12671,7 @@ function FieldTripAdmin(_ref120) {
     setRepMonth = _useState372[1];
   var sosSeenRef = useRef(null);
   var load = function () {
-    var _ref121 = _asyncToGenerator(_regeneratorRuntime().mark(function _callee58() {
+    var _ref122 = _asyncToGenerator(_regeneratorRuntime().mark(function _callee58() {
       var ar, ad, activeArr, rr, rd, recentArr, allTrips, at, ab, sosIds, ids, ur, ud, n, tripIds, pr, pd, byTrip, uids, _yield$Promise$all7, _yield$Promise$all8, ph, ms, pm, ec, em, mm;
       return _regeneratorRuntime().wrap(function _callee58$(_context59) {
         while (1) switch (_context59.prev = _context59.next) {
@@ -12651,7 +12859,7 @@ function FieldTripAdmin(_ref120) {
       }, _callee58, null, [[0, 79]]);
     }));
     return function load() {
-      return _ref121.apply(this, arguments);
+      return _ref122.apply(this, arguments);
     };
   }();
   useEffect(function () {
@@ -12708,7 +12916,7 @@ function FieldTripAdmin(_ref120) {
     });
   }, [activeTrips, pingsByTrip, names]);
   var refreshNow = function () {
-    var _ref122 = _asyncToGenerator(_regeneratorRuntime().mark(function _callee59() {
+    var _ref123 = _asyncToGenerator(_regeneratorRuntime().mark(function _callee59() {
       return _regeneratorRuntime().wrap(function _callee59$(_context60) {
         while (1) switch (_context60.prev = _context60.next) {
           case 0:
@@ -12724,7 +12932,7 @@ function FieldTripAdmin(_ref120) {
       }, _callee59);
     }));
     return function refreshNow() {
-      return _ref122.apply(this, arguments);
+      return _ref123.apply(this, arguments);
     };
   }();
   var lastSeen = function lastSeen(t) {
@@ -12748,7 +12956,7 @@ function FieldTripAdmin(_ref120) {
     return urgency(b) - urgency(a) || lastSeen(a) - lastSeen(b);
   });
   var clearSos = function () {
-    var _ref123 = _asyncToGenerator(_regeneratorRuntime().mark(function _callee60(t) {
+    var _ref124 = _asyncToGenerator(_regeneratorRuntime().mark(function _callee60(t) {
       var r;
       return _regeneratorRuntime().wrap(function _callee60$(_context61) {
         while (1) switch (_context61.prev = _context61.next) {
@@ -12774,8 +12982,8 @@ function FieldTripAdmin(_ref120) {
         }
       }, _callee60);
     }));
-    return function clearSos(_x52) {
-      return _ref123.apply(this, arguments);
+    return function clearSos(_x60) {
+      return _ref124.apply(this, arguments);
     };
   }();
   var photoBtn = function photoBtn(t) {
@@ -12790,7 +12998,7 @@ function FieldTripAdmin(_ref120) {
     }), "Photos (", n, ")") : null;
   };
   var sendMsg = function () {
-    var _ref124 = _asyncToGenerator(_regeneratorRuntime().mark(function _callee61(t) {
+    var _ref125 = _asyncToGenerator(_regeneratorRuntime().mark(function _callee61(t) {
       var text, r;
       return _regeneratorRuntime().wrap(function _callee61$(_context62) {
         while (1) switch (_context62.prev = _context62.next) {
@@ -12838,8 +13046,8 @@ function FieldTripAdmin(_ref120) {
         }
       }, _callee61, null, [[5, 12]]);
     }));
-    return function sendMsg(_x53) {
-      return _ref124.apply(this, arguments);
+    return function sendMsg(_x61) {
+      return _ref125.apply(this, arguments);
     };
   }();
   return React.createElement("div", {
@@ -13107,10 +13315,10 @@ function FieldTripAdmin(_ref120) {
     }
   })));
 }
-function DeadlineSettings(_ref125) {
-  var user = _ref125.user,
-    notify = _ref125.notify,
-    onBack = _ref125.onBack;
+function DeadlineSettings(_ref126) {
+  var user = _ref126.user,
+    notify = _ref126.notify,
+    onBack = _ref126.onBack;
   var _useState373 = useState(''),
     _useState374 = _slicedToArray(_useState373, 2),
     deadline = _useState374[0],
@@ -13150,7 +13358,7 @@ function DeadlineSettings(_ref125) {
     load();
   }, []);
   var save = function () {
-    var _ref126 = _asyncToGenerator(_regeneratorRuntime().mark(function _callee62() {
+    var _ref127 = _asyncToGenerator(_regeneratorRuntime().mark(function _callee62() {
       var r;
       return _regeneratorRuntime().wrap(function _callee62$(_context63) {
         while (1) switch (_context63.prev = _context63.next) {
@@ -13181,7 +13389,7 @@ function DeadlineSettings(_ref125) {
       }, _callee62);
     }));
     return function save() {
-      return _ref126.apply(this, arguments);
+      return _ref127.apply(this, arguments);
     };
   }();
   var passed = (meta === null || meta === void 0 ? void 0 : meta.deadline) && new Date(meta.deadline + 'T23:59:59') < new Date();
@@ -13261,9 +13469,9 @@ function parseQuarterLabel(label) {
     end: new Date(year, q * 3, 0, 23, 59, 59)
   };
 }
-function QuarterlyOverview(_ref127) {
-  var notify = _ref127.notify,
-    onBack = _ref127.onBack;
+function QuarterlyOverview(_ref128) {
+  var notify = _ref128.notify,
+    onBack = _ref128.onBack;
   var _useState383 = useState(currentQuarterLabel()),
     _useState384 = _slicedToArray(_useState383, 2),
     quarter = _useState384[0],
@@ -13281,7 +13489,7 @@ function QuarterlyOverview(_ref127) {
     loading = _useState390[0],
     setLoading = _useState390[1];
   var load = function () {
-    var _ref128 = _asyncToGenerator(_regeneratorRuntime().mark(function _callee63() {
+    var _ref129 = _asyncToGenerator(_regeneratorRuntime().mark(function _callee63() {
       var a, u;
       return _regeneratorRuntime().wrap(function _callee63$(_context64) {
         while (1) switch (_context64.prev = _context64.next) {
@@ -13320,7 +13528,7 @@ function QuarterlyOverview(_ref127) {
       }, _callee63, null, [[1, 12]]);
     }));
     return function load() {
-      return _ref128.apply(this, arguments);
+      return _ref129.apply(this, arguments);
     };
   }();
   useEffect(function () {
@@ -13468,10 +13676,10 @@ function QuarterlyOverview(_ref127) {
     }, a.final_score != null ? "".concat(a.final_score, "/100") : avg(a.supervisor_ratings) + '/5'));
   }))))));
 }
-function SuperDash(_ref129) {
-  var user = _ref129.user,
-    onLogout = _ref129.onLogout,
-    notify = _ref129.notify;
+function SuperDash(_ref130) {
+  var user = _ref130.user,
+    onLogout = _ref130.onLogout,
+    notify = _ref130.notify;
   var _useState391 = useState([]),
     _useState392 = _slicedToArray(_useState391, 2),
     allApps = _useState392[0],
@@ -13685,7 +13893,7 @@ function SuperDash(_ref129) {
     });
   var list = tab === 'pending' ? pending : tab === 'completed' ? completed : tab === 'withdrawn' ? withdrawnApps : disputed;
   var restore = function () {
-    var _ref130 = _asyncToGenerator(_regeneratorRuntime().mark(function _callee64(a) {
+    var _ref131 = _asyncToGenerator(_regeneratorRuntime().mark(function _callee64(a) {
       var r;
       return _regeneratorRuntime().wrap(function _callee64$(_context65) {
         while (1) switch (_context65.prev = _context65.next) {
@@ -13719,8 +13927,8 @@ function SuperDash(_ref129) {
         }
       }, _callee64);
     }));
-    return function restore(_x54) {
-      return _ref130.apply(this, arguments);
+    return function restore(_x62) {
+      return _ref131.apply(this, arguments);
     };
   }();
   return React.createElement("div", {
@@ -13921,11 +14129,11 @@ function SuperDash(_ref129) {
     className: "glass rounded-2xl p-6"
   }, React.createElement("div", {
     className: "flex gap-2 mb-6 border-b pb-4 flex-wrap"
-  }, [['pending', 'Pending', pending.length], ['completed', 'Completed', completed.length], ['disputed', 'Disputed', disputed.length], ['withdrawn', 'Withdrawn', withdrawnApps.length]].map(function (_ref131) {
-    var _ref132 = _slicedToArray(_ref131, 3),
-      k = _ref132[0],
-      l = _ref132[1],
-      c = _ref132[2];
+  }, [['pending', 'Pending', pending.length], ['completed', 'Completed', completed.length], ['disputed', 'Disputed', disputed.length], ['withdrawn', 'Withdrawn', withdrawnApps.length]].map(function (_ref132) {
+    var _ref133 = _slicedToArray(_ref132, 3),
+      k = _ref133[0],
+      l = _ref133[1],
+      c = _ref133[2];
     return React.createElement("button", {
       key: k,
       onClick: function onClick() {
@@ -13985,12 +14193,12 @@ function SuperDash(_ref129) {
     notify: notify
   })));
 }
-function SupReview(_ref133) {
-  var app = _ref133.app,
-    name = _ref133.name,
-    user = _ref133.user,
-    notify = _ref133.notify,
-    onDone = _ref133.onDone;
+function SupReview(_ref134) {
+  var app = _ref134.app,
+    name = _ref134.name,
+    user = _ref134.user,
+    notify = _ref134.notify,
+    onDone = _ref134.onDone;
   var done = app.status === 'completed';
   var _useState427 = useState(app.attendance_late_days || 0),
     _useState428 = _slicedToArray(_useState427, 2),
@@ -14017,7 +14225,7 @@ function SupReview(_ref133) {
     withdrawBusy = _useState438[0],
     setWithdrawBusy = _useState438[1];
   var withdraw = function () {
-    var _ref134 = _asyncToGenerator(_regeneratorRuntime().mark(function _callee65() {
+    var _ref135 = _asyncToGenerator(_regeneratorRuntime().mark(function _callee65() {
       var r;
       return _regeneratorRuntime().wrap(function _callee65$(_context66) {
         while (1) switch (_context66.prev = _context66.next) {
@@ -14069,7 +14277,7 @@ function SupReview(_ref133) {
       }, _callee65, null, [[6, 13]]);
     }));
     return function withdraw() {
-      return _ref134.apply(this, arguments);
+      return _ref135.apply(this, arguments);
     };
   }();
   useEffect(function () {
@@ -14130,7 +14338,7 @@ function SupReview(_ref133) {
     return !comm[k] || comm[k].trim().length < 10;
   });
   var submit = function () {
-    var _ref135 = _asyncToGenerator(_regeneratorRuntime().mark(function _callee66() {
+    var _ref136 = _asyncToGenerator(_regeneratorRuntime().mark(function _callee66() {
       var r;
       return _regeneratorRuntime().wrap(function _callee66$(_context67) {
         while (1) switch (_context67.prev = _context67.next) {
@@ -14196,7 +14404,7 @@ function SupReview(_ref133) {
       }, _callee66, null, [[10, 17]]);
     }));
     return function submit() {
-      return _ref135.apply(this, arguments);
+      return _ref136.apply(this, arguments);
     };
   }();
   return React.createElement("div", {
@@ -14299,13 +14507,11 @@ function SupReview(_ref133) {
       className: "text-sm text-gray-800"
     }, ev.description), ev.file && React.createElement("span", {
       className: "text-xs text-gray-500"
-    }, "(", ev.file.name, ")"), ev.file && ev.file.data && React.createElement("a", {
-      href: ev.file.data,
-      download: ev.file.name,
-      className: "text-blue-600 text-xs font-semibold hover:underline ml-auto"
-    }, React.createElement("i", {
-      className: "fas fa-download mr-1"
-    }), "Download"), ev.link && !ev.file && React.createElement("a", {
+    }, "(", ev.file.name, ")"), ev.file && ev.file.data && React.createElement("span", {
+      className: "ml-auto"
+    }, React.createElement(EvidenceActions, {
+      ev: ev
+    })), ev.link && !ev.file && React.createElement("a", {
       href: ev.link,
       target: "_blank",
       rel: "noreferrer",
@@ -14514,18 +14720,9 @@ function SupReview(_ref133) {
       className: "fas fa-file mr-1"
     }), ev.file.name, " (", (ev.file.size / 1024).toFixed(0), "KB)"), ev.link && React.createElement("span", {
       className: "text-xs text-blue-600 truncate"
-    }, ev.link))), ev.file && ev.file.data && React.createElement("a", {
-      href: ev.file.data,
-      download: ev.file.name,
-      className: "text-blue-600 text-xs font-semibold hover:underline flex-shrink-0"
-    }, React.createElement("i", {
-      className: "fas fa-download mr-1"
-    }), "Download"), ev.link && !ev.file && React.createElement("a", {
-      href: ev.link,
-      target: "_blank",
-      rel: "noreferrer",
-      className: "text-blue-600 text-xs hover:underline flex-shrink-0"
-    }, ev.link));
+    }, ev.link))), React.createElement(EvidenceActions, {
+      ev: ev
+    }));
   }))), editable ? React.createElement(React.Fragment, null, React.createElement("div", {
     className: "glass rounded-2xl p-6 mb-6"
   }, React.createElement("h3", {
@@ -14621,124 +14818,124 @@ var POL_LABEL = {
 var polSafeLink = function polSafeLink(l) {
   return typeof l === 'string' && /^https:\/\//i.test(l.trim());
 };
-function openPolicyDoc(_x55, _x56) {
+function openPolicyDoc(_x63, _x64) {
   return _openPolicyDoc.apply(this, arguments);
 }
 function _openPolicyDoc() {
-  _openPolicyDoc = _asyncToGenerator(_regeneratorRuntime().mark(function _callee123(pol, notify) {
+  _openPolicyDoc = _asyncToGenerator(_regeneratorRuntime().mark(function _callee127(pol, notify) {
     var w, r, d, blob, url;
-    return _regeneratorRuntime().wrap(function _callee123$(_context124) {
-      while (1) switch (_context124.prev = _context124.next) {
+    return _regeneratorRuntime().wrap(function _callee127$(_context128) {
+      while (1) switch (_context128.prev = _context128.next) {
         case 0:
           if (!pol.file_link) {
-            _context124.next = 6;
+            _context128.next = 6;
             break;
           }
           if (polSafeLink(pol.file_link)) {
-            _context124.next = 4;
+            _context128.next = 4;
             break;
           }
           notify('This policy link is not a valid https:// link', 'error');
-          return _context124.abrupt("return", false);
+          return _context128.abrupt("return", false);
         case 4:
           window.open(pol.file_link.trim(), '_blank', 'noopener');
-          return _context124.abrupt("return", true);
+          return _context128.abrupt("return", true);
         case 6:
           w = window.open('', '_blank');
-          _context124.prev = 7;
-          _context124.next = 10;
+          _context128.prev = 7;
+          _context128.next = 10;
           return fetch("".concat(SB, "/rest/v1/policy_files?policy_id=eq.").concat(pol.id, "&select=file_data"), {
             headers: H
           });
         case 10:
-          r = _context124.sent;
+          r = _context128.sent;
           if (!r.ok) {
-            _context124.next = 17;
+            _context128.next = 17;
             break;
           }
-          _context124.next = 14;
+          _context128.next = 14;
           return r.json();
         case 14:
-          _context124.t0 = _context124.sent;
-          _context124.next = 18;
+          _context128.t0 = _context128.sent;
+          _context128.next = 18;
           break;
         case 17:
-          _context124.t0 = [];
+          _context128.t0 = [];
         case 18:
-          d = _context124.t0;
+          d = _context128.t0;
           if (!(!Array.isArray(d) || !d.length || !d[0].file_data)) {
-            _context124.next = 21;
+            _context128.next = 21;
             break;
           }
           throw new Error('missing');
         case 21:
-          _context124.next = 23;
+          _context128.next = 23;
           return fetch(d[0].file_data);
         case 23:
-          _context124.next = 25;
-          return _context124.sent.blob();
+          _context128.next = 25;
+          return _context128.sent.blob();
         case 25:
-          blob = _context124.sent;
+          blob = _context128.sent;
           url = URL.createObjectURL(blob);
           if (w) w.location.href = url;else window.open(url, '_blank');
-          return _context124.abrupt("return", true);
+          return _context128.abrupt("return", true);
         case 31:
-          _context124.prev = 31;
-          _context124.t1 = _context124["catch"](7);
+          _context128.prev = 31;
+          _context128.t1 = _context128["catch"](7);
           if (w) w.close();
           notify('Could not open the policy document', 'error');
-          return _context124.abrupt("return", false);
+          return _context128.abrupt("return", false);
         case 36:
         case "end":
-          return _context124.stop();
+          return _context128.stop();
       }
-    }, _callee123, null, [[7, 31]]);
+    }, _callee127, null, [[7, 31]]);
   }));
   return _openPolicyDoc.apply(this, arguments);
 }
-function loadMyPolicyItems(_x57) {
+function loadMyPolicyItems(_x65) {
   return _loadMyPolicyItems.apply(this, arguments);
 }
 function _loadMyPolicyItems() {
-  _loadMyPolicyItems = _asyncToGenerator(_regeneratorRuntime().mark(function _callee124(userId) {
+  _loadMyPolicyItems = _asyncToGenerator(_regeneratorRuntime().mark(function _callee128(userId) {
     var a, asg, ids, p, k, pm, km, order;
-    return _regeneratorRuntime().wrap(function _callee124$(_context125) {
-      while (1) switch (_context125.prev = _context125.next) {
+    return _regeneratorRuntime().wrap(function _callee128$(_context129) {
+      while (1) switch (_context129.prev = _context129.next) {
         case 0:
-          _context125.next = 2;
+          _context129.next = 2;
           return fetch("".concat(SB, "/rest/v1/policy_assignments?user_id=eq.").concat(userId, "&select=id,policy_id,assigned_at,opened_at"), {
             headers: H
           }).then(function (r) {
             return r.ok ? r.json() : [];
           });
         case 2:
-          a = _context125.sent;
+          a = _context129.sent;
           asg = Array.isArray(a) ? a : [];
           if (asg.length) {
-            _context125.next = 6;
+            _context129.next = 6;
             break;
           }
-          return _context125.abrupt("return", []);
+          return _context129.abrupt("return", []);
         case 6:
           ids = _toConsumableArray(new Set(asg.map(function (x) {
             return x.policy_id;
           })));
-          _context125.next = 9;
+          _context129.next = 9;
           return fetch("".concat(SB, "/rest/v1/policies?id=in.(").concat(ids.join(','), ")&select=id,title,version,category,description,file_name,file_link,effective_date,deadline,status"), {
             headers: H
           }).then(function (r) {
             return r.ok ? r.json() : [];
           });
         case 9:
-          p = _context125.sent;
-          _context125.next = 12;
+          p = _context129.sent;
+          _context129.next = 12;
           return fetch("".concat(SB, "/rest/v1/policy_acknowledgements?user_id=eq.").concat(userId, "&select=id,assignment_id,signed_at"), {
             headers: H
           }).then(function (r) {
             return r.ok ? r.json() : [];
           });
         case 12:
-          k = _context125.sent;
+          k = _context129.sent;
           pm = {};
           (Array.isArray(p) ? p : []).forEach(function (x) {
             return pm[x.id] = x;
@@ -14752,7 +14949,7 @@ function _loadMyPolicyItems() {
             pending: 1,
             signed: 2
           };
-          return _context125.abrupt("return", asg.map(function (x) {
+          return _context129.abrupt("return", asg.map(function (x) {
             var pol = pm[x.policy_id];
             var ack = km[x.id];
             return {
@@ -14768,14 +14965,14 @@ function _loadMyPolicyItems() {
           }));
         case 19:
         case "end":
-          return _context125.stop();
+          return _context129.stop();
       }
-    }, _callee124);
+    }, _callee128);
   }));
   return _loadMyPolicyItems.apply(this, arguments);
 }
-function SignaturePad(_ref136) {
-  var onChange = _ref136.onChange;
+function SignaturePad(_ref137) {
+  var onChange = _ref137.onChange;
   var ref = useRef(null);
   var drawing = useRef(false);
   var has = useRef(false);
@@ -14871,10 +15068,10 @@ function SignaturePad(_ref136) {
     className: "fas fa-eraser mr-1"
   }), "Clear")));
 }
-function MyPolicies(_ref137) {
-  var user = _ref137.user,
-    notify = _ref137.notify,
-    onBack = _ref137.onBack;
+function MyPolicies(_ref138) {
+  var user = _ref138.user,
+    notify = _ref138.notify,
+    onBack = _ref138.onBack;
   var _useState451 = useState([]),
     _useState452 = _slicedToArray(_useState451, 2),
     items = _useState452[0],
@@ -14888,7 +15085,7 @@ function MyPolicies(_ref137) {
     sel = _useState456[0],
     setSel = _useState456[1];
   var load = function () {
-    var _ref138 = _asyncToGenerator(_regeneratorRuntime().mark(function _callee67() {
+    var _ref139 = _asyncToGenerator(_regeneratorRuntime().mark(function _callee67() {
       return _regeneratorRuntime().wrap(function _callee67$(_context68) {
         while (1) switch (_context68.prev = _context68.next) {
           case 0:
@@ -14915,7 +15112,7 @@ function MyPolicies(_ref137) {
       }, _callee67, null, [[1, 9]]);
     }));
     return function load() {
-      return _ref138.apply(this, arguments);
+      return _ref139.apply(this, arguments);
     };
   }();
   useEffect(function () {
@@ -15004,11 +15201,11 @@ function MyPolicies(_ref137) {
     className: "space-y-3"
   }, signed.map(card))))));
 }
-function PolicySign(_ref139) {
-  var item = _ref139.item,
-    user = _ref139.user,
-    notify = _ref139.notify,
-    onDone = _ref139.onDone;
+function PolicySign(_ref140) {
+  var item = _ref140.item,
+    user = _ref140.user,
+    notify = _ref140.notify,
+    onDone = _ref140.onDone;
   var asg = item.asg,
     pol = item.pol,
     ack = item.ack;
@@ -15030,7 +15227,7 @@ function PolicySign(_ref139) {
     busy = _useState464[0],
     setBusy = _useState464[1];
   var openDoc = function () {
-    var _ref140 = _asyncToGenerator(_regeneratorRuntime().mark(function _callee68() {
+    var _ref141 = _asyncToGenerator(_regeneratorRuntime().mark(function _callee68() {
       var ok;
       return _regeneratorRuntime().wrap(function _callee68$(_context69) {
         while (1) switch (_context69.prev = _context69.next) {
@@ -15056,11 +15253,11 @@ function PolicySign(_ref139) {
       }, _callee68);
     }));
     return function openDoc() {
-      return _ref140.apply(this, arguments);
+      return _ref141.apply(this, arguments);
     };
   }();
   var sign = function () {
-    var _ref141 = _asyncToGenerator(_regeneratorRuntime().mark(function _callee69() {
+    var _ref142 = _asyncToGenerator(_regeneratorRuntime().mark(function _callee69() {
       var r;
       return _regeneratorRuntime().wrap(function _callee69$(_context70) {
         while (1) switch (_context70.prev = _context70.next) {
@@ -15125,7 +15322,7 @@ function PolicySign(_ref139) {
       }, _callee69, null, [[10, 17]]);
     }));
     return function sign() {
-      return _ref141.apply(this, arguments);
+      return _ref142.apply(this, arguments);
     };
   }();
   return React.createElement("div", {
@@ -15203,11 +15400,11 @@ function PolicySign(_ref139) {
     className: "fas fa-file-signature mr-2"
   }), "Sign policy")))));
 }
-function PolicyAdmin(_ref142) {
-  var user = _ref142.user,
-    notify = _ref142.notify,
-    onBack = _ref142.onBack,
-    readOnly = _ref142.readOnly;
+function PolicyAdmin(_ref143) {
+  var user = _ref143.user,
+    notify = _ref143.notify,
+    onBack = _ref143.onBack,
+    readOnly = _ref143.readOnly;
   var _useState465 = useState([]),
     _useState466 = _slicedToArray(_useState465, 2),
     pols = _useState466[0],
@@ -15241,7 +15438,7 @@ function PolicyAdmin(_ref142) {
     tab = _useState480[0],
     setTab = _useState480[1];
   var load = function () {
-    var _ref143 = _asyncToGenerator(_regeneratorRuntime().mark(function _callee70() {
+    var _ref144 = _asyncToGenerator(_regeneratorRuntime().mark(function _callee70() {
       var _yield$Promise$all9, _yield$Promise$all10, p, a, k, u;
       return _regeneratorRuntime().wrap(function _callee70$(_context71) {
         while (1) switch (_context71.prev = _context71.next) {
@@ -15292,7 +15489,7 @@ function PolicyAdmin(_ref142) {
       }, _callee70, null, [[1, 16]]);
     }));
     return function load() {
-      return _ref143.apply(this, arguments);
+      return _ref144.apply(this, arguments);
     };
   }();
   useEffect(function () {
@@ -15418,10 +15615,10 @@ function PolicyAdmin(_ref142) {
     className: "glass rounded-2xl p-6"
   }, React.createElement("div", {
     className: "flex gap-2 mb-5 border-b pb-4"
-  }, [['active', 'Active'], ['archive', 'Retired / Drafts']].map(function (_ref144) {
-    var _ref145 = _slicedToArray(_ref144, 2),
-      k = _ref145[0],
-      l = _ref145[1];
+  }, [['active', 'Active'], ['archive', 'Retired / Drafts']].map(function (_ref145) {
+    var _ref146 = _slicedToArray(_ref145, 2),
+      k = _ref146[0],
+      l = _ref146[1];
     return React.createElement("button", {
       key: k,
       onClick: function onClick() {
@@ -15486,11 +15683,11 @@ function PolicyAdmin(_ref142) {
     })));
   })))));
 }
-function StaffPicker(_ref146) {
-  var staff = _ref146.staff,
-    selected = _ref146.selected,
-    setSelected = _ref146.setSelected,
-    exclude = _ref146.exclude;
+function StaffPicker(_ref147) {
+  var staff = _ref147.staff,
+    selected = _ref147.selected,
+    setSelected = _ref147.setSelected,
+    exclude = _ref147.exclude;
   var avail = staff.filter(function (s) {
     return s.is_active !== false && !(exclude || []).includes(s.id);
   });
@@ -15539,12 +15736,12 @@ function StaffPicker(_ref146) {
     }, s.email));
   })));
 }
-function PolicyPublish(_ref147) {
-  var user = _ref147.user,
-    staff = _ref147.staff,
-    pols = _ref147.pols,
-    notify = _ref147.notify,
-    onDone = _ref147.onDone;
+function PolicyPublish(_ref148) {
+  var user = _ref148.user,
+    staff = _ref148.staff,
+    pols = _ref148.pols,
+    notify = _ref148.notify,
+    onDone = _ref148.onDone;
   var _useState481 = useState({
       title: '',
       version: '1.0',
@@ -15598,7 +15795,7 @@ function PolicyPublish(_ref147) {
     });
   };
   var publish = function () {
-    var _ref148 = _asyncToGenerator(_regeneratorRuntime().mark(function _callee71() {
+    var _ref149 = _asyncToGenerator(_regeneratorRuntime().mark(function _callee71() {
       var ids, pr, pd, pol, fr, ar, act;
       return _regeneratorRuntime().wrap(function _callee71$(_context72) {
         while (1) switch (_context72.prev = _context72.next) {
@@ -15807,7 +16004,7 @@ function PolicyPublish(_ref147) {
       }, _callee71, null, [[25, 76]]);
     }));
     return function publish() {
-      return _ref148.apply(this, arguments);
+      return _ref149.apply(this, arguments);
     };
   }();
   var inp = "w-full border-2 border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:border-green-400 outline-none";
@@ -15914,10 +16111,10 @@ function PolicyPublish(_ref147) {
     className: "font-bold mb-3"
   }, "Policy document"), React.createElement("div", {
     className: "flex gap-2 mb-3"
-  }, [['upload', 'Upload PDF'], ['link', 'Paste a link']].map(function (_ref149) {
-    var _ref150 = _slicedToArray(_ref149, 2),
-      k = _ref150[0],
-      l = _ref150[1];
+  }, [['upload', 'Upload PDF'], ['link', 'Paste a link']].map(function (_ref150) {
+    var _ref151 = _slicedToArray(_ref150, 2),
+      k = _ref151[0],
+      l = _ref151[1];
     return React.createElement("button", {
       key: k,
       type: "button",
@@ -15960,10 +16157,10 @@ function PolicyPublish(_ref147) {
     className: "font-bold mb-3"
   }, "Who must sign?"), React.createElement("div", {
     className: "flex gap-2 mb-3"
-  }, [['all', "All active staff (".concat(activeStaff.length, ")")], ['some', 'Selected staff']].map(function (_ref151) {
-    var _ref152 = _slicedToArray(_ref151, 2),
-      k = _ref152[0],
-      l = _ref152[1];
+  }, [['all', "All active staff (".concat(activeStaff.length, ")")], ['some', 'Selected staff']].map(function (_ref152) {
+    var _ref153 = _slicedToArray(_ref152, 2),
+      k = _ref153[0],
+      l = _ref153[1];
     return React.createElement("button", {
       key: k,
       type: "button",
@@ -15986,15 +16183,15 @@ function PolicyPublish(_ref147) {
     className: "fas fa-paper-plane mr-2"
   }), "Publish and assign"))));
 }
-function PolicyDetail(_ref153) {
-  var pol = _ref153.pol,
-    asg = _ref153.asg,
-    ackByAsg = _ref153.ackByAsg,
-    staff = _ref153.staff,
-    user = _ref153.user,
-    readOnly = _ref153.readOnly,
-    notify = _ref153.notify,
-    onBack = _ref153.onBack;
+function PolicyDetail(_ref154) {
+  var pol = _ref154.pol,
+    asg = _ref154.asg,
+    ackByAsg = _ref154.ackByAsg,
+    staff = _ref154.staff,
+    user = _ref154.user,
+    readOnly = _ref154.readOnly,
+    notify = _ref154.notify,
+    onBack = _ref154.onBack;
   var _useState493 = useState(false),
     _useState494 = _slicedToArray(_useState493, 2),
     adding = _useState494[0],
@@ -16062,7 +16259,7 @@ function PolicyDetail(_ref153) {
     window.location.href = url;
   };
   var copyEmails = function () {
-    var _ref154 = _asyncToGenerator(_regeneratorRuntime().mark(function _callee72() {
+    var _ref155 = _asyncToGenerator(_regeneratorRuntime().mark(function _callee72() {
       return _regeneratorRuntime().wrap(function _callee72$(_context73) {
         while (1) switch (_context73.prev = _context73.next) {
           case 0:
@@ -16086,7 +16283,7 @@ function PolicyDetail(_ref153) {
       }, _callee72, null, [[0, 6]]);
     }));
     return function copyEmails() {
-      return _ref154.apply(this, arguments);
+      return _ref155.apply(this, arguments);
     };
   }();
   var exportXlsx = function exportXlsx() {
@@ -16106,7 +16303,7 @@ function PolicyDetail(_ref153) {
     XLSX.writeFile(wb, "".concat(pol.title.replace(/[^\w\- ]+/g, '').trim(), " v").concat(pol.version, " - sign-off.xlsx"));
   };
   var showSig = function () {
-    var _ref155 = _asyncToGenerator(_regeneratorRuntime().mark(function _callee73(r) {
+    var _ref156 = _asyncToGenerator(_regeneratorRuntime().mark(function _callee73(r) {
       var d;
       return _regeneratorRuntime().wrap(function _callee73$(_context74) {
         while (1) switch (_context74.prev = _context74.next) {
@@ -16133,12 +16330,12 @@ function PolicyDetail(_ref153) {
         }
       }, _callee73, null, [[0, 7]]);
     }));
-    return function showSig(_x58) {
-      return _ref155.apply(this, arguments);
+    return function showSig(_x66) {
+      return _ref156.apply(this, arguments);
     };
   }();
   var assignMore = function () {
-    var _ref156 = _asyncToGenerator(_regeneratorRuntime().mark(function _callee74() {
+    var _ref157 = _asyncToGenerator(_regeneratorRuntime().mark(function _callee74() {
       var r;
       return _regeneratorRuntime().wrap(function _callee74$(_context75) {
         while (1) switch (_context75.prev = _context75.next) {
@@ -16179,11 +16376,11 @@ function PolicyDetail(_ref153) {
       }, _callee74);
     }));
     return function assignMore() {
-      return _ref156.apply(this, arguments);
+      return _ref157.apply(this, arguments);
     };
   }();
   var retire = function () {
-    var _ref157 = _asyncToGenerator(_regeneratorRuntime().mark(function _callee75() {
+    var _ref158 = _asyncToGenerator(_regeneratorRuntime().mark(function _callee75() {
       var r;
       return _regeneratorRuntime().wrap(function _callee75$(_context76) {
         while (1) switch (_context76.prev = _context76.next) {
@@ -16215,11 +16412,11 @@ function PolicyDetail(_ref153) {
       }, _callee75);
     }));
     return function retire() {
-      return _ref157.apply(this, arguments);
+      return _ref158.apply(this, arguments);
     };
   }();
   var reactivate = function () {
-    var _ref158 = _asyncToGenerator(_regeneratorRuntime().mark(function _callee76() {
+    var _ref159 = _asyncToGenerator(_regeneratorRuntime().mark(function _callee76() {
       var r;
       return _regeneratorRuntime().wrap(function _callee76$(_context77) {
         while (1) switch (_context77.prev = _context77.next) {
@@ -16245,7 +16442,7 @@ function PolicyDetail(_ref153) {
       }, _callee76);
     }));
     return function reactivate() {
-      return _ref158.apply(this, arguments);
+      return _ref159.apply(this, arguments);
     };
   }();
   var btn = "px-4 py-2 rounded-xl font-semibold text-sm";
@@ -16334,11 +16531,11 @@ function PolicyDetail(_ref153) {
     return r.status === 'overdue';
   }).length], ['signed', 'Signed', rows.filter(function (r) {
     return r.status === 'signed';
-  }).length]].map(function (_ref159) {
-    var _ref160 = _slicedToArray(_ref159, 3),
-      k = _ref160[0],
-      l = _ref160[1],
-      c = _ref160[2];
+  }).length]].map(function (_ref160) {
+    var _ref161 = _slicedToArray(_ref160, 3),
+      k = _ref161[0],
+      l = _ref161[1],
+      c = _ref161[2];
     return React.createElement("button", {
       key: k,
       onClick: function onClick() {
@@ -16432,13 +16629,13 @@ function loadLineManagers() {
   return _loadLineManagers.apply(this, arguments);
 }
 function _loadLineManagers() {
-  _loadLineManagers = _asyncToGenerator(_regeneratorRuntime().mark(function _callee125() {
+  _loadLineManagers = _asyncToGenerator(_regeneratorRuntime().mark(function _callee129() {
     var _yield$Promise$all25, _yield$Promise$all26, p, u, off, m;
-    return _regeneratorRuntime().wrap(function _callee125$(_context126) {
-      while (1) switch (_context126.prev = _context126.next) {
+    return _regeneratorRuntime().wrap(function _callee129$(_context130) {
+      while (1) switch (_context130.prev = _context130.next) {
         case 0:
-          _context126.prev = 0;
-          _context126.next = 3;
+          _context130.prev = 0;
+          _context130.next = 3;
           return Promise.all([fetch("".concat(SB, "/rest/v1/staff_profiles?select=user_id,line_manager_id"), {
             headers: H
           }).then(function (r) {
@@ -16449,7 +16646,7 @@ function _loadLineManagers() {
             return r.ok ? r.json() : [];
           })]);
         case 3:
-          _yield$Promise$all25 = _context126.sent;
+          _yield$Promise$all25 = _context130.sent;
           _yield$Promise$all26 = _slicedToArray(_yield$Promise$all25, 2);
           p = _yield$Promise$all26[0];
           u = _yield$Promise$all26[1];
@@ -16462,16 +16659,16 @@ function _loadLineManagers() {
           (Array.isArray(p) ? p : []).forEach(function (x) {
             if (x.line_manager_id != null && !off.has(String(x.line_manager_id))) m[x.user_id] = x.line_manager_id;
           });
-          return _context126.abrupt("return", m);
+          return _context130.abrupt("return", m);
         case 13:
-          _context126.prev = 13;
-          _context126.t0 = _context126["catch"](0);
-          return _context126.abrupt("return", {});
+          _context130.prev = 13;
+          _context130.t0 = _context130["catch"](0);
+          return _context130.abrupt("return", {});
         case 16:
         case "end":
-          return _context126.stop();
+          return _context130.stop();
       }
-    }, _callee125, null, [[0, 13]]);
+    }, _callee129, null, [[0, 13]]);
   }));
   return _loadLineManagers.apply(this, arguments);
 }
@@ -16480,66 +16677,66 @@ var isForMe = function isForMe(lmOf, user, empId) {
   var lm = lmOf[empId];
   return lm != null ? String(lm) === String(user.id) : user.role === 'supervisor';
 };
-function writeAudited(_x59, _x60, _x61, _x62) {
+function writeAudited(_x67, _x68, _x69, _x70) {
   return _writeAudited.apply(this, arguments);
 }
 function _writeAudited() {
-  _writeAudited = _asyncToGenerator(_regeneratorRuntime().mark(function _callee126(method, url, body, extra) {
+  _writeAudited = _asyncToGenerator(_regeneratorRuntime().mark(function _callee130(method, url, body, extra) {
     var r, t;
-    return _regeneratorRuntime().wrap(function _callee126$(_context127) {
-      while (1) switch (_context127.prev = _context127.next) {
+    return _regeneratorRuntime().wrap(function _callee130$(_context131) {
+      while (1) switch (_context131.prev = _context131.next) {
         case 0:
-          _context127.next = 2;
+          _context131.next = 2;
           return fetch(url, {
             method: method,
             headers: HJ,
             body: JSON.stringify(_objectSpread(_objectSpread({}, body), extra))
           });
         case 2:
-          r = _context127.sent;
+          r = _context131.sent;
           if (!(!r.ok && r.status === 400)) {
-            _context127.next = 11;
+            _context131.next = 11;
             break;
           }
-          _context127.next = 6;
+          _context131.next = 6;
           return r.clone().text()["catch"](function () {
             return '';
           });
         case 6:
-          t = _context127.sent;
+          t = _context131.sent;
           if (!/column|schema cache/i.test(t)) {
-            _context127.next = 11;
+            _context131.next = 11;
             break;
           }
-          _context127.next = 10;
+          _context131.next = 10;
           return fetch(url, {
             method: method,
             headers: HJ,
             body: JSON.stringify(body)
           });
         case 10:
-          r = _context127.sent;
+          r = _context131.sent;
         case 11:
-          return _context127.abrupt("return", r);
+          return _context131.abrupt("return", r);
         case 12:
         case "end":
-          return _context127.stop();
+          return _context131.stop();
       }
-    }, _callee126);
+    }, _callee130);
   }));
   return _writeAudited.apply(this, arguments);
 }
-var ScopeToggle = function ScopeToggle(_ref161) {
-  var showAll = _ref161.showAll,
-    setShowAll = _ref161.setShowAll,
-    mine = _ref161.mine,
-    all = _ref161.all;
+var ScopeToggle = function ScopeToggle(_ref162) {
+  var showAll = _ref162.showAll,
+    setShowAll = _ref162.setShowAll,
+    mine = _ref162.mine,
+    all = _ref162.all;
   return React.createElement("div", {
     className: "glass rounded-xl p-2 mb-6 inline-flex gap-1"
-  }, [[false, "For my decision (".concat(mine, ")")], [true, "Everyone (".concat(all, ")")]].map(function (_ref162) {
-    var _ref163 = _slicedToArray(_ref162, 2),
-      v = _ref163[0],
-      l = _ref163[1];
+  }, [[false, "For my decision (".concat(mine, ")")], [true, "Everyone (".concat(all, ")")]].map(function (_ref163) {
+    var _ref164 = _slicedToArray(_ref163, 2),
+      v = _ref164[0],
+      l = _ref164[1];
     return React.createElement("button", {
       key: l,
       onClick: function onClick() {
@@ -16561,107 +16758,107 @@ var STORY_STATUS = {
   rejected: ['Not approved', 'bg-red-100 text-red-700'],
   unpublished: ['Taken down', 'bg-gray-200 text-gray-700']
 };
-function storyUpload(_x63, _x64, _x65, _x66) {
+function storyUpload(_x71, _x72, _x73, _x74) {
   return _storyUpload.apply(this, arguments);
 }
 function _storyUpload() {
-  _storyUpload = _asyncToGenerator(_regeneratorRuntime().mark(function _callee127(blob, kind, ext, type) {
+  _storyUpload = _asyncToGenerator(_regeneratorRuntime().mark(function _callee131(blob, kind, ext, type) {
     var _yield$supabaseClient16, data, au, path, _yield$supabaseClient17, error;
-    return _regeneratorRuntime().wrap(function _callee127$(_context128) {
-      while (1) switch (_context128.prev = _context128.next) {
+    return _regeneratorRuntime().wrap(function _callee131$(_context132) {
+      while (1) switch (_context132.prev = _context132.next) {
         case 0:
           if (supabaseClient) {
-            _context128.next = 2;
+            _context132.next = 2;
             break;
           }
           throw new Error('Uploads are not available on this page');
         case 2:
-          _context128.next = 4;
+          _context132.next = 4;
           return supabaseClient.auth.getUser();
         case 4:
-          _yield$supabaseClient16 = _context128.sent;
+          _yield$supabaseClient16 = _context132.sent;
           data = _yield$supabaseClient16.data;
           au = data && data.user;
           if (au) {
-            _context128.next = 9;
+            _context132.next = 9;
             break;
           }
           throw new Error('Please log out and log in again, then retry');
         case 9:
           path = "".concat(au.id, "/").concat(Date.now(), "-").concat(kind, "-").concat(Math.random().toString(36).slice(2, 8), ".").concat(ext);
-          _context128.next = 12;
+          _context132.next = 12;
           return supabaseClient.storage.from(STORY_BUCKET).upload(path, blob, {
             contentType: type,
             upsert: false
           });
         case 12:
-          _yield$supabaseClient17 = _context128.sent;
+          _yield$supabaseClient17 = _context132.sent;
           error = _yield$supabaseClient17.error;
           if (!error) {
-            _context128.next = 16;
+            _context132.next = 16;
             break;
           }
           throw new Error('Upload failed: ' + (error.message || 'check your connection'));
         case 16:
-          return _context128.abrupt("return", path);
+          return _context132.abrupt("return", path);
         case 17:
         case "end":
-          return _context128.stop();
+          return _context132.stop();
       }
-    }, _callee127);
+    }, _callee131);
   }));
   return _storyUpload.apply(this, arguments);
 }
-function storySignedUrl(_x67) {
+function storySignedUrl(_x75) {
   return _storySignedUrl.apply(this, arguments);
 }
 function _storySignedUrl() {
-  _storySignedUrl = _asyncToGenerator(_regeneratorRuntime().mark(function _callee128(path) {
+  _storySignedUrl = _asyncToGenerator(_regeneratorRuntime().mark(function _callee132(path) {
     var _yield$supabaseClient18, data;
-    return _regeneratorRuntime().wrap(function _callee128$(_context129) {
-      while (1) switch (_context129.prev = _context129.next) {
+    return _regeneratorRuntime().wrap(function _callee132$(_context133) {
+      while (1) switch (_context133.prev = _context133.next) {
         case 0:
-          _context129.prev = 0;
+          _context133.prev = 0;
           if (!(!supabaseClient || !path)) {
-            _context129.next = 3;
+            _context133.next = 3;
             break;
           }
-          return _context129.abrupt("return", null);
+          return _context133.abrupt("return", null);
         case 3:
-          _context129.next = 5;
+          _context133.next = 5;
           return supabaseClient.storage.from(STORY_BUCKET).createSignedUrl(path, 900);
         case 5:
-          _yield$supabaseClient18 = _context129.sent;
+          _yield$supabaseClient18 = _context133.sent;
           data = _yield$supabaseClient18.data;
-          return _context129.abrupt("return", data ? data.signedUrl : null);
+          return _context133.abrupt("return", data ? data.signedUrl : null);
         case 10:
-          _context129.prev = 10;
-          _context129.t0 = _context129["catch"](0);
-          return _context129.abrupt("return", null);
+          _context133.prev = 10;
+          _context133.t0 = _context133["catch"](0);
+          return _context133.abrupt("return", null);
         case 13:
         case "end":
-          return _context129.stop();
+          return _context133.stop();
       }
-    }, _callee128, null, [[0, 10]]);
+    }, _callee132, null, [[0, 10]]);
   }));
   return _storySignedUrl.apply(this, arguments);
 }
-var StoryBadge = function StoryBadge(_ref164) {
-  var s = _ref164.s;
-  var _ref165 = STORY_STATUS[s] || [s, 'bg-gray-100'],
-    _ref166 = _slicedToArray(_ref165, 2),
-    t = _ref166[0],
-    c = _ref166[1];
+var StoryBadge = function StoryBadge(_ref165) {
+  var s = _ref165.s;
+  var _ref166 = STORY_STATUS[s] || [s, 'bg-gray-100'],
+    _ref167 = _slicedToArray(_ref166, 2),
+    t = _ref167[0],
+    c = _ref167[1];
   return React.createElement("span", {
     className: "px-2 py-0.5 rounded-full text-xs font-bold ".concat(c)
   }, t);
 };
-function StoryForm(_ref167) {
-  var user = _ref167.user,
-    notify = _ref167.notify,
-    story = _ref167.story,
-    onDone = _ref167.onDone,
-    onCancel = _ref167.onCancel;
+function StoryForm(_ref168) {
+  var user = _ref168.user,
+    notify = _ref168.notify,
+    story = _ref168.story,
+    onDone = _ref168.onDone,
+    onCancel = _ref168.onCancel;
   var e = story || {};
   var _useState503 = useState({
       title: e.title || '',
@@ -16702,7 +16899,7 @@ function StoryForm(_ref167) {
   var needsProtect = f.involves_minor || f.sensitive_case;
   var inp = "w-full px-4 py-3 border-2 border-gray-200 rounded-xl";
   var submit = function () {
-    var _ref168 = _asyncToGenerator(_regeneratorRuntime().mark(function _callee77() {
+    var _ref169 = _asyncToGenerator(_regeneratorRuntime().mark(function _callee77() {
       var p, pdf, _yield$supabaseClient6, error;
       return _regeneratorRuntime().wrap(function _callee77$(_context78) {
         while (1) switch (_context78.prev = _context78.next) {
@@ -16819,7 +17016,7 @@ function StoryForm(_ref167) {
       }, _callee77, null, [[19, 51]]);
     }));
     return function submit() {
-      return _ref168.apply(this, arguments);
+      return _ref169.apply(this, arguments);
     };
   }();
   return React.createElement("div", {
@@ -16998,10 +17195,10 @@ function StoryForm(_ref167) {
     className: "px-5 py-3 rounded-xl bg-gray-100 font-semibold"
   }, "Cancel")));
 }
-function FieldStories(_ref169) {
-  var user = _ref169.user,
-    notify = _ref169.notify,
-    onBack = _ref169.onBack;
+function FieldStories(_ref170) {
+  var user = _ref170.user,
+    notify = _ref170.notify,
+    onBack = _ref170.onBack;
   var _useState511 = useState(null),
     _useState512 = _slicedToArray(_useState511, 2),
     rows = _useState512[0],
@@ -17011,7 +17208,7 @@ function FieldStories(_ref169) {
     editing = _useState514[0],
     setEditing = _useState514[1];
   var load = function () {
-    var _ref170 = _asyncToGenerator(_regeneratorRuntime().mark(function _callee78() {
+    var _ref171 = _asyncToGenerator(_regeneratorRuntime().mark(function _callee78() {
       var _yield$supabaseClient7, data, error;
       return _regeneratorRuntime().wrap(function _callee78$(_context79) {
         while (1) switch (_context79.prev = _context79.next) {
@@ -17041,7 +17238,7 @@ function FieldStories(_ref169) {
       }, _callee78);
     }));
     return function load() {
-      return _ref170.apply(this, arguments);
+      return _ref171.apply(this, arguments);
     };
   }();
   useEffect(function () {
@@ -17123,12 +17320,12 @@ function FieldStories(_ref169) {
     }), r.status === 'returned' ? 'Edit and resubmit' : 'Edit'));
   })))));
 }
-function StoryReview(_ref171) {
-  var user = _ref171.user,
-    comms = _ref171.comms,
-    _final = _ref171["final"],
-    notify = _ref171.notify,
-    onBack = _ref171.onBack;
+function StoryReview(_ref172) {
+  var user = _ref172.user,
+    comms = _ref172.comms,
+    _final = _ref172["final"],
+    notify = _ref172.notify,
+    onBack = _ref172.onBack;
   var _useState515 = useState(null),
     _useState516 = _slicedToArray(_useState515, 2),
     rows = _useState516[0],
@@ -17142,7 +17339,7 @@ function StoryReview(_ref171) {
     open = _useState520[0],
     setOpen = _useState520[1];
   var load = function () {
-    var _ref172 = _asyncToGenerator(_regeneratorRuntime().mark(function _callee79() {
+    var _ref173 = _asyncToGenerator(_regeneratorRuntime().mark(function _callee79() {
       var _yield$supabaseClient8, data, error;
       return _regeneratorRuntime().wrap(function _callee79$(_context80) {
         while (1) switch (_context80.prev = _context80.next) {
@@ -17170,7 +17367,7 @@ function StoryReview(_ref171) {
       }, _callee79);
     }));
     return function load() {
-      return _ref172.apply(this, arguments);
+      return _ref173.apply(this, arguments);
     };
   }();
   useEffect(function () {
@@ -17222,11 +17419,11 @@ function StoryReview(_ref171) {
     className: "text-sm text-gray-600 mt-1"
   }, comms && !_final ? 'You review stories first: recommend them for publishing, or return them with a note. The supervisor gives final approval.' : _final && !comms ? 'Communications reviews stories first. Stories they recommend come to you for final approval and publishing.' : 'Review stories and publish them on the website.', " Check consent and protection every time."), React.createElement("div", {
     className: "flex flex-wrap gap-2 mt-4"
-  }, tabs.map(function (_ref173) {
-    var _ref174 = _slicedToArray(_ref173, 3),
-      k = _ref174[0],
-      l = _ref174[1],
-      f = _ref174[2];
+  }, tabs.map(function (_ref174) {
+    var _ref175 = _slicedToArray(_ref174, 3),
+      k = _ref175[0],
+      l = _ref175[1],
+      f = _ref175[2];
     return React.createElement("button", {
       key: k,
       onClick: function onClick() {
@@ -17268,13 +17465,13 @@ function StoryReview(_ref171) {
     }, "No consent form attached")));
   })))));
 }
-function StoryReviewDetail(_ref175) {
-  var story = _ref175.story,
-    user = _ref175.user,
-    comms = _ref175.comms,
-    _final2 = _ref175["final"],
-    notify = _ref175.notify,
-    onBack = _ref175.onBack;
+function StoryReviewDetail(_ref176) {
+  var story = _ref176.story,
+    user = _ref176.user,
+    comms = _ref176.comms,
+    _final2 = _ref176["final"],
+    notify = _ref176.notify,
+    onBack = _ref176.onBack;
   var s = story;
   var _useState521 = useState({
       title: s.title,
@@ -17341,7 +17538,7 @@ function StoryReviewDetail(_ref175) {
   };
   var inp = "w-full px-3 py-2 border-2 border-gray-200 rounded-xl text-sm";
   var decide = function () {
-    var _ref177 = _asyncToGenerator(_regeneratorRuntime().mark(function _callee81(decision) {
+    var _ref178 = _asyncToGenerator(_regeneratorRuntime().mark(function _callee81(decision) {
       var note, url, _yield$supabaseClient9, blob, dErr, pub, _yield$supabaseClient10, uErr, _yield$supabaseClient11, error;
       return _regeneratorRuntime().wrap(function _callee81$(_context82) {
         while (1) switch (_context82.prev = _context82.next) {
@@ -17477,8 +17674,8 @@ function StoryReviewDetail(_ref175) {
         }
       }, _callee81, null, [[17, 53], [42, 47]]);
     }));
-    return function decide(_x68) {
-      return _ref177.apply(this, arguments);
+    return function decide(_x76) {
+      return _ref178.apply(this, arguments);
     };
   }();
   var own = String(s.submitted_by) === String(user.id);
@@ -17633,9 +17830,9 @@ function StoryReviewDetail(_ref175) {
     className: "fas fa-hourglass-half mr-1"
   }), "Recommended. Waiting for the supervisor's final approval."))));
 }
-var PortalBack = function PortalBack(_ref178) {
-  var onBack = _ref178.onBack,
-    label = _ref178.label;
+var PortalBack = function PortalBack(_ref179) {
+  var onBack = _ref179.onBack,
+    label = _ref179.label;
   return React.createElement("button", {
     onClick: onBack,
     className: "text-green-600 font-semibold text-sm mb-3 hover:underline"
@@ -17643,10 +17840,10 @@ var PortalBack = function PortalBack(_ref178) {
     className: "fas fa-arrow-left mr-2"
   }), label || 'Back to Staff Portal');
 };
-function MyAppraisals(_ref179) {
-  var user = _ref179.user,
-    notify = _ref179.notify,
-    onBack = _ref179.onBack;
+function MyAppraisals(_ref180) {
+  var user = _ref180.user,
+    notify = _ref180.notify,
+    onBack = _ref180.onBack;
   var _useState529 = useState('list'),
     _useState530 = _slicedToArray(_useState529, 2),
     view = _useState530[0],
@@ -17860,10 +18057,10 @@ function MyAppraisals(_ref179) {
     }), "View"))));
   })))));
 }
-function MyLeave(_ref180) {
-  var user = _ref180.user,
-    notify = _ref180.notify,
-    onBack = _ref180.onBack;
+function MyLeave(_ref181) {
+  var user = _ref181.user,
+    notify = _ref181.notify,
+    onBack = _ref181.onBack;
   var _useState537 = useState('list'),
     _useState538 = _slicedToArray(_useState537, 2),
     view = _useState538[0],
@@ -17882,7 +18079,7 @@ function MyLeave(_ref180) {
     setLoading = _useState544[1];
   var yr = new Date().getFullYear();
   var load = function () {
-    var _ref181 = _asyncToGenerator(_regeneratorRuntime().mark(function _callee82() {
+    var _ref182 = _asyncToGenerator(_regeneratorRuntime().mark(function _callee82() {
       var _yield$Promise$all11, _yield$Promise$all12, l, a;
       return _regeneratorRuntime().wrap(function _callee82$(_context83) {
         while (1) switch (_context83.prev = _context83.next) {
@@ -17920,7 +18117,7 @@ function MyLeave(_ref180) {
       }, _callee82, null, [[1, 12]]);
     }));
     return function load() {
-      return _ref181.apply(this, arguments);
+      return _ref182.apply(this, arguments);
     };
   }();
   useEffect(function () {
@@ -18083,12 +18280,12 @@ function MyLeave(_ref180) {
     }, l.status || 'pending'));
   }))))));
 }
-function EmergencyContactCard(_ref182) {
-  var userId = _ref182.userId,
-    editorName = _ref182.editorName,
-    notify = _ref182.notify,
-    title = _ref182.title,
-    note = _ref182.note;
+function EmergencyContactCard(_ref183) {
+  var userId = _ref183.userId,
+    editorName = _ref183.editorName,
+    notify = _ref183.notify,
+    title = _ref183.title,
+    note = _ref183.note;
   var _useState547 = useState({
       contact_name: '',
       relationship: '',
@@ -18171,7 +18368,7 @@ function EmergencyContactCard(_ref182) {
     });
   };
   var save = function () {
-    var _ref184 = _asyncToGenerator(_regeneratorRuntime().mark(function _callee84() {
+    var _ref185 = _asyncToGenerator(_regeneratorRuntime().mark(function _callee84() {
       var r;
       return _regeneratorRuntime().wrap(function _callee84$(_context85) {
         while (1) switch (_context85.prev = _context85.next) {
@@ -18193,10 +18390,10 @@ function EmergencyContactCard(_ref182) {
               }),
               body: JSON.stringify(_objectSpread(_objectSpread({
                 user_id: userId
-              }, Object.fromEntries(Object.entries(f).map(function (_ref185) {
-                var _ref186 = _slicedToArray(_ref185, 2),
-                  k = _ref186[0],
-                  v = _ref186[1];
+              }, Object.fromEntries(Object.entries(f).map(function (_ref186) {
+                var _ref187 = _slicedToArray(_ref186, 2),
+                  k = _ref187[0],
+                  v = _ref187[1];
                 return [k, v.trim() || null];
               }))), {}, {
                 updated_by: editorName || null,
@@ -18227,7 +18424,7 @@ function EmergencyContactCard(_ref182) {
       }, _callee84, null, [[4, 11]]);
     }));
     return function save() {
-      return _ref184.apply(this, arguments);
+      return _ref185.apply(this, arguments);
     };
   }();
   var inp = "w-full px-4 py-3 border-2 border-gray-200 rounded-xl text-sm";
@@ -18299,10 +18496,10 @@ function EmergencyContactCard(_ref182) {
     className: "btn-green text-white px-6 py-3 rounded-xl font-bold disabled:opacity-60"
   }, busy ? 'Saving…' : 'Save emergency contact')));
 }
-function MyEmergencyContact(_ref187) {
-  var user = _ref187.user,
-    notify = _ref187.notify,
-    onBack = _ref187.onBack;
+function MyEmergencyContact(_ref188) {
+  var user = _ref188.user,
+    notify = _ref188.notify,
+    onBack = _ref188.onBack;
   return React.createElement("div", {
     className: "min-h-screen p-4 md:p-8"
   }, React.createElement("div", {
@@ -18321,11 +18518,11 @@ function MyEmergencyContact(_ref187) {
     notify: notify
   })));
 }
-function AppraisalQueue(_ref188) {
-  var user = _ref188.user,
-    notify = _ref188.notify,
-    onBack = _ref188.onBack,
-    team = _ref188.team;
+function AppraisalQueue(_ref189) {
+  var user = _ref189.user,
+    notify = _ref189.notify,
+    onBack = _ref189.onBack,
+    team = _ref189.team;
   var _useState555 = useState([]),
     _useState556 = _slicedToArray(_useState555, 2),
     allApps = _useState556[0],
@@ -18408,7 +18605,7 @@ function AppraisalQueue(_ref188) {
     });
   var list = tab === 'pending' ? pending : tab === 'completed' ? completed : tab === 'withdrawn' ? withdrawnApps : disputed;
   var restore = function () {
-    var _ref189 = _asyncToGenerator(_regeneratorRuntime().mark(function _callee85(a) {
+    var _ref190 = _asyncToGenerator(_regeneratorRuntime().mark(function _callee85(a) {
       var r;
       return _regeneratorRuntime().wrap(function _callee85$(_context86) {
         while (1) switch (_context86.prev = _context86.next) {
@@ -18442,8 +18639,8 @@ function AppraisalQueue(_ref188) {
         }
       }, _callee85);
     }));
-    return function restore(_x69) {
-      return _ref189.apply(this, arguments);
+    return function restore(_x77) {
+      return _ref190.apply(this, arguments);
     };
   }();
   return React.createElement("div", {
@@ -18505,11 +18702,11 @@ function AppraisalQueue(_ref188) {
     className: "glass rounded-2xl p-6"
   }, React.createElement("div", {
     className: "flex gap-2 mb-6 border-b pb-4 flex-wrap"
-  }, [['pending', 'Pending', pending.length], ['completed', 'Completed', completed.length], ['disputed', 'Disputed', disputed.length], ['withdrawn', 'Withdrawn', withdrawnApps.length]].map(function (_ref190) {
-    var _ref191 = _slicedToArray(_ref190, 3),
-      k = _ref191[0],
-      l = _ref191[1],
-      c = _ref191[2];
+  }, [['pending', 'Pending', pending.length], ['completed', 'Completed', completed.length], ['disputed', 'Disputed', disputed.length], ['withdrawn', 'Withdrawn', withdrawnApps.length]].map(function (_ref191) {
+    var _ref192 = _slicedToArray(_ref191, 3),
+      k = _ref192[0],
+      l = _ref192[1],
+      c = _ref192[2];
     return React.createElement("button", {
       key: k,
       onClick: function onClick() {
@@ -18565,10 +18762,10 @@ function AppraisalQueue(_ref188) {
     }), a.status === 'pending' ? 'Review' : 'View')));
   })))));
 }
-function PortalContentAdmin(_ref192) {
-  var user = _ref192.user,
-    notify = _ref192.notify,
-    onBack = _ref192.onBack;
+function PortalContentAdmin(_ref193) {
+  var user = _ref193.user,
+    notify = _ref193.notify,
+    onBack = _ref193.onBack;
   var _useState567 = useState({}),
     _useState568 = _slicedToArray(_useState567, 2),
     content = _useState568[0],
@@ -18599,7 +18796,7 @@ function PortalContentAdmin(_ref192) {
     posting = _useState578[0],
     setPosting = _useState578[1];
   var load = function () {
-    var _ref193 = _asyncToGenerator(_regeneratorRuntime().mark(function _callee86() {
+    var _ref194 = _asyncToGenerator(_regeneratorRuntime().mark(function _callee86() {
       var _yield$Promise$all13, _yield$Promise$all14, c, nt, m;
       return _regeneratorRuntime().wrap(function _callee86$(_context87) {
         while (1) switch (_context87.prev = _context87.next) {
@@ -18642,7 +18839,7 @@ function PortalContentAdmin(_ref192) {
       }, _callee86, null, [[1, 14]]);
     }));
     return function load() {
-      return _ref193.apply(this, arguments);
+      return _ref194.apply(this, arguments);
     };
   }();
   useEffect(function () {
@@ -18658,7 +18855,7 @@ function PortalContentAdmin(_ref192) {
     });
   };
   var saveKey = function () {
-    var _ref194 = _asyncToGenerator(_regeneratorRuntime().mark(function _callee87(k) {
+    var _ref195 = _asyncToGenerator(_regeneratorRuntime().mark(function _callee87(k) {
       var r;
       return _regeneratorRuntime().wrap(function _callee87$(_context88) {
         while (1) switch (_context88.prev = _context88.next) {
@@ -18698,12 +18895,12 @@ function PortalContentAdmin(_ref192) {
         }
       }, _callee87, null, [[1, 8]]);
     }));
-    return function saveKey(_x70) {
-      return _ref194.apply(this, arguments);
+    return function saveKey(_x78) {
+      return _ref195.apply(this, arguments);
     };
   }();
   var post = function () {
-    var _ref195 = _asyncToGenerator(_regeneratorRuntime().mark(function _callee88() {
+    var _ref196 = _asyncToGenerator(_regeneratorRuntime().mark(function _callee88() {
       var r;
       return _regeneratorRuntime().wrap(function _callee88$(_context89) {
         while (1) switch (_context89.prev = _context89.next) {
@@ -18756,11 +18953,11 @@ function PortalContentAdmin(_ref192) {
       }, _callee88, null, [[4, 11]]);
     }));
     return function post() {
-      return _ref195.apply(this, arguments);
+      return _ref196.apply(this, arguments);
     };
   }();
   var toggle = function () {
-    var _ref196 = _asyncToGenerator(_regeneratorRuntime().mark(function _callee89(x, patch) {
+    var _ref197 = _asyncToGenerator(_regeneratorRuntime().mark(function _callee89(x, patch) {
       var r;
       return _regeneratorRuntime().wrap(function _callee89$(_context90) {
         while (1) switch (_context90.prev = _context90.next) {
@@ -18780,8 +18977,8 @@ function PortalContentAdmin(_ref192) {
         }
       }, _callee89);
     }));
-    return function toggle(_x71, _x72) {
-      return _ref196.apply(this, arguments);
+    return function toggle(_x79, _x80) {
+      return _ref197.apply(this, arguments);
     };
   }();
   var inp = "w-full px-4 py-3 border-2 border-gray-200 rounded-xl text-sm";
@@ -18898,10 +19095,10 @@ function PortalContentAdmin(_ref192) {
     className: "text-xs text-gray-500 mb-4"
   }, "Copy mission, vision, values and the safeguarding reporting channel from RAHAMA's official documents. Empty sections are hidden from staff, except safeguarding, which tells staff to contact HR until it is filled in."), React.createElement("div", {
     className: "space-y-5"
-  }, PORTAL_KEYS.map(function (_ref197) {
-    var _ref198 = _slicedToArray(_ref197, 2),
-      k = _ref198[0],
-      label = _ref198[1];
+  }, PORTAL_KEYS.map(function (_ref198) {
+    var _ref199 = _slicedToArray(_ref198, 2),
+      k = _ref199[0],
+      label = _ref199[1];
     return React.createElement("div", {
       key: k
     }, React.createElement("label", {
@@ -18926,13 +19123,13 @@ function PortalContentAdmin(_ref192) {
     }, "Last saved ", new Date(content[k].updated_at).toLocaleDateString(), " by ", content[k].updated_by || '—')));
   }))))));
 }
-function PortalTile(_ref199) {
-  var icon = _ref199.icon,
-    grad = _ref199.grad,
-    title = _ref199.title,
-    sub = _ref199.sub,
-    onClick = _ref199.onClick,
-    badge = _ref199.badge;
+function PortalTile(_ref200) {
+  var icon = _ref200.icon,
+    grad = _ref200.grad,
+    title = _ref200.title,
+    sub = _ref200.sub,
+    onClick = _ref200.onClick,
+    badge = _ref200.badge;
   return React.createElement("button", {
     onClick: onClick,
     className: "glass rounded-2xl p-5 hover:shadow-xl stat group text-left w-full"
@@ -18957,10 +19154,10 @@ function PortalTile(_ref199) {
     className: "fas fa-arrow-right text-gray-300 ml-auto group-hover:text-green-600 transition"
   })));
 }
-function StaffPortal(_ref200) {
-  var user = _ref200.user,
-    onLogout = _ref200.onLogout,
-    notify = _ref200.notify;
+function StaffPortal(_ref201) {
+  var user = _ref201.user,
+    onLogout = _ref201.onLogout,
+    notify = _ref201.notify;
   var isSup = user.role === 'supervisor';
   var isEmp = user.role === 'employee';
   var _useState579 = useState({
@@ -19021,7 +19218,7 @@ function StaffPortal(_ref200) {
   var storyFinal = isSup;
   var storyReviewer = storyComms || storyFinal;
   var flag = function () {
-    var _ref201 = _asyncToGenerator(_regeneratorRuntime().mark(function _callee90(col) {
+    var _ref202 = _asyncToGenerator(_regeneratorRuntime().mark(function _callee90(col) {
       var r, d;
       return _regeneratorRuntime().wrap(function _callee90$(_context91) {
         while (1) switch (_context91.prev = _context91.next) {
@@ -19054,8 +19251,8 @@ function StaffPortal(_ref200) {
         }
       }, _callee90, null, [[0, 12]]);
     }));
-    return function flag(_x73) {
-      return _ref201.apply(this, arguments);
+    return function flag(_x81) {
+      return _ref202.apply(this, arguments);
     };
   }();
   useEffect(function () {
@@ -19143,7 +19340,7 @@ function StaffPortal(_ref200) {
     }))();
   }, []);
   var loadAttn = function () {
-    var _ref204 = _asyncToGenerator(_regeneratorRuntime().mark(function _callee96() {
+    var _ref205 = _asyncToGenerator(_regeneratorRuntime().mark(function _callee96() {
       var items, c, safe, j, pol, od, myCon, cs, ca, na, ne, nr, goC, msgs, ap, _nr, lmMap, headNow, pa, np, lv, lvArr, nl, rec, nrec, tr, ta, nt, goT, ns, no, nm, st, sa, ret, own, w;
       return _regeneratorRuntime().wrap(function _callee96$(_context97) {
         while (1) switch (_context97.prev = _context97.next) {
@@ -19151,7 +19348,7 @@ function StaffPortal(_ref200) {
             items = [];
             c = {};
             safe = function () {
-              var _ref205 = _asyncToGenerator(_regeneratorRuntime().mark(function _callee93(fn) {
+              var _ref206 = _asyncToGenerator(_regeneratorRuntime().mark(function _callee93(fn) {
                 return _regeneratorRuntime().wrap(function _callee93$(_context94) {
                   while (1) switch (_context94.prev = _context94.next) {
                     case 0:
@@ -19170,8 +19367,8 @@ function StaffPortal(_ref200) {
                   }
                 }, _callee93, null, [[0, 6]]);
               }));
-              return function safe(_x74) {
-                return _ref205.apply(this, arguments);
+              return function safe(_x82) {
+                return _ref206.apply(this, arguments);
               };
             }();
             j = function j(url) {
@@ -19533,7 +19730,7 @@ function StaffPortal(_ref200) {
       }, _callee96);
     }));
     return function loadAttn() {
-      return _ref204.apply(this, arguments);
+      return _ref205.apply(this, arguments);
     };
   }();
   useEffect(function () {
@@ -19936,8 +20133,8 @@ function StaffPortal(_ref200) {
     t: 'Login Activity Logs',
     s: 'Login history, devices & failed attempts'
   }];
-  var Header = function Header(_ref208) {
-    var sub = _ref208.sub;
+  var Header = function Header(_ref209) {
+    var sub = _ref209.sub;
     return React.createElement("div", {
       className: "glass rounded-2xl p-6 mb-6 animate-in"
     }, React.createElement("div", {
@@ -19966,8 +20163,8 @@ function StaffPortal(_ref200) {
       className: "fas fa-sign-out-alt mr-2"
     }), "Logout"))));
   };
-  var Grid = function Grid(_ref209) {
-    var tiles = _ref209.tiles;
+  var Grid = function Grid(_ref210) {
+    var tiles = _ref210.tiles;
     return React.createElement("div", {
       className: "grid md:grid-cols-2 gap-4"
     }, tiles.map(function (x) {
@@ -20232,15 +20429,15 @@ function StaffPortal(_ref200) {
     }, v);
   }))), React.createElement("div", {
     className: "grid md:grid-cols-2 gap-4"
-  }, [['where_we_work', 'Where We Work', 'fa-location-dot'], ['contacts', 'Who To Contact', 'fa-phone']].filter(function (_ref210) {
-    var _ref211 = _slicedToArray(_ref210, 1),
-      k = _ref211[0];
+  }, [['where_we_work', 'Where We Work', 'fa-location-dot'], ['contacts', 'Who To Contact', 'fa-phone']].filter(function (_ref211) {
+    var _ref212 = _slicedToArray(_ref211, 1),
+      k = _ref212[0];
     return lines(k).length;
-  }).map(function (_ref212) {
-    var _ref213 = _slicedToArray(_ref212, 3),
-      k = _ref213[0],
-      l = _ref213[1],
-      ic = _ref213[2];
+  }).map(function (_ref213) {
+    var _ref214 = _slicedToArray(_ref213, 3),
+      k = _ref214[0],
+      l = _ref214[1],
+      ic = _ref214[2];
     return React.createElement("div", {
       key: k,
       className: "bg-gray-50 rounded-xl p-4"
@@ -20385,11 +20582,11 @@ var hrFlagFor = function hrFlagFor(hist) {
   })) return 'promotion';
   return 'ontrack';
 };
-function HRDashboard(_ref214) {
-  var user = _ref214.user,
-    notify = _ref214.notify,
-    onBack = _ref214.onBack,
-    access = _ref214.access;
+function HRDashboard(_ref215) {
+  var user = _ref215.user,
+    notify = _ref215.notify,
+    onBack = _ref215.onBack,
+    access = _ref215.access;
   var canRecommend = access === 'hr';
   var canDecide = access === 'ed' || access === 'supervisor';
   var _useState599 = useState('performance'),
@@ -20445,7 +20642,7 @@ function HRDashboard(_ref214) {
     selStaff = _useState624[0],
     setSelStaff = _useState624[1];
   var load = function () {
-    var _ref215 = _asyncToGenerator(_regeneratorRuntime().mark(function _callee97() {
+    var _ref216 = _asyncToGenerator(_regeneratorRuntime().mark(function _callee97() {
       var _yield$Promise$all19, _yield$Promise$all20, a, u, p, r, all, good, pend, pm, ps;
       return _regeneratorRuntime().wrap(function _callee97$(_context98) {
         while (1) switch (_context98.prev = _context98.next) {
@@ -20541,7 +20738,7 @@ function HRDashboard(_ref214) {
       }, _callee97, null, [[1, 28]]);
     }));
     return function load() {
-      return _ref215.apply(this, arguments);
+      return _ref216.apply(this, arguments);
     };
   }();
   useEffect(function () {
@@ -20763,11 +20960,11 @@ function HRDashboard(_ref214) {
     className: "fas fa-file-excel mr-2"
   }), "Export"))), React.createElement("div", {
     className: "flex flex-wrap gap-2 mt-5 border-t pt-4"
-  }, tabs.map(function (_ref217) {
-    var _ref218 = _slicedToArray(_ref217, 3),
-      k = _ref218[0],
-      l = _ref218[1],
-      i = _ref218[2];
+  }, tabs.map(function (_ref218) {
+    var _ref219 = _slicedToArray(_ref218, 3),
+      k = _ref219[0],
+      l = _ref219[1],
+      i = _ref219[2];
     return React.createElement("button", {
       key: k,
       onClick: function onClick() {
@@ -20962,15 +21159,15 @@ function HRDashboard(_ref214) {
     }, "HR: ", r.rec.recommendation.replace('_', ' '), " \xB7 ", r.rec.decision));
   }))))));
 }
-function HRStaffDetail(_ref219) {
-  var row = _ref219.row,
-    recs = _ref219.recs,
-    period = _ref219.period,
-    user = _ref219.user,
-    canRecommend = _ref219.canRecommend,
-    canDecide = _ref219.canDecide,
-    notify = _ref219.notify,
-    onBack = _ref219.onBack;
+function HRStaffDetail(_ref220) {
+  var row = _ref220.row,
+    recs = _ref220.recs,
+    period = _ref220.period,
+    user = _ref220.user,
+    canRecommend = _ref220.canRecommend,
+    canDecide = _ref220.canDecide,
+    notify = _ref220.notify,
+    onBack = _ref220.onBack;
   var s = row.s,
     prof = row.prof,
     hist = row.hist,
@@ -20991,7 +21188,7 @@ function HRStaffDetail(_ref219) {
   var show = cur || hist[hist.length - 1];
   var app = show ? show.app : null;
   var submit = function () {
-    var _ref220 = _asyncToGenerator(_regeneratorRuntime().mark(function _callee98() {
+    var _ref221 = _asyncToGenerator(_regeneratorRuntime().mark(function _callee98() {
       var r;
       return _regeneratorRuntime().wrap(function _callee98$(_context99) {
         while (1) switch (_context99.prev = _context99.next) {
@@ -21031,7 +21228,7 @@ function HRStaffDetail(_ref219) {
       }, _callee98);
     }));
     return function submit() {
-      return _ref220.apply(this, arguments);
+      return _ref221.apply(this, arguments);
     };
   }();
   return React.createElement("div", {
@@ -21136,10 +21333,10 @@ function HRStaffDetail(_ref219) {
     className: "fas fa-user-check text-indigo-600 mr-2"
   }), "HR recommendation ", period ? "for ".concat(period) : ''), React.createElement("div", {
     className: "grid md:grid-cols-2 gap-2 mb-3"
-  }, Object.entries(HR_REC).map(function (_ref221) {
-    var _ref222 = _slicedToArray(_ref221, 2),
-      k = _ref222[0],
-      l = _ref222[1];
+  }, Object.entries(HR_REC).map(function (_ref222) {
+    var _ref223 = _slicedToArray(_ref222, 2),
+      k = _ref223[0],
+      l = _ref223[1];
     return React.createElement("label", {
       key: k,
       className: "border-2 rounded-xl p-3 cursor-pointer text-sm font-semibold ".concat(rec === k ? 'border-green-500 bg-green-50' : 'border-gray-200')
@@ -21179,21 +21376,21 @@ function HRStaffDetail(_ref219) {
     hideName: true
   }))));
 }
-function HRRecList(_ref224) {
-  var recs = _ref224.recs,
-    nameOf = _ref224.nameOf,
-    user = _ref224.user,
-    canDecide = _ref224.canDecide,
-    notify = _ref224.notify,
-    onChanged = _ref224.onChanged,
-    onOpen = _ref224.onOpen,
-    hideName = _ref224.hideName;
+function HRRecList(_ref225) {
+  var recs = _ref225.recs,
+    nameOf = _ref225.nameOf,
+    user = _ref225.user,
+    canDecide = _ref225.canDecide,
+    notify = _ref225.notify,
+    onChanged = _ref225.onChanged,
+    onOpen = _ref225.onOpen,
+    hideName = _ref225.hideName;
   var _useState631 = useState({}),
     _useState632 = _slicedToArray(_useState631, 2),
     noteFor = _useState632[0],
     setNoteFor = _useState632[1];
   var decide = function () {
-    var _ref225 = _asyncToGenerator(_regeneratorRuntime().mark(function _callee99(r, decision) {
+    var _ref226 = _asyncToGenerator(_regeneratorRuntime().mark(function _callee99(r, decision) {
       var res;
       return _regeneratorRuntime().wrap(function _callee99$(_context100) {
         while (1) switch (_context100.prev = _context100.next) {
@@ -21226,8 +21423,8 @@ function HRRecList(_ref224) {
         }
       }, _callee99);
     }));
-    return function decide(_x75, _x76) {
-      return _ref225.apply(this, arguments);
+    return function decide(_x83, _x84) {
+      return _ref226.apply(this, arguments);
     };
   }();
   return React.createElement("div", {
@@ -21279,17 +21476,17 @@ function HRRecList(_ref224) {
     }), "Reject")));
   }));
 }
-function HRRecommendations(_ref226) {
-  var recs = _ref226.recs,
-    nameOf = _ref226.nameOf,
-    user = _ref226.user,
-    canDecide = _ref226.canDecide,
-    canRecommend = _ref226.canRecommend,
-    candidates = _ref226.candidates,
-    period = _ref226.period,
-    notify = _ref226.notify,
-    onOpen = _ref226.onOpen,
-    onChanged = _ref226.onChanged;
+function HRRecommendations(_ref227) {
+  var recs = _ref227.recs,
+    nameOf = _ref227.nameOf,
+    user = _ref227.user,
+    canDecide = _ref227.canDecide,
+    canRecommend = _ref227.canRecommend,
+    candidates = _ref227.candidates,
+    period = _ref227.period,
+    notify = _ref227.notify,
+    onOpen = _ref227.onOpen,
+    onChanged = _ref227.onChanged;
   var pending = recs.filter(function (r) {
     return r.decision === 'pending';
   });
@@ -21376,29 +21573,29 @@ var CON_GREEN = '#09AE09';
 var CON_FONT = "Cambria, Georgia, 'Times New Roman', serif";
 var CON_SIGNER_TITLE = 'Program Manager';
 var CON_ED_TITLE = 'Executive Director';
-function conLoadSignoffs(_x77) {
+function conLoadSignoffs(_x85) {
   return _conLoadSignoffs.apply(this, arguments);
 }
 function _conLoadSignoffs() {
-  _conLoadSignoffs = _asyncToGenerator(_regeneratorRuntime().mark(function _callee129(c) {
+  _conLoadSignoffs = _asyncToGenerator(_regeneratorRuntime().mark(function _callee133(c) {
     var d, from, ok;
-    return _regeneratorRuntime().wrap(function _callee129$(_context130) {
-      while (1) switch (_context130.prev = _context130.next) {
+    return _regeneratorRuntime().wrap(function _callee133$(_context134) {
+      while (1) switch (_context134.prev = _context134.next) {
         case 0:
-          _context130.prev = 0;
-          _context130.next = 3;
+          _context134.prev = 0;
+          _context134.next = 3;
           return fetch("".concat(SB, "/rest/v1/contract_signoffs?contract_id=eq.").concat(c.id, "&select=role,signer_name,signer_title,signature_data,signed_at&order=signed_at.desc"), {
             headers: H
           }).then(function (r) {
             return r.ok ? r.json() : [];
           });
         case 3:
-          d = _context130.sent;
+          d = _context134.sent;
           from = new Date(c.returned_at || c.drafted_at || 0);
           ok = (Array.isArray(d) ? d : []).filter(function (x) {
             return new Date(x.signed_at) >= from;
           });
-          return _context130.abrupt("return", {
+          return _context134.abrupt("return", {
             approver: ok.find(function (x) {
               return x.role === 'approver';
             }) || null,
@@ -21407,30 +21604,30 @@ function _conLoadSignoffs() {
             }) || null
           });
         case 9:
-          _context130.prev = 9;
-          _context130.t0 = _context130["catch"](0);
-          return _context130.abrupt("return", {
+          _context134.prev = 9;
+          _context134.t0 = _context134["catch"](0);
+          return _context134.abrupt("return", {
             approver: null,
             ed: null
           });
         case 12:
         case "end":
-          return _context130.stop();
+          return _context134.stop();
       }
-    }, _callee129, null, [[0, 9]]);
+    }, _callee133, null, [[0, 9]]);
   }));
   return _conLoadSignoffs.apply(this, arguments);
 }
-function conPostSignoff(_x78, _x79, _x80, _x81) {
+function conPostSignoff(_x86, _x87, _x88, _x89) {
   return _conPostSignoff.apply(this, arguments);
 }
 function _conPostSignoff() {
-  _conPostSignoff = _asyncToGenerator(_regeneratorRuntime().mark(function _callee130(c, role, user, sigData) {
+  _conPostSignoff = _asyncToGenerator(_regeneratorRuntime().mark(function _callee134(c, role, user, sigData) {
     var r;
-    return _regeneratorRuntime().wrap(function _callee130$(_context131) {
-      while (1) switch (_context131.prev = _context131.next) {
+    return _regeneratorRuntime().wrap(function _callee134$(_context135) {
+      while (1) switch (_context135.prev = _context135.next) {
         case 0:
-          _context131.next = 2;
+          _context135.next = 2;
           return fetch("".concat(SB, "/rest/v1/contract_signoffs"), {
             method: 'POST',
             headers: HJ,
@@ -21443,22 +21640,22 @@ function _conPostSignoff() {
             })
           });
         case 2:
-          r = _context131.sent;
+          r = _context135.sent;
           if (r.ok) {
-            _context131.next = 9;
+            _context135.next = 9;
             break;
           }
-          _context131.t0 = Error;
-          _context131.next = 7;
+          _context135.t0 = Error;
+          _context135.next = 7;
           return conErr(r, 'Your signature could not be saved');
         case 7:
-          _context131.t1 = _context131.sent;
-          throw new _context131.t0(_context131.t1);
+          _context135.t1 = _context135.sent;
+          throw new _context135.t0(_context135.t1);
         case 9:
         case "end":
-          return _context131.stop();
+          return _context135.stop();
       }
-    }, _callee130);
+    }, _callee134);
   }));
   return _conPostSignoff.apply(this, arguments);
 }
@@ -21498,7 +21695,7 @@ var conRef = function conRef(c) {
   return "RAHAMA/HR/CON/".concat(String(c.id || 0).padStart(3, '0'), "/").concat(new Date(c.issued_at || c.drafted_at || Date.now()).getFullYear());
 };
 var conErr = function () {
-  var _ref227 = _asyncToGenerator(_regeneratorRuntime().mark(function _callee100(r, fallback) {
+  var _ref228 = _asyncToGenerator(_regeneratorRuntime().mark(function _callee100(r, fallback) {
     var t, j;
     return _regeneratorRuntime().wrap(function _callee100$(_context101) {
       while (1) switch (_context101.prev = _context101.next) {
@@ -21520,8 +21717,8 @@ var conErr = function () {
       }
     }, _callee100, null, [[0, 8]]);
   }));
-  return function conErr(_x82, _x83) {
-    return _ref227.apply(this, arguments);
+  return function conErr(_x90, _x91) {
+    return _ref228.apply(this, arguments);
   };
 }();
 var conDaysTo = function conDaysTo(d) {
@@ -21561,11 +21758,11 @@ var conBody = function conBody(t) {
     }, ln);
   });
 };
-function ConLetter(_ref228) {
-  var c = _ref228.c,
-    name = _ref228.name,
-    sig = _ref228.sig,
-    so = _ref228.so;
+function ConLetter(_ref229) {
+  var c = _ref229.c,
+    name = _ref229.name,
+    sig = _ref229.sig,
+    so = _ref229.so;
   so = so || {};
   var nr = c.contract_type === 'non_renewal';
   return React.createElement("div", {
@@ -21655,75 +21852,75 @@ function conPrint(c, name, sig, so) {
   w.document.write("<!doctype html><html><head><meta charset=\"utf-8\"><title>".concat(e(conRef(c)), " ").concat(e(name), "</title><style>\n        @page{size:A4;margin:18mm 20mm}body{font-family:").concat(CON_FONT, ";color:#222;max-width:720px;margin:24px auto;padding:0 24px;font-size:12pt;line-height:1.5}\n        .rule{height:5px;background:").concat(CON_GREEN, ";margin:8px 0 18px}.row{display:flex;justify-content:space-between;margin-bottom:14px}.body{text-align:justify}\n        .blk{margin-top:28px}.blk b.t{display:block;margin-bottom:6px}.sm{font-size:10pt;color:#555}@media print{body{margin:0 auto;padding:0}}</style></head><body>\n        <img src=\"").concat(CON_LOGO, "\" style=\"height:80px\"><div class=\"rule\"></div>\n        <div class=\"row\"><span>Ref: ").concat(e(conRef(c)), "</span><span>").concat(e(conDate(c.issued_at || c.submitted_at || c.drafted_at)), "</span></div>\n        <p><b>").concat(e(name), "</b>").concat(c.position ? '<br>' + e(c.position) : '').concat(c.department ? '<br>' + e(c.department) : '', "</p>\n        <div class=\"body\">").concat(body, "</div>\n        <div class=\"blk\"><b class=\"t\">Signed for and on behalf of RAHAMA:</b>Name: ").concat(e(so.approver ? so.approver.signer_name : c.approved_by || ''), "<br>Title: ").concat(e(CON_SIGNER_TITLE), "<br>\n            Date: ").concat(so.approver ? e(conDate(so.approver.signed_at)) : '', "<br>Signature: ").concat(conSigImg(so.approver) ? "<img src=\"".concat(conSigImg(so.approver), "\" style=\"height:60px;vertical-align:middle\">") : '', "</div>\n        <div class=\"blk\"><b class=\"t\">Concurrence of the Executive Director:</b>Name: ").concat(e(so.ed ? so.ed.signer_name : c.ed_by || ''), "<br>\n            Date: ").concat(so.ed ? e(conDate(so.ed.signed_at)) : '', "<br>Signature: ").concat(conSigImg(so.ed) ? "<img src=\"".concat(conSigImg(so.ed), "\" style=\"height:60px;vertical-align:middle\">") : '', "</div>\n        <div class=\"blk\"><b class=\"t\">").concat(nr ? 'Received by the Employee:' : 'Signed by the Employee:', "</b>Name: ").concat(e(sig ? sig.signer_name : name), "<br>\n            Date: ").concat(sig ? e(new Date(sig.signed_at).toLocaleString('en-GB')) : '', "<br>Signature: ").concat(sigImg).concat(sig ? "<br><span class=\"sm\">\"".concat(e(sig.declaration), "\"</span>") : '', "</div>\n        <script>setTimeout(function(){window.print()},400)<") + "/script></body></html>");
   w.document.close();
 }
-function conOpenFile(_x84, _x85) {
+function conOpenFile(_x92, _x93) {
   return _conOpenFile.apply(this, arguments);
 }
 function _conOpenFile() {
-  _conOpenFile = _asyncToGenerator(_regeneratorRuntime().mark(function _callee131(c, notify) {
+  _conOpenFile = _asyncToGenerator(_regeneratorRuntime().mark(function _callee135(c, notify) {
     var w, r, d, url;
-    return _regeneratorRuntime().wrap(function _callee131$(_context132) {
-      while (1) switch (_context132.prev = _context132.next) {
+    return _regeneratorRuntime().wrap(function _callee135$(_context136) {
+      while (1) switch (_context136.prev = _context136.next) {
         case 0:
           w = window.open('', '_blank');
-          _context132.prev = 1;
-          _context132.next = 4;
+          _context136.prev = 1;
+          _context136.next = 4;
           return fetch("".concat(SB, "/rest/v1/contract_files?contract_id=eq.").concat(c.id, "&select=file_data"), {
             headers: H
           });
         case 4:
-          r = _context132.sent;
+          r = _context136.sent;
           if (!r.ok) {
-            _context132.next = 11;
+            _context136.next = 11;
             break;
           }
-          _context132.next = 8;
+          _context136.next = 8;
           return r.json();
         case 8:
-          _context132.t0 = _context132.sent;
-          _context132.next = 12;
+          _context136.t0 = _context136.sent;
+          _context136.next = 12;
           break;
         case 11:
-          _context132.t0 = [];
+          _context136.t0 = [];
         case 12:
-          d = _context132.t0;
+          d = _context136.t0;
           if (!(!Array.isArray(d) || !d.length)) {
-            _context132.next = 15;
+            _context136.next = 15;
             break;
           }
           throw new Error('missing');
         case 15:
-          _context132.t1 = URL;
-          _context132.next = 18;
+          _context136.t1 = URL;
+          _context136.next = 18;
           return fetch(d[0].file_data);
         case 18:
-          _context132.next = 20;
-          return _context132.sent.blob();
+          _context136.next = 20;
+          return _context136.sent.blob();
         case 20:
-          _context132.t2 = _context132.sent;
-          url = _context132.t1.createObjectURL.call(_context132.t1, _context132.t2);
+          _context136.t2 = _context136.sent;
+          url = _context136.t1.createObjectURL.call(_context136.t1, _context136.t2);
           if (w) w.location.href = url;else window.open(url, '_blank');
-          return _context132.abrupt("return", true);
+          return _context136.abrupt("return", true);
         case 26:
-          _context132.prev = 26;
-          _context132.t3 = _context132["catch"](1);
+          _context136.prev = 26;
+          _context136.t3 = _context136["catch"](1);
           if (w) w.close();
           notify('Could not open the attached PDF', 'error');
-          return _context132.abrupt("return", false);
+          return _context136.abrupt("return", false);
         case 31:
         case "end":
-          return _context132.stop();
+          return _context136.stop();
       }
-    }, _callee131, null, [[1, 26]]);
+    }, _callee135, null, [[1, 26]]);
   }));
   return _conOpenFile.apply(this, arguments);
 }
-function Contracts(_ref229) {
-  var user = _ref229.user,
-    notify = _ref229.notify,
-    onBack = _ref229.onBack,
-    canDraft = _ref229.canDraft,
-    canApprove = _ref229.canApprove,
-    canConcur = _ref229.canConcur;
+function Contracts(_ref230) {
+  var user = _ref230.user,
+    notify = _ref230.notify,
+    onBack = _ref230.onBack,
+    canDraft = _ref230.canDraft,
+    canApprove = _ref230.canApprove,
+    canConcur = _ref230.canConcur;
   var _useState633 = useState(true),
     _useState634 = _slicedToArray(_useState633, 2),
     loading = _useState634[0],
@@ -21773,7 +21970,7 @@ function Contracts(_ref229) {
     endEdit = _useState656[0],
     setEndEdit = _useState656[1];
   var load = function () {
-    var _ref230 = _asyncToGenerator(_regeneratorRuntime().mark(function _callee101() {
+    var _ref231 = _asyncToGenerator(_regeneratorRuntime().mark(function _callee101() {
       var j, _yield$Promise$all21, _yield$Promise$all22, u, p, a, c, r, pm;
       return _regeneratorRuntime().wrap(function _callee101$(_context102) {
         while (1) switch (_context102.prev = _context102.next) {
@@ -21820,7 +22017,7 @@ function Contracts(_ref229) {
       }, _callee101);
     }));
     return function load() {
-      return _ref230.apply(this, arguments);
+      return _ref231.apply(this, arguments);
     };
   }();
   useEffect(function () {
@@ -21937,7 +22134,7 @@ function Contracts(_ref229) {
     });
   }
   var saveEnd = function () {
-    var _ref231 = _asyncToGenerator(_regeneratorRuntime().mark(function _callee102(r, val) {
+    var _ref232 = _asyncToGenerator(_regeneratorRuntime().mark(function _callee102(r, val) {
       var body, res;
       return _regeneratorRuntime().wrap(function _callee102$(_context103) {
         while (1) switch (_context103.prev = _context103.next) {
@@ -21995,8 +22192,8 @@ function Contracts(_ref229) {
         }
       }, _callee102);
     }));
-    return function saveEnd(_x86, _x87) {
-      return _ref231.apply(this, arguments);
+    return function saveEnd(_x94, _x95) {
+      return _ref232.apply(this, arguments);
     };
   }();
   var card = function card(c) {
@@ -22037,11 +22234,11 @@ function Contracts(_ref229) {
     className: "text-gray-500 text-sm mt-1"
   }, canDraft ? 'Draft renewals and contract changes from appraisal findings. ' : '', canApprove ? 'You approve drafts before they go to the ED. ' : '', canConcur ? 'You give concurrence before letters go to staff. ' : '', "Staff read and sign their letter in the portal."), React.createElement("div", {
     className: "flex flex-wrap gap-2 mt-5 border-t pt-4"
-  }, [['staff', 'Staff & renewals', 'fa-users'], ['progress', "In progress (".concat(inProg.length, ")").concat(nAct ? " \xB7 ".concat(nAct, " for you") : ''), 'fa-hourglass-half'], ['done', "Completed (".concat(done.length, ")"), 'fa-circle-check']].map(function (_ref232) {
-    var _ref233 = _slicedToArray(_ref232, 3),
-      k = _ref233[0],
-      l = _ref233[1],
-      i = _ref233[2];
+  }, [['staff', 'Staff & renewals', 'fa-users'], ['progress', "In progress (".concat(inProg.length, ")").concat(nAct ? " \xB7 ".concat(nAct, " for you") : ''), 'fa-hourglass-half'], ['done', "Completed (".concat(done.length, ")"), 'fa-circle-check']].map(function (_ref233) {
+    var _ref234 = _slicedToArray(_ref233, 3),
+      k = _ref234[0],
+      l = _ref234[1],
+      i = _ref234[2];
     return React.createElement("button", {
       key: k,
       onClick: function onClick() {
@@ -22063,10 +22260,10 @@ function Contracts(_ref229) {
     className: "glass rounded-2xl p-6"
   }, React.createElement("div", {
     className: "flex flex-wrap gap-2 mb-2"
-  }, [['all', 'All staff'], ['due', 'Contract ends within 90 days'], ['pip', 'PIP (below 60)'], ['promo', '80 and above'], ['none', 'No appraisal']].map(function (_ref234) {
-    var _ref235 = _slicedToArray(_ref234, 2),
-      k = _ref235[0],
-      l = _ref235[1];
+  }, [['all', 'All staff'], ['due', 'Contract ends within 90 days'], ['pip', 'PIP (below 60)'], ['promo', '80 and above'], ['none', 'No appraisal']].map(function (_ref235) {
+    var _ref236 = _slicedToArray(_ref235, 2),
+      k = _ref236[0],
+      l = _ref236[1];
     return React.createElement("button", {
       key: k,
       onClick: function onClick() {
@@ -22180,12 +22377,12 @@ function Contracts(_ref229) {
     className: "space-y-2"
   }, (tab === 'progress' ? inProg : done).map(card)))));
 }
-function ContractEditor(_ref236) {
-  var init = _ref236.init,
-    user = _ref236.user,
-    isSup = _ref236.isSup,
-    notify = _ref236.notify,
-    onDone = _ref236.onDone;
+function ContractEditor(_ref237) {
+  var init = _ref237.init,
+    user = _ref237.user,
+    isSup = _ref237.isSup,
+    notify = _ref237.notify,
+    onDone = _ref237.onDone;
   var row = init.row;
   var ex = init.contract;
   var app = ex ? ex.appraisal_score != null ? {
@@ -22283,7 +22480,7 @@ function ContractEditor(_ref236) {
     });
   };
   var save = function () {
-    var _ref237 = _asyncToGenerator(_regeneratorRuntime().mark(function _callee103(submit) {
+    var _ref238 = _asyncToGenerator(_regeneratorRuntime().mark(function _callee103(submit) {
       var payload, id, r, d, _r3, fr, _r4;
       return _regeneratorRuntime().wrap(function _callee103$(_context104) {
         while (1) switch (_context104.prev = _context104.next) {
@@ -22541,14 +22738,14 @@ function ContractEditor(_ref236) {
         }
       }, _callee103, null, [[27, 102]]);
     }));
-    return function save(_x88) {
-      return _ref237.apply(this, arguments);
+    return function save(_x96) {
+      return _ref238.apply(this, arguments);
     };
   }();
-  var TypeCard = function TypeCard(_ref238) {
-    var _ref239 = _slicedToArray(_ref238, 2),
-      k = _ref239[0],
-      l = _ref239[1];
+  var TypeCard = function TypeCard(_ref239) {
+    var _ref240 = _slicedToArray(_ref239, 2),
+      k = _ref240[0],
+      l = _ref240[1];
     return React.createElement("label", {
       key: k,
       className: "border-2 rounded-xl p-3 cursor-pointer text-sm font-semibold flex items-start gap-2 ".concat(f.contract_type === k ? 'border-green-500 bg-green-50' : 'border-gray-200')
@@ -22799,17 +22996,17 @@ function ContractEditor(_ref236) {
     className: "fas fa-paper-plane mr-2"
   }), nextStatus === 'awaiting_ed' ? 'Approve and send to the ED' : 'Send to the supervisor for approval')))));
 }
-function ContractView(_ref240) {
-  var c = _ref240.c,
-    name = _ref240.name,
-    email = _ref240.email,
-    user = _ref240.user,
-    canDraft = _ref240.canDraft,
-    canApprove = _ref240.canApprove,
-    canConcur = _ref240.canConcur,
-    notify = _ref240.notify,
-    onEdit = _ref240.onEdit,
-    onBack = _ref240.onBack;
+function ContractView(_ref241) {
+  var c = _ref241.c,
+    name = _ref241.name,
+    email = _ref241.email,
+    user = _ref241.user,
+    canDraft = _ref241.canDraft,
+    canApprove = _ref241.canApprove,
+    canConcur = _ref241.canConcur,
+    notify = _ref241.notify,
+    onEdit = _ref241.onEdit,
+    onBack = _ref241.onBack;
   var _useState671 = useState({}),
     _useState672 = _slicedToArray(_useState671, 2),
     so = _useState672[0],
@@ -22855,7 +23052,7 @@ function ContractView(_ref240) {
   }, [c.id]);
   var own = c.user_id === user.id;
   var act = function () {
-    var _ref241 = _asyncToGenerator(_regeneratorRuntime().mark(function _callee104(status, label, needNote, doneMsg) {
+    var _ref242 = _asyncToGenerator(_regeneratorRuntime().mark(function _callee104(status, label, needNote, doneMsg) {
       var role, r;
       return _regeneratorRuntime().wrap(function _callee104$(_context105) {
         while (1) switch (_context105.prev = _context105.next) {
@@ -22933,8 +23130,8 @@ function ContractView(_ref240) {
         }
       }, _callee104, null, [[11, 16]]);
     }));
-    return function act(_x89, _x90, _x91, _x92) {
-      return _ref241.apply(this, arguments);
+    return function act(_x97, _x98, _x99, _x100) {
+      return _ref242.apply(this, arguments);
     };
   }();
   var emailStaff = function emailStaff() {
@@ -23118,10 +23315,10 @@ function ContractView(_ref240) {
     }, "\"", e.note, "\""));
   })))));
 }
-function MyContracts(_ref242) {
-  var user = _ref242.user,
-    notify = _ref242.notify,
-    onBack = _ref242.onBack;
+function MyContracts(_ref243) {
+  var user = _ref243.user,
+    notify = _ref243.notify,
+    onBack = _ref243.onBack;
   var _useState683 = useState([]),
     _useState684 = _slicedToArray(_useState683, 2),
     items = _useState684[0],
@@ -23139,7 +23336,7 @@ function MyContracts(_ref242) {
     sel = _useState690[0],
     setSel = _useState690[1];
   var load = function () {
-    var _ref243 = _asyncToGenerator(_regeneratorRuntime().mark(function _callee105() {
+    var _ref244 = _asyncToGenerator(_regeneratorRuntime().mark(function _callee105() {
       var d, arr, ids, s, m;
       return _regeneratorRuntime().wrap(function _callee105$(_context106) {
         while (1) switch (_context106.prev = _context106.next) {
@@ -23194,7 +23391,7 @@ function MyContracts(_ref242) {
       }, _callee105, null, [[1, 17]]);
     }));
     return function load() {
-      return _ref243.apply(this, arguments);
+      return _ref244.apply(this, arguments);
     };
   }();
   useEffect(function () {
@@ -23283,12 +23480,12 @@ function MyContracts(_ref242) {
     className: "space-y-3"
   }, past.map(card))))));
 }
-function ContractSign(_ref244) {
-  var c = _ref244.c,
-    sig = _ref244.sig,
-    user = _ref244.user,
-    notify = _ref244.notify,
-    onDone = _ref244.onDone;
+function ContractSign(_ref245) {
+  var c = _ref245.c,
+    sig = _ref245.sig,
+    user = _ref245.user,
+    notify = _ref245.notify,
+    onDone = _ref245.onDone;
   var _useState691 = useState({}),
     _useState692 = _slicedToArray(_useState691, 2),
     so = _useState692[0],
@@ -23319,7 +23516,7 @@ function ContractSign(_ref244) {
     why = _useState702[0],
     setWhy = _useState702[1];
   var sign = function () {
-    var _ref245 = _asyncToGenerator(_regeneratorRuntime().mark(function _callee106() {
+    var _ref246 = _asyncToGenerator(_regeneratorRuntime().mark(function _callee106() {
       var r;
       return _regeneratorRuntime().wrap(function _callee106$(_context107) {
         while (1) switch (_context107.prev = _context107.next) {
@@ -23385,11 +23582,11 @@ function ContractSign(_ref244) {
       }, _callee106, null, [[7, 23]]);
     }));
     return function sign() {
-      return _ref245.apply(this, arguments);
+      return _ref246.apply(this, arguments);
     };
   }();
   var decline = function () {
-    var _ref246 = _asyncToGenerator(_regeneratorRuntime().mark(function _callee107() {
+    var _ref247 = _asyncToGenerator(_regeneratorRuntime().mark(function _callee107() {
       var r;
       return _regeneratorRuntime().wrap(function _callee107$(_context108) {
         while (1) switch (_context108.prev = _context108.next) {
@@ -23443,7 +23640,7 @@ function ContractSign(_ref244) {
       }, _callee107);
     }));
     return function decline() {
-      return _ref246.apply(this, arguments);
+      return _ref247.apply(this, arguments);
     };
   }();
   return React.createElement("div", {
@@ -23486,10 +23683,10 @@ function ContractSign(_ref244) {
     className: "glass rounded-2xl p-6"
   }, !isNR && React.createElement("div", {
     className: "flex gap-2 mb-4"
-  }, [['sign', 'Accept and sign'], ['decline', 'I have a concern / decline']].map(function (_ref247) {
-    var _ref248 = _slicedToArray(_ref247, 2),
-      k = _ref248[0],
-      l = _ref248[1];
+  }, [['sign', 'Accept and sign'], ['decline', 'I have a concern / decline']].map(function (_ref248) {
+    var _ref249 = _slicedToArray(_ref248, 2),
+      k = _ref249[0],
+      l = _ref249[1];
     return React.createElement("button", {
       key: k,
       onClick: function onClick() {
@@ -23536,10 +23733,10 @@ function ContractSign(_ref244) {
     className: "fas fa-paper-plane mr-2"
   }), "Send to HR")))));
 }
-function LeaveRequest(_ref249) {
-  var user = _ref249.user,
-    notify = _ref249.notify,
-    onBack = _ref249.onBack;
+function LeaveRequest(_ref250) {
+  var user = _ref250.user,
+    notify = _ref250.notify,
+    onBack = _ref250.onBack;
   var _useState703 = useState(''),
     _useState704 = _slicedToArray(_useState703, 2),
     type = _useState704[0],
@@ -23561,7 +23758,7 @@ function LeaveRequest(_ref249) {
     busy = _useState712[0],
     setBusy = _useState712[1];
   var submit = function () {
-    var _ref250 = _asyncToGenerator(_regeneratorRuntime().mark(function _callee108() {
+    var _ref251 = _asyncToGenerator(_regeneratorRuntime().mark(function _callee108() {
       var r;
       return _regeneratorRuntime().wrap(function _callee108$(_context109) {
         while (1) switch (_context109.prev = _context109.next) {
@@ -23608,7 +23805,7 @@ function LeaveRequest(_ref249) {
       }, _callee108, null, [[4, 11]]);
     }));
     return function submit() {
-      return _ref250.apply(this, arguments);
+      return _ref251.apply(this, arguments);
     };
   }();
   return React.createElement("div", {
@@ -23673,20 +23870,20 @@ var leavePend = function leavePend(l) {
 var forFinal = function forFinal(lmOf, user, l) {
   return !!user && user.role === 'supervisor' && String(l.employee_id) !== String(user.id) && (isForMe(lmOf, user, l.employee_id) || !!l.head_decision);
 };
-var HeadRec = function HeadRec(_ref251) {
-  var l = _ref251.l;
+var HeadRec = function HeadRec(_ref252) {
+  var l = _ref252.l;
   return l.head_decision ? React.createElement("p", {
     className: "text-xs font-semibold mt-1 ".concat(l.head_decision === 'approved' ? 'text-green-700' : 'text-red-700')
   }, React.createElement("i", {
     className: "fas fa-user-check mr-1"
   }), l.head_decided_by || 'Head of Unit', " recommends: ", l.head_decision === 'approved' ? 'Approve' : 'Reject', l.head_comment ? " \xB7 \"".concat(l.head_comment, "\"") : '') : null;
 };
-function LeaveAdmin(_ref252) {
-  var notify = _ref252.notify,
-    onBack = _ref252.onBack,
-    readOnly = _ref252.readOnly,
-    user = _ref252.user,
-    team = _ref252.team;
+function LeaveAdmin(_ref253) {
+  var notify = _ref253.notify,
+    onBack = _ref253.onBack,
+    readOnly = _ref253.readOnly,
+    user = _ref253.user,
+    team = _ref253.team;
   var _useState713 = useState([]),
     _useState714 = _slicedToArray(_useState713, 2),
     list = _useState714[0],
@@ -23822,13 +24019,13 @@ function LeaveAdmin(_ref252) {
     }, bt));
   }))));
 }
-function LeaveReview(_ref253) {
-  var req = _ref253.req,
-    name = _ref253.name,
-    user = _ref253.user,
-    recommend = _ref253.recommend,
-    notify = _ref253.notify,
-    onDone = _ref253.onDone;
+function LeaveReview(_ref254) {
+  var req = _ref254.req,
+    name = _ref254.name,
+    user = _ref254.user,
+    recommend = _ref254.recommend,
+    notify = _ref254.notify,
+    onDone = _ref254.onDone;
   var _useState723 = useState((recommend ? req.head_decision : req.status) || ''),
     _useState724 = _slicedToArray(_useState723, 2),
     decision = _useState724[0],
@@ -23842,7 +24039,7 @@ function LeaveReview(_ref253) {
     busy = _useState728[0],
     setBusy = _useState728[1];
   var save = function () {
-    var _ref254 = _asyncToGenerator(_regeneratorRuntime().mark(function _callee109() {
+    var _ref255 = _asyncToGenerator(_regeneratorRuntime().mark(function _callee109() {
       var url, r, t;
       return _regeneratorRuntime().wrap(function _callee109$(_context110) {
         while (1) switch (_context110.prev = _context110.next) {
@@ -23916,7 +24113,7 @@ function LeaveReview(_ref253) {
       }, _callee109);
     }));
     return function save() {
-      return _ref254.apply(this, arguments);
+      return _ref255.apply(this, arguments);
     };
   }();
   return React.createElement("div", {
@@ -23977,10 +24174,10 @@ function LeaveReview(_ref253) {
     className: "w-full btn-green text-white py-4 rounded-xl font-bold disabled:opacity-50"
   }, busy ? 'Saving...' : recommend ? 'Send for final approval' : 'Save Final Decision')));
 }
-function Directory(_ref255) {
-  var user = _ref255.user,
-    notify = _ref255.notify,
-    onBack = _ref255.onBack;
+function Directory(_ref256) {
+  var user = _ref256.user,
+    notify = _ref256.notify,
+    onBack = _ref256.onBack;
   var _useState729 = useState([]),
     _useState730 = _slicedToArray(_useState729, 2),
     staff = _useState730[0],
@@ -23994,7 +24191,7 @@ function Directory(_ref255) {
     search = _useState734[0],
     setSearch = _useState734[1];
   var load = function () {
-    var _ref256 = _asyncToGenerator(_regeneratorRuntime().mark(function _callee110() {
+    var _ref257 = _asyncToGenerator(_regeneratorRuntime().mark(function _callee110() {
       var u, p;
       return _regeneratorRuntime().wrap(function _callee110$(_context111) {
         while (1) switch (_context111.prev = _context111.next) {
@@ -24036,7 +24233,7 @@ function Directory(_ref255) {
       }, _callee110, null, [[1, 11]]);
     }));
     return function load() {
-      return _ref256.apply(this, arguments);
+      return _ref257.apply(this, arguments);
     };
   }();
   useEffect(function () {
@@ -24100,9 +24297,9 @@ function Directory(_ref255) {
     className: "text-center text-gray-400 py-6"
   }, "No staff found"))));
 }
-function HRAdmin(_ref257) {
-  var notify = _ref257.notify,
-    onBack = _ref257.onBack;
+function HRAdmin(_ref258) {
+  var notify = _ref258.notify,
+    onBack = _ref258.onBack;
   var _useState735 = useState([]),
     _useState736 = _slicedToArray(_useState735, 2),
     staff = _useState736[0],
@@ -24124,7 +24321,7 @@ function HRAdmin(_ref257) {
     people = _useState744[0],
     setPeople = _useState744[1];
   var load = function () {
-    var _ref258 = _asyncToGenerator(_regeneratorRuntime().mark(function _callee111() {
+    var _ref259 = _asyncToGenerator(_regeneratorRuntime().mark(function _callee111() {
       var u, ids, pd, map;
       return _regeneratorRuntime().wrap(function _callee111$(_context112) {
         while (1) switch (_context112.prev = _context112.next) {
@@ -24182,7 +24379,7 @@ function HRAdmin(_ref257) {
       }, _callee111, null, [[1, 17]]);
     }));
     return function load() {
-      return _ref258.apply(this, arguments);
+      return _ref259.apply(this, arguments);
     };
   }();
   useEffect(function () {
@@ -24243,12 +24440,12 @@ function HRAdmin(_ref257) {
     }));
   }))));
 }
-function HRProfileEdit(_ref259) {
-  var staff = _ref259.staff,
-    profile = _ref259.profile,
-    people = _ref259.people,
-    notify = _ref259.notify,
-    onDone = _ref259.onDone;
+function HRProfileEdit(_ref260) {
+  var staff = _ref260.staff,
+    profile = _ref260.profile,
+    people = _ref260.people,
+    notify = _ref260.notify,
+    onDone = _ref260.onDone;
   var _useState745 = useState((profile === null || profile === void 0 ? void 0 : profile.position) || ''),
     _useState746 = _slicedToArray(_useState745, 2),
     position = _useState746[0],
@@ -24277,7 +24474,7 @@ function HRProfileEdit(_ref259) {
     return String(p.id) !== String(staff.id) && (p.is_active !== false || String(p.id) === lm);
   });
   var save = function () {
-    var _ref260 = _asyncToGenerator(_regeneratorRuntime().mark(function _callee112() {
+    var _ref261 = _asyncToGenerator(_regeneratorRuntime().mark(function _callee112() {
       var lmPerson, payload, extra, r, t;
       return _regeneratorRuntime().wrap(function _callee112$(_context113) {
         while (1) switch (_context113.prev = _context113.next) {
@@ -24353,7 +24550,7 @@ function HRProfileEdit(_ref259) {
       }, _callee112, null, [[1, 25]]);
     }));
     return function save() {
-      return _ref260.apply(this, arguments);
+      return _ref261.apply(this, arguments);
     };
   }();
   return React.createElement("div", {
