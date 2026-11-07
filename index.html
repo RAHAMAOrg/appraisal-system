@@ -6538,50 +6538,50 @@ function resolveMov(_x20) {
   return _resolveMov.apply(this, arguments);
 }
 function _resolveMov() {
-  _resolveMov = _asyncToGenerator(_regeneratorRuntime().mark(function _callee113(u) {
+  _resolveMov = _asyncToGenerator(_regeneratorRuntime().mark(function _callee114(u) {
     var parts, table, r, d;
-    return _regeneratorRuntime().wrap(function _callee113$(_context114) {
-      while (1) switch (_context114.prev = _context114.next) {
+    return _regeneratorRuntime().wrap(function _callee114$(_context115) {
+      while (1) switch (_context115.prev = _context115.next) {
         case 0:
           if (!(!u || typeof u !== 'string' || !u.startsWith('lazy:'))) {
-            _context114.next = 2;
+            _context115.next = 2;
             break;
           }
-          return _context114.abrupt("return", u);
+          return _context115.abrupt("return", u);
         case 2:
           parts = u.split(':');
           table = parts[1] === 'apr' ? 'activity_period_reports' : 'work_plan_activities';
-          _context114.prev = 4;
-          _context114.next = 7;
+          _context115.prev = 4;
+          _context115.next = 7;
           return fetch("".concat(SB, "/rest/v1/").concat(table, "?id=eq.").concat(encodeURIComponent(parts[2]), "&select=mov_file_url"), {
             headers: H
           });
         case 7:
-          r = _context114.sent;
+          r = _context115.sent;
           if (!r.ok) {
-            _context114.next = 14;
+            _context115.next = 14;
             break;
           }
-          _context114.next = 11;
+          _context115.next = 11;
           return r.json();
         case 11:
-          _context114.t0 = _context114.sent;
-          _context114.next = 15;
+          _context115.t0 = _context115.sent;
+          _context115.next = 15;
           break;
         case 14:
-          _context114.t0 = [];
+          _context115.t0 = [];
         case 15:
-          d = _context114.t0;
-          return _context114.abrupt("return", Array.isArray(d) && d[0] ? d[0].mov_file_url : null);
+          d = _context115.t0;
+          return _context115.abrupt("return", Array.isArray(d) && d[0] ? d[0].mov_file_url : null);
         case 19:
-          _context114.prev = 19;
-          _context114.t1 = _context114["catch"](4);
-          return _context114.abrupt("return", null);
+          _context115.prev = 19;
+          _context115.t1 = _context115["catch"](4);
+          return _context115.abrupt("return", null);
         case 22:
         case "end":
-          return _context114.stop();
+          return _context115.stop();
       }
-    }, _callee113, null, [[4, 19]]);
+    }, _callee114, null, [[4, 19]]);
   }));
   return _resolveMov.apply(this, arguments);
 }
@@ -6589,24 +6589,24 @@ function fileFromData(_x21) {
   return _fileFromData.apply(this, arguments);
 }
 function _fileFromData() {
-  _fileFromData = _asyncToGenerator(_regeneratorRuntime().mark(function _callee114(src) {
+  _fileFromData = _asyncToGenerator(_regeneratorRuntime().mark(function _callee115(src) {
     var b;
-    return _regeneratorRuntime().wrap(function _callee114$(_context115) {
-      while (1) switch (_context115.prev = _context115.next) {
+    return _regeneratorRuntime().wrap(function _callee115$(_context116) {
+      while (1) switch (_context116.prev = _context116.next) {
         case 0:
-          _context115.next = 2;
+          _context116.next = 2;
           return fetch(src);
         case 2:
-          _context115.next = 4;
-          return _context115.sent.blob();
+          _context116.next = 4;
+          return _context116.sent.blob();
         case 4:
-          b = _context115.sent;
-          return _context115.abrupt("return", URL.createObjectURL(b));
+          b = _context116.sent;
+          return _context116.abrupt("return", URL.createObjectURL(b));
         case 6:
         case "end":
-          return _context115.stop();
+          return _context116.stop();
       }
-    }, _callee114);
+    }, _callee115);
   }));
   return _fileFromData.apply(this, arguments);
 }
@@ -6614,31 +6614,31 @@ function viewAttachment(_x22, _x23, _x24) {
   return _viewAttachment.apply(this, arguments);
 }
 function _viewAttachment() {
-  _viewAttachment = _asyncToGenerator(_regeneratorRuntime().mark(function _callee115(src, name, w) {
+  _viewAttachment = _asyncToGenerator(_regeneratorRuntime().mark(function _callee116(src, name, w) {
     var url, viewable;
-    return _regeneratorRuntime().wrap(function _callee115$(_context116) {
-      while (1) switch (_context116.prev = _context116.next) {
+    return _regeneratorRuntime().wrap(function _callee116$(_context117) {
+      while (1) switch (_context117.prev = _context117.next) {
         case 0:
           if (src) {
-            _context116.next = 4;
+            _context117.next = 4;
             break;
           }
           if (w) w.close();
           alert('This attachment was not saved with the file. Ask the person to upload it again.');
-          return _context116.abrupt("return");
+          return _context117.abrupt("return");
         case 4:
           if (!/^https?:\/\//i.test(src)) {
-            _context116.next = 7;
+            _context117.next = 7;
             break;
           }
           if (w) w.location.href = src;else window.open(src, '_blank', 'noopener');
-          return _context116.abrupt("return");
+          return _context117.abrupt("return");
         case 7:
-          _context116.prev = 7;
-          _context116.next = 10;
+          _context117.prev = 7;
+          _context117.next = 10;
           return fileFromData(src);
         case 10:
-          url = _context116.sent;
+          url = _context117.sent;
           viewable = /^data:(image\/|application\/pdf|text\/plain)/i.test(src);
           if (viewable) {
             if (w) w.location.href = url;else window.open(url, '_blank');
@@ -6646,18 +6646,18 @@ function _viewAttachment() {
             if (w) w.close();
             downloadAttachment(src, name);
           }
-          _context116.next = 19;
+          _context117.next = 19;
           break;
         case 15:
-          _context116.prev = 15;
-          _context116.t0 = _context116["catch"](7);
+          _context117.prev = 15;
+          _context117.t0 = _context117["catch"](7);
           if (w) w.close();
           alert('Could not open the attachment.');
         case 19:
         case "end":
-          return _context116.stop();
+          return _context117.stop();
       }
-    }, _callee115, null, [[7, 15]]);
+    }, _callee116, null, [[7, 15]]);
   }));
   return _viewAttachment.apply(this, arguments);
 }
@@ -6665,30 +6665,30 @@ function downloadAttachment(_x25, _x26) {
   return _downloadAttachment.apply(this, arguments);
 }
 function _downloadAttachment() {
-  _downloadAttachment = _asyncToGenerator(_regeneratorRuntime().mark(function _callee116(src, name) {
+  _downloadAttachment = _asyncToGenerator(_regeneratorRuntime().mark(function _callee117(src, name) {
     var url, a;
-    return _regeneratorRuntime().wrap(function _callee116$(_context117) {
-      while (1) switch (_context117.prev = _context117.next) {
+    return _regeneratorRuntime().wrap(function _callee117$(_context118) {
+      while (1) switch (_context118.prev = _context118.next) {
         case 0:
           if (src) {
-            _context117.next = 3;
+            _context118.next = 3;
             break;
           }
           alert('This attachment was not saved with the file. Ask the person to upload it again.');
-          return _context117.abrupt("return");
+          return _context118.abrupt("return");
         case 3:
           if (!/^https?:\/\//i.test(src)) {
-            _context117.next = 6;
+            _context118.next = 6;
             break;
           }
           window.open(src, '_blank', 'noopener');
-          return _context117.abrupt("return");
+          return _context118.abrupt("return");
         case 6:
-          _context117.prev = 6;
-          _context117.next = 9;
+          _context118.prev = 6;
+          _context118.next = 9;
           return fileFromData(src);
         case 9:
-          url = _context117.sent;
+          url = _context118.sent;
           a = document.createElement('a');
           a.href = url;
           a.download = name || 'attachment';
@@ -6698,17 +6698,17 @@ function _downloadAttachment() {
           setTimeout(function () {
             return URL.revokeObjectURL(url);
           }, 60000);
-          _context117.next = 22;
+          _context118.next = 22;
           break;
         case 19:
-          _context117.prev = 19;
-          _context117.t0 = _context117["catch"](6);
+          _context118.prev = 19;
+          _context118.t0 = _context118["catch"](6);
           alert('Could not download the attachment.');
         case 22:
         case "end":
-          return _context117.stop();
+          return _context118.stop();
       }
-    }, _callee116, null, [[6, 19]]);
+    }, _callee117, null, [[6, 19]]);
   }));
   return _downloadAttachment.apply(this, arguments);
 }
@@ -6750,30 +6750,30 @@ function openMov(_x27, _x28) {
   return _openMov.apply(this, arguments);
 }
 function _openMov() {
-  _openMov = _asyncToGenerator(_regeneratorRuntime().mark(function _callee117(u, name) {
+  _openMov = _asyncToGenerator(_regeneratorRuntime().mark(function _callee118(u, name) {
     var w, real;
-    return _regeneratorRuntime().wrap(function _callee117$(_context118) {
-      while (1) switch (_context118.prev = _context118.next) {
+    return _regeneratorRuntime().wrap(function _callee118$(_context119) {
+      while (1) switch (_context119.prev = _context119.next) {
         case 0:
           w = window.open('', '_blank');
-          _context118.next = 3;
+          _context119.next = 3;
           return resolveMov(u);
         case 3:
-          real = _context118.sent;
+          real = _context119.sent;
           if (real) {
-            _context118.next = 8;
+            _context119.next = 8;
             break;
           }
           if (w) w.close();
           alert('Could not load the attachment. Please check your connection and try again.');
-          return _context118.abrupt("return");
+          return _context119.abrupt("return");
         case 8:
           viewAttachment(real, name, w);
         case 9:
         case "end":
-          return _context118.stop();
+          return _context119.stop();
       }
-    }, _callee117);
+    }, _callee118);
   }));
   return _openMov.apply(this, arguments);
 }
@@ -6781,28 +6781,28 @@ function downloadMov(_x29, _x30) {
   return _downloadMov.apply(this, arguments);
 }
 function _downloadMov() {
-  _downloadMov = _asyncToGenerator(_regeneratorRuntime().mark(function _callee118(u, name) {
+  _downloadMov = _asyncToGenerator(_regeneratorRuntime().mark(function _callee119(u, name) {
     var real;
-    return _regeneratorRuntime().wrap(function _callee118$(_context119) {
-      while (1) switch (_context119.prev = _context119.next) {
+    return _regeneratorRuntime().wrap(function _callee119$(_context120) {
+      while (1) switch (_context120.prev = _context120.next) {
         case 0:
-          _context119.next = 2;
+          _context120.next = 2;
           return resolveMov(u);
         case 2:
-          real = _context119.sent;
+          real = _context120.sent;
           if (real) {
-            _context119.next = 6;
+            _context120.next = 6;
             break;
           }
           alert('Could not load the attachment. Please check your connection and try again.');
-          return _context119.abrupt("return");
+          return _context120.abrupt("return");
         case 6:
           downloadAttachment(real, name);
         case 7:
         case "end":
-          return _context119.stop();
+          return _context120.stop();
       }
-    }, _callee118);
+    }, _callee119);
   }));
   return _downloadMov.apply(this, arguments);
 }
@@ -6810,23 +6810,23 @@ function downloadActivityReport(_x31) {
   return _downloadActivityReport.apply(this, arguments);
 }
 function _downloadActivityReport() {
-  _downloadActivityReport = _asyncToGenerator(_regeneratorRuntime().mark(function _callee119(act) {
+  _downloadActivityReport = _asyncToGenerator(_regeneratorRuntime().mark(function _callee120(act) {
     var real;
-    return _regeneratorRuntime().wrap(function _callee119$(_context120) {
-      while (1) switch (_context120.prev = _context120.next) {
+    return _regeneratorRuntime().wrap(function _callee120$(_context121) {
+      while (1) switch (_context121.prev = _context121.next) {
         case 0:
-          _context120.next = 2;
+          _context121.next = 2;
           return resolveMov(act.mov_file_url);
         case 2:
-          real = _context120.sent;
-          return _context120.abrupt("return", _downloadActivityReportNow(_objectSpread(_objectSpread({}, act), {}, {
+          real = _context121.sent;
+          return _context121.abrupt("return", _downloadActivityReportNow(_objectSpread(_objectSpread({}, act), {}, {
             mov_file_url: real
           })));
         case 4:
         case "end":
-          return _context120.stop();
+          return _context121.stop();
       }
-    }, _callee119);
+    }, _callee120);
   }));
   return _downloadActivityReport.apply(this, arguments);
 }
@@ -8899,59 +8899,59 @@ function checkOfficeNetwork() {
   return _checkOfficeNetwork.apply(this, arguments);
 }
 function _checkOfficeNetwork() {
-  _checkOfficeNetwork = _asyncToGenerator(_regeneratorRuntime().mark(function _callee120() {
+  _checkOfficeNetwork = _asyncToGenerator(_regeneratorRuntime().mark(function _callee121() {
     var r, d, city, region;
-    return _regeneratorRuntime().wrap(function _callee120$(_context121) {
-      while (1) switch (_context121.prev = _context121.next) {
+    return _regeneratorRuntime().wrap(function _callee121$(_context122) {
+      while (1) switch (_context122.prev = _context122.next) {
         case 0:
-          _context121.prev = 0;
-          _context121.next = 3;
+          _context122.prev = 0;
+          _context122.next = 3;
           return fetch('https://ipapi.co/json/', {
             signal: AbortSignal.timeout(5000)
           });
         case 3:
-          r = _context121.sent;
+          r = _context122.sent;
           if (r.ok) {
-            _context121.next = 6;
+            _context122.next = 6;
             break;
           }
-          return _context121.abrupt("return", {
+          return _context122.abrupt("return", {
             ok: false,
             reason: 'Could not verify network'
           });
         case 6:
-          _context121.next = 8;
+          _context122.next = 8;
           return r.json();
         case 8:
-          d = _context121.sent;
+          d = _context122.sent;
           city = (d.city || '').toLowerCase(), region = (d.region || '').toLowerCase();
           if (!(city.includes('kano') || city.includes('katsina') || region.includes('kano') || region.includes('katsina'))) {
-            _context121.next = 12;
+            _context122.next = 12;
             break;
           }
-          return _context121.abrupt("return", {
+          return _context122.abrupt("return", {
             ok: true,
             method: 'network',
             ip: d.ip,
             city: d.city || d.region
           });
         case 12:
-          return _context121.abrupt("return", {
+          return _context122.abrupt("return", {
             ok: false,
             reason: "Network: ".concat(d.city || d.region || 'Unknown', " \u2014 not office area")
           });
         case 15:
-          _context121.prev = 15;
-          _context121.t0 = _context121["catch"](0);
-          return _context121.abrupt("return", {
+          _context122.prev = 15;
+          _context122.t0 = _context122["catch"](0);
+          return _context122.abrupt("return", {
             ok: false,
             reason: 'Network check failed'
           });
         case 18:
         case "end":
-          return _context121.stop();
+          return _context122.stop();
       }
-    }, _callee120, null, [[0, 15]]);
+    }, _callee121, null, [[0, 15]]);
   }));
   return _checkOfficeNetwork.apply(this, arguments);
 }
@@ -9945,7 +9945,7 @@ function compressPhoto(_x32) {
   return _compressPhoto.apply(this, arguments);
 }
 function _compressPhoto() {
-  _compressPhoto = _asyncToGenerator(_regeneratorRuntime().mark(function _callee121(file) {
+  _compressPhoto = _asyncToGenerator(_regeneratorRuntime().mark(function _callee122(file) {
     var maxDim,
       quality,
       url,
@@ -9953,15 +9953,15 @@ function _compressPhoto() {
       k,
       c,
       blob,
-      _args122 = arguments;
-    return _regeneratorRuntime().wrap(function _callee121$(_context122) {
-      while (1) switch (_context122.prev = _context122.next) {
+      _args123 = arguments;
+    return _regeneratorRuntime().wrap(function _callee122$(_context123) {
+      while (1) switch (_context123.prev = _context123.next) {
         case 0:
-          maxDim = _args122.length > 1 && _args122[1] !== undefined ? _args122[1] : 1600;
-          quality = _args122.length > 2 && _args122[2] !== undefined ? _args122[2] : 0.75;
-          _context122.prev = 2;
+          maxDim = _args123.length > 1 && _args123[1] !== undefined ? _args123[1] : 1600;
+          quality = _args123.length > 2 && _args123[2] !== undefined ? _args123[2] : 0.75;
+          _context123.prev = 2;
           url = URL.createObjectURL(file);
-          _context122.next = 6;
+          _context123.next = 6;
           return new Promise(function (res, rej) {
             var i = new Image();
             i.onload = function () {
@@ -9971,29 +9971,29 @@ function _compressPhoto() {
             i.src = url;
           });
         case 6:
-          img = _context122.sent;
+          img = _context123.sent;
           k = Math.min(1, maxDim / Math.max(img.width, img.height));
           c = document.createElement('canvas');
           c.width = Math.round(img.width * k);
           c.height = Math.round(img.height * k);
           c.getContext('2d').drawImage(img, 0, 0, c.width, c.height);
           URL.revokeObjectURL(url);
-          _context122.next = 15;
+          _context123.next = 15;
           return new Promise(function (res) {
             return c.toBlob(res, 'image/jpeg', quality);
           });
         case 15:
-          blob = _context122.sent;
-          return _context122.abrupt("return", blob || file);
+          blob = _context123.sent;
+          return _context123.abrupt("return", blob || file);
         case 19:
-          _context122.prev = 19;
-          _context122.t0 = _context122["catch"](2);
-          return _context122.abrupt("return", file);
+          _context123.prev = 19;
+          _context123.t0 = _context123["catch"](2);
+          return _context123.abrupt("return", file);
         case 22:
         case "end":
-          return _context122.stop();
+          return _context123.stop();
       }
-    }, _callee121, null, [[2, 19]]);
+    }, _callee122, null, [[2, 19]]);
   }));
   return _compressPhoto.apply(this, arguments);
 }
@@ -10001,50 +10001,50 @@ function uploadTripPhoto(_x33, _x34) {
   return _uploadTripPhoto.apply(this, arguments);
 }
 function _uploadTripPhoto() {
-  _uploadTripPhoto = _asyncToGenerator(_regeneratorRuntime().mark(function _callee122(blob, kind) {
+  _uploadTripPhoto = _asyncToGenerator(_regeneratorRuntime().mark(function _callee123(blob, kind) {
     var _yield$supabaseClient13, data, au, path, _yield$supabaseClient14, error;
-    return _regeneratorRuntime().wrap(function _callee122$(_context123) {
-      while (1) switch (_context123.prev = _context123.next) {
+    return _regeneratorRuntime().wrap(function _callee123$(_context124) {
+      while (1) switch (_context124.prev = _context124.next) {
         case 0:
           if (supabaseClient) {
-            _context123.next = 2;
+            _context124.next = 2;
             break;
           }
           throw new Error('Photo upload is not available on this page');
         case 2:
-          _context123.next = 4;
+          _context124.next = 4;
           return supabaseClient.auth.getUser();
         case 4:
-          _yield$supabaseClient13 = _context123.sent;
+          _yield$supabaseClient13 = _context124.sent;
           data = _yield$supabaseClient13.data;
           au = data && data.user;
           if (au) {
-            _context123.next = 9;
+            _context124.next = 9;
             break;
           }
           throw new Error('Please log out and log in again, then retry the photo');
         case 9:
           path = "".concat(au.id, "/").concat(Date.now(), "-").concat(kind, "-").concat(Math.random().toString(36).slice(2, 8), ".jpg");
-          _context123.next = 12;
+          _context124.next = 12;
           return supabaseClient.storage.from(TRIP_EVIDENCE_BUCKET).upload(path, blob, {
             contentType: 'image/jpeg',
             upsert: false
           });
         case 12:
-          _yield$supabaseClient14 = _context123.sent;
+          _yield$supabaseClient14 = _context124.sent;
           error = _yield$supabaseClient14.error;
           if (!error) {
-            _context123.next = 16;
+            _context124.next = 16;
             break;
           }
           throw new Error('Photo upload failed: ' + (error.message || 'check your connection'));
         case 16:
-          return _context123.abrupt("return", path);
+          return _context124.abrupt("return", path);
         case 17:
         case "end":
-          return _context123.stop();
+          return _context124.stop();
       }
-    }, _callee122);
+    }, _callee123);
   }));
   return _uploadTripPhoto.apply(this, arguments);
 }
@@ -10052,33 +10052,33 @@ function tripPhotoUrl(_x35) {
   return _tripPhotoUrl.apply(this, arguments);
 }
 function _tripPhotoUrl() {
-  _tripPhotoUrl = _asyncToGenerator(_regeneratorRuntime().mark(function _callee123(path) {
+  _tripPhotoUrl = _asyncToGenerator(_regeneratorRuntime().mark(function _callee124(path) {
     var _yield$supabaseClient15, data;
-    return _regeneratorRuntime().wrap(function _callee123$(_context124) {
-      while (1) switch (_context124.prev = _context124.next) {
+    return _regeneratorRuntime().wrap(function _callee124$(_context125) {
+      while (1) switch (_context125.prev = _context125.next) {
         case 0:
-          _context124.prev = 0;
+          _context125.prev = 0;
           if (supabaseClient) {
-            _context124.next = 3;
+            _context125.next = 3;
             break;
           }
-          return _context124.abrupt("return", null);
+          return _context125.abrupt("return", null);
         case 3:
-          _context124.next = 5;
+          _context125.next = 5;
           return supabaseClient.storage.from(TRIP_EVIDENCE_BUCKET).createSignedUrl(path, 900);
         case 5:
-          _yield$supabaseClient15 = _context124.sent;
+          _yield$supabaseClient15 = _context125.sent;
           data = _yield$supabaseClient15.data;
-          return _context124.abrupt("return", data ? data.signedUrl : null);
+          return _context125.abrupt("return", data ? data.signedUrl : null);
         case 10:
-          _context124.prev = 10;
-          _context124.t0 = _context124["catch"](0);
-          return _context124.abrupt("return", null);
+          _context125.prev = 10;
+          _context125.t0 = _context125["catch"](0);
+          return _context125.abrupt("return", null);
         case 13:
         case "end":
-          return _context124.stop();
+          return _context125.stop();
       }
-    }, _callee123, null, [[0, 10]]);
+    }, _callee124, null, [[0, 10]]);
   }));
   return _tripPhotoUrl.apply(this, arguments);
 }
@@ -10096,48 +10096,48 @@ function saveTrip(_x36, _x37, _x38, _x39, _x40) {
   return _saveTrip.apply(this, arguments);
 }
 function _saveTrip() {
-  _saveTrip = _asyncToGenerator(_regeneratorRuntime().mark(function _callee124(method, url, base, extra, headers) {
+  _saveTrip = _asyncToGenerator(_regeneratorRuntime().mark(function _callee125(method, url, base, extra, headers) {
     var r, t;
-    return _regeneratorRuntime().wrap(function _callee124$(_context125) {
-      while (1) switch (_context125.prev = _context125.next) {
+    return _regeneratorRuntime().wrap(function _callee125$(_context126) {
+      while (1) switch (_context126.prev = _context126.next) {
         case 0:
-          _context125.next = 2;
+          _context126.next = 2;
           return fetch(url, {
             method: method,
             headers: headers,
             body: JSON.stringify(_objectSpread(_objectSpread({}, base), extra))
           });
         case 2:
-          r = _context125.sent;
+          r = _context126.sent;
           if (!(!r.ok && r.status === 400)) {
-            _context125.next = 11;
+            _context126.next = 11;
             break;
           }
-          _context125.next = 6;
+          _context126.next = 6;
           return r.clone().text()["catch"](function () {
             return '';
           });
         case 6:
-          t = _context125.sent;
+          t = _context126.sent;
           if (!/column|schema cache/i.test(t)) {
-            _context125.next = 11;
+            _context126.next = 11;
             break;
           }
-          _context125.next = 10;
+          _context126.next = 10;
           return fetch(url, {
             method: method,
             headers: headers,
             body: JSON.stringify(base)
           });
         case 10:
-          r = _context125.sent;
+          r = _context126.sent;
         case 11:
-          return _context125.abrupt("return", r);
+          return _context126.abrupt("return", r);
         case 12:
         case "end":
-          return _context125.stop();
+          return _context126.stop();
       }
-    }, _callee124);
+    }, _callee125);
   }));
   return _saveTrip.apply(this, arguments);
 }
@@ -10260,30 +10260,30 @@ function saveTransportPhotos(_x42, _x43, _x44, _x45, _x46) {
   return _saveTransportPhotos.apply(this, arguments);
 }
 function _saveTransportPhotos() {
-  _saveTransportPhotos = _asyncToGenerator(_regeneratorRuntime().mark(function _callee125(tripId, employeeId, plate, manifest, plateNo) {
+  _saveTransportPhotos = _asyncToGenerator(_regeneratorRuntime().mark(function _callee126(tripId, employeeId, plate, manifest, plateNo) {
     var items, rows, _iterator6, _step6, _step6$value, kind, v, path, r;
-    return _regeneratorRuntime().wrap(function _callee125$(_context126) {
-      while (1) switch (_context126.prev = _context126.next) {
+    return _regeneratorRuntime().wrap(function _callee126$(_context127) {
+      while (1) switch (_context127.prev = _context127.next) {
         case 0:
-          items = [['plate', plate], ['manifest', manifest]].filter(function (_ref262) {
-            var _ref263 = _slicedToArray(_ref262, 2),
-              v = _ref263[1];
+          items = [['plate', plate], ['manifest', manifest]].filter(function (_ref263) {
+            var _ref264 = _slicedToArray(_ref263, 2),
+              v = _ref264[1];
             return v;
           });
           rows = [];
           _iterator6 = _createForOfIteratorHelper(items);
-          _context126.prev = 3;
+          _context127.prev = 3;
           _iterator6.s();
         case 5:
           if ((_step6 = _iterator6.n()).done) {
-            _context126.next = 13;
+            _context127.next = 13;
             break;
           }
           _step6$value = _slicedToArray(_step6.value, 2), kind = _step6$value[0], v = _step6$value[1];
-          _context126.next = 9;
+          _context127.next = 9;
           return uploadTripPhoto(v.blob, kind);
         case 9:
-          path = _context126.sent;
+          path = _context127.sent;
           rows.push({
             trip_id: String(tripId),
             employee_id: employeeId,
@@ -10292,42 +10292,42 @@ function _saveTransportPhotos() {
             plate_number: plateNo || null
           });
         case 11:
-          _context126.next = 5;
+          _context127.next = 5;
           break;
         case 13:
-          _context126.next = 18;
+          _context127.next = 18;
           break;
         case 15:
-          _context126.prev = 15;
-          _context126.t0 = _context126["catch"](3);
-          _iterator6.e(_context126.t0);
+          _context127.prev = 15;
+          _context127.t0 = _context127["catch"](3);
+          _iterator6.e(_context127.t0);
         case 18:
-          _context126.prev = 18;
+          _context127.prev = 18;
           _iterator6.f();
-          return _context126.finish(18);
+          return _context127.finish(18);
         case 21:
           if (!rows.length) {
-            _context126.next = 27;
+            _context127.next = 27;
             break;
           }
-          _context126.next = 24;
+          _context127.next = 24;
           return fetch("".concat(SB, "/rest/v1/trip_attachments"), {
             method: 'POST',
             headers: HJ,
             body: JSON.stringify(rows)
           });
         case 24:
-          r = _context126.sent;
+          r = _context127.sent;
           if (r.ok) {
-            _context126.next = 27;
+            _context127.next = 27;
             break;
           }
           throw new Error('Photos uploaded but could not be linked to the trip');
         case 27:
         case "end":
-          return _context126.stop();
+          return _context127.stop();
       }
-    }, _callee125, null, [[3, 15, 18, 21]]);
+    }, _callee126, null, [[3, 15, 18, 21]]);
   }));
   return _saveTransportPhotos.apply(this, arguments);
 }
@@ -12487,33 +12487,33 @@ function downloadTripReport(_x58, _x59) {
   return _downloadTripReport.apply(this, arguments);
 }
 function _downloadTripReport() {
-  _downloadTripReport = _asyncToGenerator(_regeneratorRuntime().mark(function _callee126(month, notify) {
+  _downloadTripReport = _asyncToGenerator(_regeneratorRuntime().mark(function _callee127(month, notify) {
     var _month$split$map3, _month$split$map4, y, m, from, to, trips, ids, _yield$Promise$all23, _yield$Promise$all24, us, ck, at, nm, cnt, dt, hrs, late, head, rows, csv, blob, a;
-    return _regeneratorRuntime().wrap(function _callee126$(_context127) {
-      while (1) switch (_context127.prev = _context127.next) {
+    return _regeneratorRuntime().wrap(function _callee127$(_context128) {
+      while (1) switch (_context128.prev = _context128.next) {
         case 0:
-          _context127.prev = 0;
+          _context128.prev = 0;
           _month$split$map3 = month.split('-').map(Number), _month$split$map4 = _slicedToArray(_month$split$map3, 2), y = _month$split$map4[0], m = _month$split$map4[1];
           from = new Date(y, m - 1, 1).toISOString(), to = new Date(y, m, 1).toISOString();
-          _context127.next = 5;
+          _context128.next = 5;
           return fetch("".concat(SB, "/rest/v1/field_trips?started_at=gte.").concat(from, "&started_at=lt.").concat(to, "&order=started_at.asc"), {
             headers: H
           }).then(function (r) {
             return r.ok ? r.json() : [];
           });
         case 5:
-          trips = _context127.sent;
+          trips = _context128.sent;
           if (!(!Array.isArray(trips) || !trips.length)) {
-            _context127.next = 9;
+            _context128.next = 9;
             break;
           }
           notify('No trips in that month', 'error');
-          return _context127.abrupt("return");
+          return _context128.abrupt("return");
         case 9:
           ids = trips.map(function (t) {
             return encodeURIComponent(String(t.id));
           }).join(',');
-          _context127.next = 12;
+          _context128.next = 12;
           return Promise.all([fetch("".concat(SB, "/rest/v1/users?select=id,name"), {
             headers: H
           }).then(function (r) {
@@ -12532,7 +12532,7 @@ function _downloadTripReport() {
             return [];
           })]);
         case 12:
-          _yield$Promise$all23 = _context127.sent;
+          _yield$Promise$all23 = _context128.sent;
           _yield$Promise$all24 = _slicedToArray(_yield$Promise$all23, 3);
           us = _yield$Promise$all24[0];
           ck = _yield$Promise$all24[1];
@@ -12581,17 +12581,17 @@ function _downloadTripReport() {
           document.body.appendChild(a);
           a.click();
           a.remove();
-          _context127.next = 38;
+          _context128.next = 38;
           break;
         case 35:
-          _context127.prev = 35;
-          _context127.t0 = _context127["catch"](0);
+          _context128.prev = 35;
+          _context128.t0 = _context128["catch"](0);
           notify('Could not build the report', 'error');
         case 38:
         case "end":
-          return _context127.stop();
+          return _context128.stop();
       }
-    }, _callee126, null, [[0, 35]]);
+    }, _callee127, null, [[0, 35]]);
   }));
   return _downloadTripReport.apply(this, arguments);
 }
@@ -14822,74 +14822,74 @@ function openPolicyDoc(_x63, _x64) {
   return _openPolicyDoc.apply(this, arguments);
 }
 function _openPolicyDoc() {
-  _openPolicyDoc = _asyncToGenerator(_regeneratorRuntime().mark(function _callee127(pol, notify) {
+  _openPolicyDoc = _asyncToGenerator(_regeneratorRuntime().mark(function _callee128(pol, notify) {
     var w, r, d, blob, url;
-    return _regeneratorRuntime().wrap(function _callee127$(_context128) {
-      while (1) switch (_context128.prev = _context128.next) {
+    return _regeneratorRuntime().wrap(function _callee128$(_context129) {
+      while (1) switch (_context129.prev = _context129.next) {
         case 0:
           if (!pol.file_link) {
-            _context128.next = 6;
+            _context129.next = 6;
             break;
           }
           if (polSafeLink(pol.file_link)) {
-            _context128.next = 4;
+            _context129.next = 4;
             break;
           }
           notify('This policy link is not a valid https:// link', 'error');
-          return _context128.abrupt("return", false);
+          return _context129.abrupt("return", false);
         case 4:
           window.open(pol.file_link.trim(), '_blank', 'noopener');
-          return _context128.abrupt("return", true);
+          return _context129.abrupt("return", true);
         case 6:
           w = window.open('', '_blank');
-          _context128.prev = 7;
-          _context128.next = 10;
+          _context129.prev = 7;
+          _context129.next = 10;
           return fetch("".concat(SB, "/rest/v1/policy_files?policy_id=eq.").concat(pol.id, "&select=file_data"), {
             headers: H
           });
         case 10:
-          r = _context128.sent;
+          r = _context129.sent;
           if (!r.ok) {
-            _context128.next = 17;
+            _context129.next = 17;
             break;
           }
-          _context128.next = 14;
+          _context129.next = 14;
           return r.json();
         case 14:
-          _context128.t0 = _context128.sent;
-          _context128.next = 18;
+          _context129.t0 = _context129.sent;
+          _context129.next = 18;
           break;
         case 17:
-          _context128.t0 = [];
+          _context129.t0 = [];
         case 18:
-          d = _context128.t0;
+          d = _context129.t0;
           if (!(!Array.isArray(d) || !d.length || !d[0].file_data)) {
-            _context128.next = 21;
+            _context129.next = 21;
             break;
           }
           throw new Error('missing');
         case 21:
-          _context128.next = 23;
+          _context129.next = 23;
           return fetch(d[0].file_data);
         case 23:
-          _context128.next = 25;
-          return _context128.sent.blob();
+          _context129.next = 25;
+          return _context129.sent.blob();
         case 25:
-          blob = _context128.sent;
+          blob = _context129.sent;
           url = URL.createObjectURL(blob);
           if (w) w.location.href = url;else window.open(url, '_blank');
-          return _context128.abrupt("return", true);
+          return _context129.abrupt("return", true);
         case 31:
-          _context128.prev = 31;
-          _context128.t1 = _context128["catch"](7);
+          _context129.prev = 31;
+          _context129.t1 = _context129["catch"](7);
           if (w) w.close();
           notify('Could not open the policy document', 'error');
-          return _context128.abrupt("return", false);
+          return _context129.abrupt("return", false);
         case 36:
         case "end":
-          return _context128.stop();
+          return _context129.stop();
       }
-    }, _callee127, null, [[7, 31]]);
+    }, _callee128, null, [[7, 31]]);
   }));
   return _openPolicyDoc.apply(this, arguments);
 }
@@ -14897,45 +14897,45 @@ function loadMyPolicyItems(_x65) {
   return _loadMyPolicyItems.apply(this, arguments);
 }
 function _loadMyPolicyItems() {
-  _loadMyPolicyItems = _asyncToGenerator(_regeneratorRuntime().mark(function _callee128(userId) {
+  _loadMyPolicyItems = _asyncToGenerator(_regeneratorRuntime().mark(function _callee129(userId) {
     var a, asg, ids, p, k, pm, km, order;
-    return _regeneratorRuntime().wrap(function _callee128$(_context129) {
-      while (1) switch (_context129.prev = _context129.next) {
+    return _regeneratorRuntime().wrap(function _callee129$(_context130) {
+      while (1) switch (_context130.prev = _context130.next) {
         case 0:
-          _context129.next = 2;
+          _context130.next = 2;
           return fetch("".concat(SB, "/rest/v1/policy_assignments?user_id=eq.").concat(userId, "&select=id,policy_id,assigned_at,opened_at"), {
             headers: H
           }).then(function (r) {
             return r.ok ? r.json() : [];
           });
         case 2:
-          a = _context129.sent;
+          a = _context130.sent;
           asg = Array.isArray(a) ? a : [];
           if (asg.length) {
-            _context129.next = 6;
+            _context130.next = 6;
             break;
           }
-          return _context129.abrupt("return", []);
+          return _context130.abrupt("return", []);
         case 6:
           ids = _toConsumableArray(new Set(asg.map(function (x) {
             return x.policy_id;
           })));
-          _context129.next = 9;
+          _context130.next = 9;
           return fetch("".concat(SB, "/rest/v1/policies?id=in.(").concat(ids.join(','), ")&select=id,title,version,category,description,file_name,file_link,effective_date,deadline,status"), {
             headers: H
           }).then(function (r) {
             return r.ok ? r.json() : [];
           });
         case 9:
-          p = _context129.sent;
-          _context129.next = 12;
+          p = _context130.sent;
+          _context130.next = 12;
           return fetch("".concat(SB, "/rest/v1/policy_acknowledgements?user_id=eq.").concat(userId, "&select=id,assignment_id,signed_at"), {
             headers: H
           }).then(function (r) {
             return r.ok ? r.json() : [];
           });
         case 12:
-          k = _context129.sent;
+          k = _context130.sent;
           pm = {};
           (Array.isArray(p) ? p : []).forEach(function (x) {
             return pm[x.id] = x;
@@ -14949,7 +14949,7 @@ function _loadMyPolicyItems() {
             pending: 1,
             signed: 2
           };
-          return _context129.abrupt("return", asg.map(function (x) {
+          return _context130.abrupt("return", asg.map(function (x) {
             var pol = pm[x.policy_id];
             var ack = km[x.id];
             return {
@@ -14965,9 +14965,9 @@ function _loadMyPolicyItems() {
           }));
         case 19:
         case "end":
-          return _context129.stop();
+          return _context130.stop();
       }
-    }, _callee128);
+    }, _callee129);
   }));
   return _loadMyPolicyItems.apply(this, arguments);
 }
@@ -16629,13 +16629,13 @@ function loadLineManagers() {
   return _loadLineManagers.apply(this, arguments);
 }
 function _loadLineManagers() {
-  _loadLineManagers = _asyncToGenerator(_regeneratorRuntime().mark(function _callee129() {
+  _loadLineManagers = _asyncToGenerator(_regeneratorRuntime().mark(function _callee130() {
     var _yield$Promise$all25, _yield$Promise$all26, p, u, off, m;
-    return _regeneratorRuntime().wrap(function _callee129$(_context130) {
-      while (1) switch (_context130.prev = _context130.next) {
+    return _regeneratorRuntime().wrap(function _callee130$(_context131) {
+      while (1) switch (_context131.prev = _context131.next) {
         case 0:
-          _context130.prev = 0;
-          _context130.next = 3;
+          _context131.prev = 0;
+          _context131.next = 3;
           return Promise.all([fetch("".concat(SB, "/rest/v1/staff_profiles?select=user_id,line_manager_id"), {
             headers: H
           }).then(function (r) {
@@ -16646,7 +16646,7 @@ function _loadLineManagers() {
             return r.ok ? r.json() : [];
           })]);
         case 3:
-          _yield$Promise$all25 = _context130.sent;
+          _yield$Promise$all25 = _context131.sent;
           _yield$Promise$all26 = _slicedToArray(_yield$Promise$all25, 2);
           p = _yield$Promise$all26[0];
           u = _yield$Promise$all26[1];
@@ -16659,16 +16659,16 @@ function _loadLineManagers() {
           (Array.isArray(p) ? p : []).forEach(function (x) {
             if (x.line_manager_id != null && !off.has(String(x.line_manager_id))) m[x.user_id] = x.line_manager_id;
           });
-          return _context130.abrupt("return", m);
+          return _context131.abrupt("return", m);
         case 13:
-          _context130.prev = 13;
-          _context130.t0 = _context130["catch"](0);
-          return _context130.abrupt("return", {});
+          _context131.prev = 13;
+          _context131.t0 = _context131["catch"](0);
+          return _context131.abrupt("return", {});
         case 16:
         case "end":
-          return _context130.stop();
+          return _context131.stop();
       }
-    }, _callee129, null, [[0, 13]]);
+    }, _callee130, null, [[0, 13]]);
   }));
   return _loadLineManagers.apply(this, arguments);
 }
@@ -16681,48 +16681,48 @@ function writeAudited(_x67, _x68, _x69, _x70) {
   return _writeAudited.apply(this, arguments);
 }
 function _writeAudited() {
-  _writeAudited = _asyncToGenerator(_regeneratorRuntime().mark(function _callee130(method, url, body, extra) {
+  _writeAudited = _asyncToGenerator(_regeneratorRuntime().mark(function _callee131(method, url, body, extra) {
     var r, t;
-    return _regeneratorRuntime().wrap(function _callee130$(_context131) {
-      while (1) switch (_context131.prev = _context131.next) {
+    return _regeneratorRuntime().wrap(function _callee131$(_context132) {
+      while (1) switch (_context132.prev = _context132.next) {
         case 0:
-          _context131.next = 2;
+          _context132.next = 2;
           return fetch(url, {
             method: method,
             headers: HJ,
             body: JSON.stringify(_objectSpread(_objectSpread({}, body), extra))
           });
         case 2:
-          r = _context131.sent;
+          r = _context132.sent;
           if (!(!r.ok && r.status === 400)) {
-            _context131.next = 11;
+            _context132.next = 11;
             break;
           }
-          _context131.next = 6;
+          _context132.next = 6;
           return r.clone().text()["catch"](function () {
             return '';
           });
         case 6:
-          t = _context131.sent;
+          t = _context132.sent;
           if (!/column|schema cache/i.test(t)) {
-            _context131.next = 11;
+            _context132.next = 11;
             break;
           }
-          _context131.next = 10;
+          _context132.next = 10;
           return fetch(url, {
             method: method,
             headers: HJ,
             body: JSON.stringify(body)
           });
         case 10:
-          r = _context131.sent;
+          r = _context132.sent;
         case 11:
-          return _context131.abrupt("return", r);
+          return _context132.abrupt("return", r);
         case 12:
         case "end":
-          return _context131.stop();
+          return _context132.stop();
       }
-    }, _callee130);
+    }, _callee131);
   }));
   return _writeAudited.apply(this, arguments);
 }
@@ -16762,50 +16762,50 @@ function storyUpload(_x71, _x72, _x73, _x74) {
   return _storyUpload.apply(this, arguments);
 }
 function _storyUpload() {
-  _storyUpload = _asyncToGenerator(_regeneratorRuntime().mark(function _callee131(blob, kind, ext, type) {
+  _storyUpload = _asyncToGenerator(_regeneratorRuntime().mark(function _callee132(blob, kind, ext, type) {
     var _yield$supabaseClient16, data, au, path, _yield$supabaseClient17, error;
-    return _regeneratorRuntime().wrap(function _callee131$(_context132) {
-      while (1) switch (_context132.prev = _context132.next) {
+    return _regeneratorRuntime().wrap(function _callee132$(_context133) {
+      while (1) switch (_context133.prev = _context133.next) {
         case 0:
           if (supabaseClient) {
-            _context132.next = 2;
+            _context133.next = 2;
             break;
           }
           throw new Error('Uploads are not available on this page');
         case 2:
-          _context132.next = 4;
+          _context133.next = 4;
           return supabaseClient.auth.getUser();
         case 4:
-          _yield$supabaseClient16 = _context132.sent;
+          _yield$supabaseClient16 = _context133.sent;
           data = _yield$supabaseClient16.data;
           au = data && data.user;
           if (au) {
-            _context132.next = 9;
+            _context133.next = 9;
             break;
           }
           throw new Error('Please log out and log in again, then retry');
         case 9:
           path = "".concat(au.id, "/").concat(Date.now(), "-").concat(kind, "-").concat(Math.random().toString(36).slice(2, 8), ".").concat(ext);
-          _context132.next = 12;
+          _context133.next = 12;
           return supabaseClient.storage.from(STORY_BUCKET).upload(path, blob, {
             contentType: type,
             upsert: false
           });
         case 12:
-          _yield$supabaseClient17 = _context132.sent;
+          _yield$supabaseClient17 = _context133.sent;
           error = _yield$supabaseClient17.error;
           if (!error) {
-            _context132.next = 16;
+            _context133.next = 16;
             break;
           }
           throw new Error('Upload failed: ' + (error.message || 'check your connection'));
         case 16:
-          return _context132.abrupt("return", path);
+          return _context133.abrupt("return", path);
         case 17:
         case "end":
-          return _context132.stop();
+          return _context133.stop();
       }
-    }, _callee131);
+    }, _callee132);
   }));
   return _storyUpload.apply(this, arguments);
 }
@@ -16813,33 +16813,33 @@ function storySignedUrl(_x75) {
   return _storySignedUrl.apply(this, arguments);
 }
 function _storySignedUrl() {
-  _storySignedUrl = _asyncToGenerator(_regeneratorRuntime().mark(function _callee132(path) {
+  _storySignedUrl = _asyncToGenerator(_regeneratorRuntime().mark(function _callee133(path) {
     var _yield$supabaseClient18, data;
-    return _regeneratorRuntime().wrap(function _callee132$(_context133) {
-      while (1) switch (_context133.prev = _context133.next) {
+    return _regeneratorRuntime().wrap(function _callee133$(_context134) {
+      while (1) switch (_context134.prev = _context134.next) {
         case 0:
-          _context133.prev = 0;
+          _context134.prev = 0;
           if (!(!supabaseClient || !path)) {
-            _context133.next = 3;
+            _context134.next = 3;
             break;
           }
-          return _context133.abrupt("return", null);
+          return _context134.abrupt("return", null);
         case 3:
-          _context133.next = 5;
+          _context134.next = 5;
           return supabaseClient.storage.from(STORY_BUCKET).createSignedUrl(path, 900);
         case 5:
-          _yield$supabaseClient18 = _context133.sent;
+          _yield$supabaseClient18 = _context134.sent;
           data = _yield$supabaseClient18.data;
-          return _context133.abrupt("return", data ? data.signedUrl : null);
+          return _context134.abrupt("return", data ? data.signedUrl : null);
         case 10:
-          _context133.prev = 10;
-          _context133.t0 = _context133["catch"](0);
-          return _context133.abrupt("return", null);
+          _context134.prev = 10;
+          _context134.t0 = _context134["catch"](0);
+          return _context134.abrupt("return", null);
         case 13:
         case "end":
-          return _context133.stop();
+          return _context134.stop();
       }
-    }, _callee132, null, [[0, 10]]);
+    }, _callee133, null, [[0, 10]]);
   }));
   return _storySignedUrl.apply(this, arguments);
 }
@@ -19341,7 +19341,7 @@ function StaffPortal(_ref201) {
   }, []);
   var loadAttn = function () {
     var _ref205 = _asyncToGenerator(_regeneratorRuntime().mark(function _callee96() {
-      var items, c, safe, j, pol, od, myCon, cs, ca, na, ne, nr, goC, msgs, ap, _nr, lmMap, headNow, pa, np, lv, lvArr, nl, rec, nrec, tr, ta, nt, goT, ns, no, nm, st, sa, ret, own, w;
+      var items, c, safe, j, pol, od, myCon, cs, ca, eds, na, ne, nr, goC, msgs, ap, _nr, lmMap, headNow, pa, np, lv, lvArr, nl, rec, nrec, tr, ta, nt, goT, ns, no, nm, st, sa, ret, own, w;
       return _regeneratorRuntime().wrap(function _callee96$(_context97) {
         while (1) switch (_context97.prev = _context97.next) {
           case 0:
@@ -19429,21 +19429,44 @@ function StaffPortal(_ref201) {
               });
             }
             if (!hrAccess) {
-              _context97.next = 25;
+              _context97.next = 36;
               break;
             }
             _context97.next = 15;
             return safe(function () {
-              return j("".concat(SB, "/rest/v1/contracts?status=in.(awaiting_approval,awaiting_ed,returned)&select=id,status,user_id"));
+              return j("".concat(SB, "/rest/v1/contracts?status=in.(awaiting_approval,awaiting_ed,returned,issued,accepted)&select=id,status,user_id,returned_at,drafted_at"));
             });
           case 15:
             cs = _context97.sent;
             ca = Array.isArray(cs) ? cs : [];
+            if (!(hrAccess === 'ed')) {
+              _context97.next = 26;
+              break;
+            }
+            _context97.next = 20;
+            return safe(function () {
+              return j("".concat(SB, "/rest/v1/contract_signoffs?role=eq.ed&select=contract_id,signed_at"));
+            });
+          case 20:
+            _context97.t1 = _context97.sent;
+            if (_context97.t1) {
+              _context97.next = 23;
+              break;
+            }
+            _context97.t1 = [];
+          case 23:
+            _context97.t0 = _context97.t1;
+            _context97.next = 27;
+            break;
+          case 26:
+            _context97.t0 = [];
+          case 27:
+            eds = _context97.t0;
             na = isSup ? ca.filter(function (x) {
               return x.status === 'awaiting_approval' && String(x.user_id) !== String(user.id);
             }).length : 0;
             ne = hrAccess === 'ed' ? ca.filter(function (x) {
-              return x.status === 'awaiting_ed' && String(x.user_id) !== String(user.id);
+              return String(x.user_id) !== String(user.id) && (x.status === 'awaiting_ed' || conEdPending(x, eds));
             }).length : 0;
             nr = hrAccess === 'hr' || isSup ? ca.filter(function (x) {
               return x.status === 'returned';
@@ -19462,7 +19485,7 @@ function StaffPortal(_ref201) {
             if (ne) items.push({
               icon: 'fa-file-contract',
               tone: 'amber',
-              text: "".concat(ne, " contract").concat(ne > 1 ? 's' : '', " waiting for your concurrence"),
+              text: "".concat(ne, " contract letter").concat(ne > 1 ? 's' : '', " waiting for your signature"),
               go: goC
             });
             if (nr) items.push({
@@ -19471,12 +19494,12 @@ function StaffPortal(_ref201) {
               text: "".concat(nr, " contract draft").concat(nr > 1 ? 's were' : ' was', " returned with a note"),
               go: goC
             });
-          case 25:
-            _context97.next = 27;
+          case 36:
+            _context97.next = 38;
             return safe(function () {
               return j("".concat(SB, "/rest/v1/trip_messages?to_user_id=eq.").concat(user.id, "&acknowledged_at=is.null&select=id"));
             });
-          case 27:
+          case 38:
             msgs = _context97.sent;
             if (Array.isArray(msgs) && msgs.length) items.push({
               icon: 'fa-shield-halved',
@@ -19487,14 +19510,14 @@ function StaffPortal(_ref201) {
               }
             });
             if (!isEmp) {
-              _context97.next = 35;
+              _context97.next = 46;
               break;
             }
-            _context97.next = 32;
+            _context97.next = 43;
             return safe(function () {
               return j("".concat(SB, "/rest/v1/appraisals?employee_id=eq.").concat(user.id, "&status=eq.completed&select=id,withdrawn,employee_review_status"));
             });
-          case 32:
+          case 43:
             ap = _context97.sent;
             _nr = (Array.isArray(ap) ? ap : []).filter(function (a) {
               return !a.withdrawn && (!a.employee_review_status || a.employee_review_status === 'pending');
@@ -19510,33 +19533,33 @@ function StaffPortal(_ref201) {
                 }
               });
             }
-          case 35:
-            _context97.next = 37;
+          case 46:
+            _context97.next = 48;
             return loadLineManagers();
-          case 37:
+          case 48:
             lmMap = _context97.sent;
             setLmOf(lmMap);
             headNow = !isSup && Object.keys(lmMap).some(function (k) {
               return String(lmMap[k]) === String(user.id);
             });
             if (!(isSup || headNow)) {
-              _context97.next = 51;
+              _context97.next = 62;
               break;
             }
-            _context97.next = 43;
+            _context97.next = 54;
             return safe(function () {
               return j("".concat(SB, "/rest/v1/appraisals?status=eq.pending&select=id,withdrawn,employee_id"));
             });
-          case 43:
+          case 54:
             pa = _context97.sent;
             np = (Array.isArray(pa) ? pa : []).filter(function (a) {
               return !a.withdrawn && isForMe(lmMap, user, a.employee_id);
             }).length;
-            _context97.next = 47;
+            _context97.next = 58;
             return safe(function () {
               return j("".concat(SB, "/rest/v1/leave_requests?select=*"));
             });
-          case 47:
+          case 58:
             lv = _context97.sent;
             lvArr = (Array.isArray(lv) ? lv : []).filter(leavePend);
             nl = isSup ? lvArr.filter(function (l) {
@@ -19593,16 +19616,16 @@ function StaffPortal(_ref201) {
                 });
               }
             }
-          case 51:
+          case 62:
             if (!hrAccess) {
-              _context97.next = 57;
+              _context97.next = 68;
               break;
             }
-            _context97.next = 54;
+            _context97.next = 65;
             return safe(function () {
               return j("".concat(SB, "/rest/v1/hr_recommendations?decision=eq.pending&select=id"));
             });
-          case 54:
+          case 65:
             rec = _context97.sent;
             nrec = Array.isArray(rec) ? rec.length : 0;
             if (nrec) {
@@ -19617,16 +19640,16 @@ function StaffPortal(_ref201) {
                 }
               });
             }
-          case 57:
+          case 68:
             if (!secAccess) {
-              _context97.next = 69;
+              _context97.next = 80;
               break;
             }
-            _context97.next = 60;
+            _context97.next = 71;
             return safe(function () {
               return j("".concat(SB, "/rest/v1/field_trips?status=eq.active&select=*"));
             });
-          case 60:
+          case 71:
             tr = _context97.sent;
             ta = Array.isArray(tr) ? tr : [];
             nt = ta.length;
@@ -19662,12 +19685,12 @@ function StaffPortal(_ref201) {
                 go: goT
               });
             }
-          case 69:
+          case 80:
             if (!supabaseClient) {
-              _context97.next = 79;
+              _context97.next = 90;
               break;
             }
-            _context97.next = 72;
+            _context97.next = 83;
             return safe(_asyncToGenerator(_regeneratorRuntime().mark(function _callee95() {
               var _yield$supabaseClient12, data, error;
               return _regeneratorRuntime().wrap(function _callee95$(_context96) {
@@ -19686,7 +19709,7 @@ function StaffPortal(_ref201) {
                 }
               }, _callee95);
             })));
-          case 72:
+          case 83:
             st = _context97.sent;
             sa = Array.isArray(st) ? st : [];
             ret = sa.filter(function (x) {
@@ -19720,10 +19743,10 @@ function StaffPortal(_ref201) {
                 }
               });
             }
-          case 79:
+          case 90:
             setAttn(items);
             setCounts(c);
-          case 81:
+          case 92:
           case "end":
             return _context97.stop();
         }
@@ -20089,7 +20112,7 @@ function StaffPortal(_ref201) {
     icon: 'fa-file-contract',
     g: G.emerald,
     t: 'Contracts & Renewals',
-    s: hrAccess === 'ed' ? 'Give concurrence on contract letters' : 'Renewals and contract changes from appraisal findings',
+    s: hrAccess === 'ed' ? 'Review and sign contract letters' : 'Renewals and contract changes from appraisal findings',
     b: counts.contractsAct
   }, {
     k: 'policies',
@@ -21556,7 +21579,7 @@ var CON_TYPES = {
 var CON_STATUS = {
   draft: ['Draft', 'bg-gray-100 text-gray-700'],
   awaiting_approval: ['Waiting for supervisor approval', 'bg-amber-100 text-amber-800'],
-  awaiting_ed: ['Waiting for ED concurrence', 'bg-blue-100 text-blue-800'],
+  awaiting_ed: ['Waiting for the ED (Program Manager\'s own contract)', 'bg-blue-100 text-blue-800'],
   returned: ['Returned to drafter', 'bg-orange-100 text-orange-800'],
   issued: ['With staff to sign', 'bg-indigo-100 text-indigo-800'],
   accepted: ['Signed by staff', 'bg-green-100 text-green-700'],
@@ -21577,25 +21600,25 @@ function conLoadSignoffs(_x85) {
   return _conLoadSignoffs.apply(this, arguments);
 }
 function _conLoadSignoffs() {
-  _conLoadSignoffs = _asyncToGenerator(_regeneratorRuntime().mark(function _callee133(c) {
+  _conLoadSignoffs = _asyncToGenerator(_regeneratorRuntime().mark(function _callee134(c) {
     var d, from, ok;
-    return _regeneratorRuntime().wrap(function _callee133$(_context134) {
-      while (1) switch (_context134.prev = _context134.next) {
+    return _regeneratorRuntime().wrap(function _callee134$(_context135) {
+      while (1) switch (_context135.prev = _context135.next) {
         case 0:
-          _context134.prev = 0;
-          _context134.next = 3;
+          _context135.prev = 0;
+          _context135.next = 3;
           return fetch("".concat(SB, "/rest/v1/contract_signoffs?contract_id=eq.").concat(c.id, "&select=role,signer_name,signer_title,signature_data,signed_at&order=signed_at.desc"), {
             headers: H
           }).then(function (r) {
             return r.ok ? r.json() : [];
           });
         case 3:
-          d = _context134.sent;
+          d = _context135.sent;
           from = new Date(c.returned_at || c.drafted_at || 0);
           ok = (Array.isArray(d) ? d : []).filter(function (x) {
             return new Date(x.signed_at) >= from;
           });
-          return _context134.abrupt("return", {
+          return _context135.abrupt("return", {
             approver: ok.find(function (x) {
               return x.role === 'approver';
             }) || null,
@@ -21604,17 +21627,17 @@ function _conLoadSignoffs() {
             }) || null
           });
         case 9:
-          _context134.prev = 9;
-          _context134.t0 = _context134["catch"](0);
-          return _context134.abrupt("return", {
+          _context135.prev = 9;
+          _context135.t0 = _context135["catch"](0);
+          return _context135.abrupt("return", {
             approver: null,
             ed: null
           });
         case 12:
         case "end":
-          return _context134.stop();
+          return _context135.stop();
       }
-    }, _callee133, null, [[0, 9]]);
+    }, _callee134, null, [[0, 9]]);
   }));
   return _conLoadSignoffs.apply(this, arguments);
 }
@@ -21622,12 +21645,12 @@ function conPostSignoff(_x86, _x87, _x88, _x89) {
   return _conPostSignoff.apply(this, arguments);
 }
 function _conPostSignoff() {
-  _conPostSignoff = _asyncToGenerator(_regeneratorRuntime().mark(function _callee134(c, role, user, sigData) {
+  _conPostSignoff = _asyncToGenerator(_regeneratorRuntime().mark(function _callee135(c, role, user, sigData) {
     var r;
-    return _regeneratorRuntime().wrap(function _callee134$(_context135) {
-      while (1) switch (_context135.prev = _context135.next) {
+    return _regeneratorRuntime().wrap(function _callee135$(_context136) {
+      while (1) switch (_context136.prev = _context136.next) {
         case 0:
-          _context135.next = 2;
+          _context136.next = 2;
           return fetch("".concat(SB, "/rest/v1/contract_signoffs"), {
             method: 'POST',
             headers: HJ,
@@ -21640,25 +21663,40 @@ function _conPostSignoff() {
             })
           });
         case 2:
-          r = _context135.sent;
+          r = _context136.sent;
           if (r.ok) {
-            _context135.next = 9;
+            _context136.next = 9;
             break;
           }
-          _context135.t0 = Error;
-          _context135.next = 7;
+          _context136.t0 = Error;
+          _context136.next = 7;
           return conErr(r, 'Your signature could not be saved');
         case 7:
-          _context135.t1 = _context135.sent;
-          throw new _context135.t0(_context135.t1);
+          _context136.t1 = _context136.sent;
+          throw new _context136.t0(_context136.t1);
         case 9:
         case "end":
-          return _context135.stop();
+          return _context136.stop();
       }
-    }, _callee134);
+    }, _callee135);
   }));
   return _conPostSignoff.apply(this, arguments);
 }
+var conSigner = function conSigner(c, so) {
+  var byEd = !(so.approver || c.approved_by) && !!(so.ed || c.ed_by);
+  var s = byEd ? so.ed : so.approver;
+  return {
+    s: s,
+    name: s ? s.signer_name : (byEd ? c.ed_by : c.approved_by) || '',
+    title: byEd ? CON_ED_TITLE : CON_SIGNER_TITLE,
+    date: s ? s.signed_at : byEd ? c.ed_at : c.approved_at
+  };
+};
+var conEdPending = function conEdPending(c, eds) {
+  return ['issued', 'accepted'].includes(c.status) && !(eds || []).some(function (x) {
+    return x.contract_id === c.id && new Date(x.signed_at) >= new Date(c.returned_at || c.drafted_at || 0);
+  });
+};
 var conSigImg = function conSigImg(so, h) {
   return so && /^data:image\//.test(so.signature_data || '') ? so.signature_data : null;
 };
@@ -21792,25 +21830,28 @@ function ConLetter(_ref229) {
     className: "mt-8 text-sm"
   }, React.createElement("p", {
     className: "font-bold mb-2"
-  }, "Signed for and on behalf of RAHAMA:"), React.createElement("p", null, "Name: ", so.approver ? so.approver.signer_name : c.approved_by || ''), React.createElement("p", null, "Title: ", CON_SIGNER_TITLE), React.createElement("p", null, "Date: ", so.approver ? conDate(so.approver.signed_at) : c.approved_at ? conDate(c.approved_at) : ''), React.createElement("div", {
-    className: "flex items-center gap-2"
-  }, "Signature: ", conSigImg(so.approver) ? React.createElement("img", {
-    src: conSigImg(so.approver),
-    alt: "Signature",
-    className: "h-16"
-  }) : React.createElement("span", {
-    className: "text-gray-400"
-  }, "not yet signed")), React.createElement("p", {
-    className: "font-bold mt-5 mb-2"
-  }, "Concurrence of the Executive Director:"), React.createElement("p", null, "Name: ", so.ed ? so.ed.signer_name : c.ed_by || ''), React.createElement("p", null, "Date: ", so.ed ? conDate(so.ed.signed_at) : c.ed_at ? conDate(c.ed_at) : ''), React.createElement("div", {
-    className: "flex items-center gap-2"
-  }, "Signature: ", conSigImg(so.ed) ? React.createElement("img", {
-    src: conSigImg(so.ed),
-    alt: "Signature",
-    className: "h-16"
-  }) : React.createElement("span", {
-    className: "text-gray-400"
-  }, "not yet signed"))), React.createElement("div", {
+  }, "Signed for and on behalf of RAHAMA:"), function () {
+    var g = conSigner(c, so);
+    return React.createElement(React.Fragment, null, React.createElement("p", null, "Name: ", g.name), React.createElement("p", null, "Title: ", g.title), React.createElement("p", null, "Date: ", g.date ? conDate(g.date) : ''), React.createElement("div", {
+      className: "flex items-center gap-2"
+    }, "Signature: ", conSigImg(g.s) ? React.createElement("img", {
+      src: conSigImg(g.s),
+      alt: "Signature",
+      className: "h-16"
+    }) : React.createElement("span", {
+      className: "text-gray-400"
+    }, "not yet signed")), g.title !== CON_ED_TITLE && React.createElement(React.Fragment, null, React.createElement("p", {
+      className: "font-bold mt-5 mb-2"
+    }, "Concurrence of the Executive Director:"), React.createElement("p", null, "Name: ", so.ed ? so.ed.signer_name : c.ed_by || ''), React.createElement("p", null, "Date: ", so.ed ? conDate(so.ed.signed_at) : c.ed_at ? conDate(c.ed_at) : ''), React.createElement("div", {
+      className: "flex items-center gap-2"
+    }, "Signature: ", conSigImg(so.ed) ? React.createElement("img", {
+      src: conSigImg(so.ed),
+      alt: "Signature",
+      className: "h-16"
+    }) : React.createElement("span", {
+      className: "text-gray-400"
+    }, "not yet signed"))));
+  }()), React.createElement("div", {
     className: "mt-6 text-sm"
   }, React.createElement("p", {
     className: "font-bold mb-2"
@@ -21828,6 +21869,7 @@ function ConLetter(_ref229) {
 }
 function conPrint(c, name, sig, so) {
   so = so || {};
+  var g = conSigner(c, so);
   var e = function e(x) {
     return String(x == null ? '' : x).replace(/[&<>"]/g, function (ch) {
       return {
@@ -21849,68 +21891,68 @@ function conPrint(c, name, sig, so) {
     return "<div style=\"min-height:1.2em".concat(h ? ';font-weight:700' : '', "\">").concat(e(ln), "</div>");
   }).join('');
   var sigImg = sig && /^data:image\//.test(sig.signature_data || '') ? "<img src=\"".concat(sig.signature_data, "\" style=\"height:60px;vertical-align:middle\">") : '';
-  w.document.write("<!doctype html><html><head><meta charset=\"utf-8\"><title>".concat(e(conRef(c)), " ").concat(e(name), "</title><style>\n        @page{size:A4;margin:18mm 20mm}body{font-family:").concat(CON_FONT, ";color:#222;max-width:720px;margin:24px auto;padding:0 24px;font-size:12pt;line-height:1.5}\n        .rule{height:5px;background:").concat(CON_GREEN, ";margin:8px 0 18px}.row{display:flex;justify-content:space-between;margin-bottom:14px}.body{text-align:justify}\n        .blk{margin-top:28px}.blk b.t{display:block;margin-bottom:6px}.sm{font-size:10pt;color:#555}@media print{body{margin:0 auto;padding:0}}</style></head><body>\n        <img src=\"").concat(CON_LOGO, "\" style=\"height:80px\"><div class=\"rule\"></div>\n        <div class=\"row\"><span>Ref: ").concat(e(conRef(c)), "</span><span>").concat(e(conDate(c.issued_at || c.submitted_at || c.drafted_at)), "</span></div>\n        <p><b>").concat(e(name), "</b>").concat(c.position ? '<br>' + e(c.position) : '').concat(c.department ? '<br>' + e(c.department) : '', "</p>\n        <div class=\"body\">").concat(body, "</div>\n        <div class=\"blk\"><b class=\"t\">Signed for and on behalf of RAHAMA:</b>Name: ").concat(e(so.approver ? so.approver.signer_name : c.approved_by || ''), "<br>Title: ").concat(e(CON_SIGNER_TITLE), "<br>\n            Date: ").concat(so.approver ? e(conDate(so.approver.signed_at)) : '', "<br>Signature: ").concat(conSigImg(so.approver) ? "<img src=\"".concat(conSigImg(so.approver), "\" style=\"height:60px;vertical-align:middle\">") : '', "</div>\n        <div class=\"blk\"><b class=\"t\">Concurrence of the Executive Director:</b>Name: ").concat(e(so.ed ? so.ed.signer_name : c.ed_by || ''), "<br>\n            Date: ").concat(so.ed ? e(conDate(so.ed.signed_at)) : '', "<br>Signature: ").concat(conSigImg(so.ed) ? "<img src=\"".concat(conSigImg(so.ed), "\" style=\"height:60px;vertical-align:middle\">") : '', "</div>\n        <div class=\"blk\"><b class=\"t\">").concat(nr ? 'Received by the Employee:' : 'Signed by the Employee:', "</b>Name: ").concat(e(sig ? sig.signer_name : name), "<br>\n            Date: ").concat(sig ? e(new Date(sig.signed_at).toLocaleString('en-GB')) : '', "<br>Signature: ").concat(sigImg).concat(sig ? "<br><span class=\"sm\">\"".concat(e(sig.declaration), "\"</span>") : '', "</div>\n        <script>setTimeout(function(){window.print()},400)<") + "/script></body></html>");
+  w.document.write("<!doctype html><html><head><meta charset=\"utf-8\"><title>".concat(e(conRef(c)), " ").concat(e(name), "</title><style>\n        @page{size:A4;margin:18mm 20mm}body{font-family:").concat(CON_FONT, ";color:#222;max-width:720px;margin:24px auto;padding:0 24px;font-size:12pt;line-height:1.5}\n        .rule{height:5px;background:").concat(CON_GREEN, ";margin:8px 0 18px}.row{display:flex;justify-content:space-between;margin-bottom:14px}.body{text-align:justify}\n        .blk{margin-top:28px}.blk b.t{display:block;margin-bottom:6px}.sm{font-size:10pt;color:#555}@media print{body{margin:0 auto;padding:0}}</style></head><body>\n        <img src=\"").concat(CON_LOGO, "\" style=\"height:80px\"><div class=\"rule\"></div>\n        <div class=\"row\"><span>Ref: ").concat(e(conRef(c)), "</span><span>").concat(e(conDate(c.issued_at || c.submitted_at || c.drafted_at)), "</span></div>\n        <p><b>").concat(e(name), "</b>").concat(c.position ? '<br>' + e(c.position) : '').concat(c.department ? '<br>' + e(c.department) : '', "</p>\n        <div class=\"body\">").concat(body, "</div>\n        <div class=\"blk\"><b class=\"t\">Signed for and on behalf of RAHAMA:</b>Name: ").concat(e(g.name), "<br>Title: ").concat(e(g.title), "<br>\n            Date: ").concat(g.date ? e(conDate(g.date)) : '', "<br>Signature: ").concat(conSigImg(g.s) ? "<img src=\"".concat(conSigImg(g.s), "\" style=\"height:60px;vertical-align:middle\">") : '', "</div>\n        ").concat(g.title !== CON_ED_TITLE ? "<div class=\"blk\"><b class=\"t\">Concurrence of the Executive Director:</b>Name: ".concat(e(so.ed ? so.ed.signer_name : c.ed_by || ''), "<br>\n            Date: ").concat(so.ed ? e(conDate(so.ed.signed_at)) : '', "<br>Signature: ").concat(conSigImg(so.ed) ? "<img src=\"".concat(conSigImg(so.ed), "\" style=\"height:60px;vertical-align:middle\">") : '', "</div>") : '', "\n        <div class=\"blk\"><b class=\"t\">").concat(nr ? 'Received by the Employee:' : 'Signed by the Employee:', "</b>Name: ").concat(e(sig ? sig.signer_name : name), "<br>\n            Date: ").concat(sig ? e(new Date(sig.signed_at).toLocaleString('en-GB')) : '', "<br>Signature: ").concat(sigImg).concat(sig ? "<br><span class=\"sm\">\"".concat(e(sig.declaration), "\"</span>") : '', "</div>\n        <script>setTimeout(function(){window.print()},400)<") + "/script></body></html>");
   w.document.close();
 }
 function conOpenFile(_x92, _x93) {
   return _conOpenFile.apply(this, arguments);
 }
 function _conOpenFile() {
-  _conOpenFile = _asyncToGenerator(_regeneratorRuntime().mark(function _callee135(c, notify) {
+  _conOpenFile = _asyncToGenerator(_regeneratorRuntime().mark(function _callee136(c, notify) {
     var w, r, d, url;
-    return _regeneratorRuntime().wrap(function _callee135$(_context136) {
-      while (1) switch (_context136.prev = _context136.next) {
+    return _regeneratorRuntime().wrap(function _callee136$(_context137) {
+      while (1) switch (_context137.prev = _context137.next) {
         case 0:
           w = window.open('', '_blank');
-          _context136.prev = 1;
-          _context136.next = 4;
+          _context137.prev = 1;
+          _context137.next = 4;
           return fetch("".concat(SB, "/rest/v1/contract_files?contract_id=eq.").concat(c.id, "&select=file_data"), {
             headers: H
           });
         case 4:
-          r = _context136.sent;
+          r = _context137.sent;
           if (!r.ok) {
-            _context136.next = 11;
+            _context137.next = 11;
             break;
           }
-          _context136.next = 8;
+          _context137.next = 8;
           return r.json();
         case 8:
-          _context136.t0 = _context136.sent;
-          _context136.next = 12;
+          _context137.t0 = _context137.sent;
+          _context137.next = 12;
           break;
         case 11:
-          _context136.t0 = [];
+          _context137.t0 = [];
         case 12:
-          d = _context136.t0;
+          d = _context137.t0;
           if (!(!Array.isArray(d) || !d.length)) {
-            _context136.next = 15;
+            _context137.next = 15;
             break;
           }
           throw new Error('missing');
         case 15:
-          _context136.t1 = URL;
-          _context136.next = 18;
+          _context137.t1 = URL;
+          _context137.next = 18;
           return fetch(d[0].file_data);
         case 18:
-          _context136.next = 20;
-          return _context136.sent.blob();
+          _context137.next = 20;
+          return _context137.sent.blob();
         case 20:
-          _context136.t2 = _context136.sent;
-          url = _context136.t1.createObjectURL.call(_context136.t1, _context136.t2);
+          _context137.t2 = _context137.sent;
+          url = _context137.t1.createObjectURL.call(_context137.t1, _context137.t2);
           if (w) w.location.href = url;else window.open(url, '_blank');
-          return _context136.abrupt("return", true);
+          return _context137.abrupt("return", true);
         case 26:
-          _context136.prev = 26;
-          _context136.t3 = _context136["catch"](1);
+          _context137.prev = 26;
+          _context137.t3 = _context137["catch"](1);
           if (w) w.close();
           notify('Could not open the attached PDF', 'error');
-          return _context136.abrupt("return", false);
+          return _context137.abrupt("return", false);
         case 31:
         case "end":
-          return _context136.stop();
+          return _context137.stop();
       }
-    }, _callee135, null, [[1, 26]]);
+    }, _callee136, null, [[1, 26]]);
   }));
   return _conOpenFile.apply(this, arguments);
 }
@@ -21949,29 +21991,33 @@ function Contracts(_ref230) {
     _useState646 = _slicedToArray(_useState645, 2),
     recs = _useState646[0],
     setRecs = _useState646[1];
-  var _useState647 = useState('staff'),
+  var _useState647 = useState([]),
     _useState648 = _slicedToArray(_useState647, 2),
-    tab = _useState648[0],
-    setTab = _useState648[1];
-  var _useState649 = useState('all'),
+    edSigs = _useState648[0],
+    setEdSigs = _useState648[1];
+  var _useState649 = useState('staff'),
     _useState650 = _slicedToArray(_useState649, 2),
-    filter = _useState650[0],
-    setFilter = _useState650[1];
-  var _useState651 = useState(null),
+    tab = _useState650[0],
+    setTab = _useState650[1];
+  var _useState651 = useState('all'),
     _useState652 = _slicedToArray(_useState651, 2),
-    edit = _useState652[0],
-    setEdit = _useState652[1];
+    filter = _useState652[0],
+    setFilter = _useState652[1];
   var _useState653 = useState(null),
     _useState654 = _slicedToArray(_useState653, 2),
-    view = _useState654[0],
-    setView = _useState654[1];
+    edit = _useState654[0],
+    setEdit = _useState654[1];
   var _useState655 = useState(null),
     _useState656 = _slicedToArray(_useState655, 2),
-    endEdit = _useState656[0],
-    setEndEdit = _useState656[1];
+    view = _useState656[0],
+    setView = _useState656[1];
+  var _useState657 = useState(null),
+    _useState658 = _slicedToArray(_useState657, 2),
+    endEdit = _useState658[0],
+    setEndEdit = _useState658[1];
   var load = function () {
     var _ref231 = _asyncToGenerator(_regeneratorRuntime().mark(function _callee101() {
-      var j, _yield$Promise$all21, _yield$Promise$all22, u, p, a, c, r, pm;
+      var j, _yield$Promise$all21, _yield$Promise$all22, u, p, a, c, r, es, pm;
       return _regeneratorRuntime().wrap(function _callee101$(_context102) {
         while (1) switch (_context102.prev = _context102.next) {
           case 0:
@@ -21988,15 +22034,16 @@ function Contracts(_ref230) {
             _context102.next = 4;
             return Promise.all([j("".concat(SB, "/rest/v1/users?select=id,name,email,role,is_active&order=name.asc")), j("".concat(SB, "/rest/v1/staff_profiles?select=user_id,position,department,contract_end_date")).then(function (x) {
               return x || j("".concat(SB, "/rest/v1/staff_profiles?select=user_id,position,department"));
-            }), j("".concat(SB, "/rest/v1/appraisals?status=eq.completed&select=id,employee_id,withdrawn,final_score,grade_band,review_period,completed_at,employee_review_status")), j("".concat(SB, "/rest/v1/contracts?select=*&order=updated_at.desc")), j("".concat(SB, "/rest/v1/hr_recommendations?select=user_id,recommendation,decision,recommended_at&order=recommended_at.desc"))]);
+            }), j("".concat(SB, "/rest/v1/appraisals?status=eq.completed&select=id,employee_id,withdrawn,final_score,grade_band,review_period,completed_at,employee_review_status")), j("".concat(SB, "/rest/v1/contracts?select=*&order=updated_at.desc")), j("".concat(SB, "/rest/v1/hr_recommendations?select=user_id,recommendation,decision,recommended_at&order=recommended_at.desc")), j("".concat(SB, "/rest/v1/contract_signoffs?role=eq.ed&select=contract_id,signed_at"))]);
           case 4:
             _yield$Promise$all21 = _context102.sent;
-            _yield$Promise$all22 = _slicedToArray(_yield$Promise$all21, 5);
+            _yield$Promise$all22 = _slicedToArray(_yield$Promise$all21, 6);
             u = _yield$Promise$all22[0];
             p = _yield$Promise$all22[1];
             a = _yield$Promise$all22[2];
             c = _yield$Promise$all22[3];
             r = _yield$Promise$all22[4];
+            es = _yield$Promise$all22[5];
             setMissing(c === null);
             setStaff(u || []);
             pm = {};
@@ -22009,8 +22056,9 @@ function Contracts(_ref230) {
             }));
             setCons(c || []);
             setRecs(r || []);
+            setEdSigs(es || []);
             setLoading(false);
-          case 20:
+          case 22:
           case "end":
             return _context102.stop();
         }
@@ -22074,15 +22122,15 @@ function Contracts(_ref230) {
     return a < b ? -1 : a > b ? 1 : x.s.name.localeCompare(y.s.name);
   });
   var mineToAct = function mineToAct(c) {
-    return canApprove && c.status === 'awaiting_approval' && c.user_id !== user.id || canConcur && c.status === 'awaiting_ed' && c.user_id !== user.id || canDraft && c.status === 'returned';
+    return canApprove && c.status === 'awaiting_approval' && c.user_id !== user.id || canConcur && c.user_id !== user.id && (c.status === 'awaiting_ed' || conEdPending(c, edSigs)) || canDraft && c.status === 'returned';
   };
   var inProg = cons.filter(function (c) {
-    return CON_OPEN.includes(c.status);
+    return CON_OPEN.includes(c.status) || c.status === 'accepted' && conEdPending(c, edSigs);
   }).sort(function (a, b) {
     return Number(mineToAct(b)) - Number(mineToAct(a));
   });
   var done = cons.filter(function (c) {
-    return !CON_OPEN.includes(c.status);
+    return !CON_OPEN.includes(c.status) && !(c.status === 'accepted' && conEdPending(c, edSigs));
   });
   var nAct = cons.filter(mineToAct).length;
   if (edit) return React.createElement(ContractEditor, {
@@ -22213,7 +22261,9 @@ function Contracts(_ref230) {
       className: "flex items-center gap-2"
     }, mineToAct(c) && React.createElement("span", {
       className: "px-2 py-1 rounded-full text-xs font-bold bg-amber-500 text-white"
-    }, "Your action"), React.createElement("span", {
+    }, "Your action"), conEdPending(c, edSigs) && React.createElement("span", {
+      className: "px-2 py-1 rounded-full text-xs font-bold bg-blue-100 text-blue-800"
+    }, "ED signature pending"), React.createElement("span", {
       className: "px-3 py-1 rounded-full text-xs font-bold ".concat(CON_STATUS[c.status][1])
     }, conStatusLabel(c))));
   };
@@ -22232,7 +22282,7 @@ function Contracts(_ref230) {
     className: "text-2xl md:text-3xl font-extrabold text-gray-800"
   }, "Contracts & Renewals"), React.createElement("p", {
     className: "text-gray-500 text-sm mt-1"
-  }, canDraft ? 'Draft renewals and contract changes from appraisal findings. ' : '', canApprove ? 'You approve drafts before they go to the ED. ' : '', canConcur ? 'You give concurrence before letters go to staff. ' : '', "Staff read and sign their letter in the portal."), React.createElement("div", {
+  }, canDraft ? 'Draft renewals and contract changes from appraisal findings. ' : '', canApprove ? 'You approve and sign; the letter goes to the staff member at once and the ED signs alongside. ' : '', canConcur ? 'Sign each letter once the Program Manager has signed; the staff member can already see it. ' : '', "Staff read and sign their letter in the portal."), React.createElement("div", {
     className: "flex flex-wrap gap-2 mt-5 border-t pt-4"
   }, [['staff', 'Staff & renewals', 'fa-users'], ['progress', "In progress (".concat(inProg.length, ")").concat(nAct ? " \xB7 ".concat(nAct, " for you") : ''), 'fa-hourglass-half'], ['done', "Completed (".concat(done.length, ")"), 'fa-circle-check']].map(function (_ref233) {
     var _ref234 = _slicedToArray(_ref233, 3),
@@ -22396,7 +22446,7 @@ function ContractEditor(_ref237) {
     label: (conSuggest(Number(ex.appraisal_score)) || {}).label
   } : null : row.sug;
   var defType = ex ? ex.contract_type : sug ? sug.keys[0] === 'promotion' ? 'renewal' : sug.keys[0] : 'renewal';
-  var _useState657 = useState(ex ? {
+  var _useState659 = useState(ex ? {
       contract_type: ex.contract_type,
       position: ex.position || '',
       department: ex.department || '',
@@ -22417,34 +22467,34 @@ function ContractEditor(_ref237) {
       review_date: '',
       reason: ''
     }),
-    _useState658 = _slicedToArray(_useState657, 2),
-    f = _useState658[0],
-    setF = _useState658[1];
-  var _useState659 = useState(ex ? ex.terms || '' : ''),
     _useState660 = _slicedToArray(_useState659, 2),
-    terms = _useState660[0],
-    setTerms = _useState660[1];
-  var _useState661 = useState(!!(ex && ex.terms)),
+    f = _useState660[0],
+    setF = _useState660[1];
+  var _useState661 = useState(ex ? ex.terms || '' : ''),
     _useState662 = _slicedToArray(_useState661, 2),
-    touched = _useState662[0],
-    setTouched = _useState662[1];
-  var _useState663 = useState(null),
+    terms = _useState662[0],
+    setTerms = _useState662[1];
+  var _useState663 = useState(!!(ex && ex.terms)),
     _useState664 = _slicedToArray(_useState663, 2),
-    file = _useState664[0],
-    setFile = _useState664[1];
-  var _useState665 = useState(false),
+    touched = _useState664[0],
+    setTouched = _useState664[1];
+  var _useState665 = useState(null),
     _useState666 = _slicedToArray(_useState665, 2),
-    busy = _useState666[0],
-    setBusy = _useState666[1];
+    file = _useState666[0],
+    setFile = _useState666[1];
   var _useState667 = useState(false),
     _useState668 = _slicedToArray(_useState667, 2),
-    preview = _useState668[0],
-    setPreview = _useState668[1];
-  var fileRef = useRef(null);
-  var _useState669 = useState(null),
+    busy = _useState668[0],
+    setBusy = _useState668[1];
+  var _useState669 = useState(false),
     _useState670 = _slicedToArray(_useState669, 2),
-    pad = _useState670[0],
-    setPad = _useState670[1];
+    preview = _useState670[0],
+    setPreview = _useState670[1];
+  var fileRef = useRef(null);
+  var _useState671 = useState(null),
+    _useState672 = _slicedToArray(_useState671, 2),
+    pad = _useState672[0],
+    setPad = _useState672[1];
   useEffect(function () {
     if (!ex && row.p.contract_end_date) {
       var d = new Date(row.p.contract_end_date + 'T00:00:00');
@@ -22466,7 +22516,7 @@ function ContractEditor(_ref237) {
   var differs = sug ? !sug.keys.includes(f.contract_type) : true;
   var isNR = f.contract_type === 'non_renewal';
   var staffIsSup = row.s.role === 'supervisor';
-  var nextStatus = isSup || staffIsSup ? 'awaiting_ed' : 'awaiting_approval';
+  var nextStatus = staffIsSup ? 'awaiting_ed' : isSup ? 'issued' : 'awaiting_approval';
   var mustSign = isSup && !staffIsSup;
   var inp = "w-full border-2 border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:border-green-400 outline-none";
   var toB64 = function toB64(fl) {
@@ -22541,7 +22591,7 @@ function ContractEditor(_ref237) {
             notify('Please sign in the box before sending', 'error');
             return _context104.abrupt("return");
           case 24:
-            if (!(submit && !confirm(nextStatus === 'awaiting_ed' ? "Approve this ".concat(CON_TYPES[f.contract_type].toLowerCase(), " for ").concat(row.s.name, " and send it to the ED for concurrence?") : "Send this ".concat(CON_TYPES[f.contract_type].toLowerCase(), " for ").concat(row.s.name, " to the supervisor for approval?")))) {
+            if (!(submit && !confirm(nextStatus === 'issued' ? "Sign this ".concat(CON_TYPES[f.contract_type].toLowerCase(), " and send it to ").concat(row.s.name, "? The ED signs alongside.") : nextStatus === 'awaiting_ed' ? "Send this ".concat(CON_TYPES[f.contract_type].toLowerCase(), " to the ED to sign?") : "Send this ".concat(CON_TYPES[f.contract_type].toLowerCase(), " for ").concat(row.s.name, " to the supervisor for approval?")))) {
               _context104.next = 26;
               break;
             }
@@ -22717,7 +22767,7 @@ function ContractEditor(_ref237) {
             _context104.t18 = _context104.sent;
             throw new _context104.t17(_context104.t18);
           case 95:
-            notify(nextStatus === 'awaiting_ed' ? 'Approved and sent to the ED for concurrence' : 'Sent to the supervisor for approval');
+            notify(nextStatus === 'issued' ? "Signed and sent to ".concat(row.s.name, "; the ED has been asked to sign too") : nextStatus === 'awaiting_ed' ? 'Sent to the ED to sign' : 'Sent to the supervisor for approval');
             _context104.next = 99;
             break;
           case 98:
@@ -22996,7 +23046,7 @@ function ContractEditor(_ref237) {
     className: "fas fa-spinner fa-spin mr-2"
   }), "Saving\u2026") : React.createElement(React.Fragment, null, React.createElement("i", {
     className: "fas fa-paper-plane mr-2"
-  }), nextStatus === 'awaiting_ed' ? 'Approve and send to the ED' : 'Send to the supervisor for approval')))));
+  }), nextStatus === 'issued' ? "Sign and send to ".concat((row.s.name || '').split(' ')[0]) : nextStatus === 'awaiting_ed' ? 'Send to the ED to sign' : 'Send to the supervisor for approval')))));
 }
 function ContractView(_ref241) {
   var c = _ref241.c,
@@ -23009,33 +23059,33 @@ function ContractView(_ref241) {
     notify = _ref241.notify,
     onEdit = _ref241.onEdit,
     onBack = _ref241.onBack;
-  var _useState671 = useState({}),
-    _useState672 = _slicedToArray(_useState671, 2),
-    so = _useState672[0],
-    setSo = _useState672[1];
-  var _useState673 = useState(null),
+  var _useState673 = useState({}),
     _useState674 = _slicedToArray(_useState673, 2),
-    pad = _useState674[0],
-    setPad = _useState674[1];
+    so = _useState674[0],
+    setSo = _useState674[1];
+  var _useState675 = useState(null),
+    _useState676 = _slicedToArray(_useState675, 2),
+    pad = _useState676[0],
+    setPad = _useState676[1];
   useEffect(function () {
     conLoadSignoffs(c).then(setSo);
   }, [c.id]);
-  var _useState675 = useState([]),
-    _useState676 = _slicedToArray(_useState675, 2),
-    events = _useState676[0],
-    setEvents = _useState676[1];
-  var _useState677 = useState(null),
+  var _useState677 = useState([]),
     _useState678 = _slicedToArray(_useState677, 2),
-    sig = _useState678[0],
-    setSig = _useState678[1];
-  var _useState679 = useState(''),
+    events = _useState678[0],
+    setEvents = _useState678[1];
+  var _useState679 = useState(null),
     _useState680 = _slicedToArray(_useState679, 2),
-    note = _useState680[0],
-    setNote = _useState680[1];
-  var _useState681 = useState(false),
+    sig = _useState680[0],
+    setSig = _useState680[1];
+  var _useState681 = useState(''),
     _useState682 = _slicedToArray(_useState681, 2),
-    busy = _useState682[0],
-    setBusy = _useState682[1];
+    note = _useState682[0],
+    setNote = _useState682[1];
+  var _useState683 = useState(false),
+    _useState684 = _slicedToArray(_useState683, 2),
+    busy = _useState684[0],
+    setBusy = _useState684[1];
   useEffect(function () {
     fetch("".concat(SB, "/rest/v1/contract_events?contract_id=eq.").concat(c.id, "&select=action,by_name,note,at&order=at.asc"), {
       headers: H
@@ -23066,7 +23116,7 @@ function ContractView(_ref241) {
             notify('Add a note explaining why (at least 5 characters)', 'error');
             return _context105.abrupt("return");
           case 3:
-            role = status === 'awaiting_ed' ? 'approver' : status === 'issued' ? 'ed' : null;
+            role = status === 'issued' ? c.status === 'awaiting_ed' ? 'ed' : 'approver' : null;
             if (!(role && !pad)) {
               _context105.next = 7;
               break;
@@ -23145,9 +23195,11 @@ function ContractView(_ref241) {
     return {
       drafted: 'Drafted',
       'submitted:awaiting_approval': 'Sent for supervisor approval',
-      'submitted:awaiting_ed': 'Approved and sent to the ED',
-      awaiting_ed: 'Approved by the supervisor, sent to the ED',
-      issued: 'ED concurred; sent to the staff member',
+      'submitted:awaiting_ed': 'Sent to the ED to sign',
+      'submitted:issued': 'Signed by the Program Manager and sent to the staff member',
+      awaiting_ed: 'Sent to the ED to sign',
+      ed_signed: 'Signed by the ED',
+      issued: 'Sent to the staff member',
       returned: 'Returned to the drafter',
       accepted: c.contract_type === 'non_renewal' ? 'Acknowledged by the staff member' : 'Signed by the staff member',
       declined: 'Declined by the staff member',
@@ -23157,6 +23209,56 @@ function ContractView(_ref241) {
   };
   var canApproveNow = canApprove && c.status === 'awaiting_approval' && !own;
   var canConcurNow = canConcur && c.status === 'awaiting_ed' && !own;
+  var edSignNow = canConcur && !own && ['issued', 'accepted'].includes(c.status) && !so.ed;
+  var edSign = function () {
+    var _ref243 = _asyncToGenerator(_regeneratorRuntime().mark(function _callee105() {
+      return _regeneratorRuntime().wrap(function _callee105$(_context106) {
+        while (1) switch (_context106.prev = _context106.next) {
+          case 0:
+            if (pad) {
+              _context106.next = 3;
+              break;
+            }
+            notify('Please sign in the box first', 'error');
+            return _context106.abrupt("return");
+          case 3:
+            if (confirm('Add your signature to this letter as Executive Director?')) {
+              _context106.next = 5;
+              break;
+            }
+            return _context106.abrupt("return");
+          case 5:
+            setBusy(true);
+            _context106.prev = 6;
+            _context106.next = 9;
+            return conPostSignoff(c, 'ed', user, pad);
+          case 9:
+            notify('Signed');
+            setPad(null);
+            _context106.t0 = setSo;
+            _context106.next = 14;
+            return conLoadSignoffs(c);
+          case 14:
+            _context106.t1 = _context106.sent;
+            (0, _context106.t0)(_context106.t1);
+            _context106.next = 21;
+            break;
+          case 18:
+            _context106.prev = 18;
+            _context106.t2 = _context106["catch"](6);
+            notify(_context106.t2.message, 'error');
+          case 21:
+            setBusy(false);
+          case 22:
+          case "end":
+            return _context106.stop();
+        }
+      }, _callee105, null, [[6, 18]]);
+    }));
+    return function edSign() {
+      return _ref243.apply(this, arguments);
+    };
+  }();
   var btn = "px-4 py-2 rounded-xl font-semibold text-sm";
   return React.createElement("div", {
     className: "min-h-screen p-4 md:p-8"
@@ -23231,15 +23333,29 @@ function ContractView(_ref241) {
     className: "text-sm mt-3 bg-amber-50 border-2 border-amber-200 rounded-xl p-3"
   }, React.createElement("b", null, "Reason for the decision:"), " ", c.reason), c.improvement_plan && React.createElement("p", {
     className: "text-sm mt-3 whitespace-pre-wrap"
-  }, React.createElement("b", null, "Improvement plan"), " (review ", conDate(c.review_date), "):", React.createElement("br", null), c.improvement_plan)), (canApproveNow || canConcurNow || ['draft', 'returned', 'awaiting_approval', 'awaiting_ed', 'issued'].includes(c.status) && (canDraft || canApprove)) && React.createElement("div", {
+  }, React.createElement("b", null, "Improvement plan"), " (review ", conDate(c.review_date), "):", React.createElement("br", null), c.improvement_plan)), edSignNow && React.createElement("div", {
+    className: "glass rounded-2xl p-6 mb-6 border-2 border-blue-200"
+  }, React.createElement("h2", {
+    className: "font-bold mb-1"
+  }, "Your signature as Executive Director"), React.createElement("p", {
+    className: "text-xs text-gray-500 mb-3"
+  }, c.status === 'accepted' ? "".concat(name, " has already signed this letter.") : "".concat(name, " can already see this letter."), " Your signature is added to the concurrence section."), React.createElement(SignaturePad, {
+    onChange: setPad
+  }), React.createElement("button", {
+    disabled: busy,
+    onClick: edSign,
+    className: "btn-green text-white px-5 py-2.5 rounded-xl font-semibold text-sm mt-3"
+  }, React.createElement("i", {
+    className: "fas fa-file-signature mr-2"
+  }), "Sign")), (canApproveNow || canConcurNow || ['draft', 'returned', 'awaiting_approval', 'awaiting_ed', 'issued'].includes(c.status) && (canDraft || canApprove)) && React.createElement("div", {
     className: "glass rounded-2xl p-6 mb-6"
   }, React.createElement("h2", {
     className: "font-bold mb-3"
-  }, canApproveNow ? 'Your approval' : canConcurNow ? 'Your concurrence' : 'Actions'), (canApproveNow || canConcurNow) && React.createElement("div", {
+  }, canApproveNow || canConcurNow ? 'Your signature' : 'Actions'), (canApproveNow || canConcurNow) && React.createElement("div", {
     className: "mb-4"
   }, React.createElement("p", {
     className: "text-sm font-semibold text-gray-700 mb-2"
-  }, "Your signature ", canApproveNow ? "(for RAHAMA, as ".concat(CON_SIGNER_TITLE, ")") : '(concurrence, as Executive Director)', " \u2014 needed to ", canApproveNow ? 'approve' : 'concur', ", not to return"), React.createElement(SignaturePad, {
+  }, "Your signature ", canApproveNow ? "(for RAHAMA, as ".concat(CON_SIGNER_TITLE, ")") : '(as Executive Director)', " \u2014 needed to sign, not to return"), React.createElement(SignaturePad, {
     onChange: setPad
   })), React.createElement("textarea", {
     rows: 2,
@@ -23254,20 +23370,20 @@ function ContractView(_ref241) {
   }, canApproveNow && React.createElement("button", {
     disabled: busy,
     onClick: function onClick() {
-      return act('awaiting_ed', 'Approve and send to the ED for concurrence', false, 'Approved and sent to the ED');
+      return act('issued', "Approve, sign and send the letter to ".concat(name), false, "Signed. The letter is now with ".concat(name, "; the ED signs alongside"));
     },
     className: "btn-green text-white px-5 py-2.5 rounded-xl font-semibold text-sm"
   }, React.createElement("i", {
     className: "fas fa-check mr-2"
-  }), "Approve and send to the ED"), canConcurNow && React.createElement("button", {
+  }), "Sign and send to ", (name || '').split(' ')[0]), canConcurNow && React.createElement("button", {
     disabled: busy,
     onClick: function onClick() {
-      return act('issued', "Concur and send the letter to ".concat(name), false, "Concurred. The letter is now with ".concat(name));
+      return act('issued', "Sign and send the letter to ".concat(name), false, "Signed. The letter is now with ".concat(name));
     },
     className: "btn-green text-white px-5 py-2.5 rounded-xl font-semibold text-sm"
   }, React.createElement("i", {
     className: "fas fa-check-double mr-2"
-  }), "Concur and send to ", (name || '').split(' ')[0]), (canApproveNow || canConcurNow) && React.createElement("button", {
+  }), "Sign and send to ", (name || '').split(' ')[0]), (canApproveNow || canConcurNow) && React.createElement("button", {
     disabled: busy,
     onClick: function onClick() {
       return act('returned', 'Return to the drafter', true, 'Returned to the drafter');
@@ -23317,42 +23433,42 @@ function ContractView(_ref241) {
     }, "\"", e.note, "\""));
   })))));
 }
-function MyContracts(_ref243) {
-  var user = _ref243.user,
-    notify = _ref243.notify,
-    onBack = _ref243.onBack;
-  var _useState683 = useState([]),
-    _useState684 = _slicedToArray(_useState683, 2),
-    items = _useState684[0],
-    setItems = _useState684[1];
-  var _useState685 = useState({}),
+function MyContracts(_ref244) {
+  var user = _ref244.user,
+    notify = _ref244.notify,
+    onBack = _ref244.onBack;
+  var _useState685 = useState([]),
     _useState686 = _slicedToArray(_useState685, 2),
-    sigs = _useState686[0],
-    setSigs = _useState686[1];
-  var _useState687 = useState(true),
+    items = _useState686[0],
+    setItems = _useState686[1];
+  var _useState687 = useState({}),
     _useState688 = _slicedToArray(_useState687, 2),
-    loading = _useState688[0],
-    setLoading = _useState688[1];
-  var _useState689 = useState(null),
+    sigs = _useState688[0],
+    setSigs = _useState688[1];
+  var _useState689 = useState(true),
     _useState690 = _slicedToArray(_useState689, 2),
-    sel = _useState690[0],
-    setSel = _useState690[1];
+    loading = _useState690[0],
+    setLoading = _useState690[1];
+  var _useState691 = useState(null),
+    _useState692 = _slicedToArray(_useState691, 2),
+    sel = _useState692[0],
+    setSel = _useState692[1];
   var load = function () {
-    var _ref244 = _asyncToGenerator(_regeneratorRuntime().mark(function _callee105() {
+    var _ref245 = _asyncToGenerator(_regeneratorRuntime().mark(function _callee106() {
       var d, arr, ids, s, m;
-      return _regeneratorRuntime().wrap(function _callee105$(_context106) {
-        while (1) switch (_context106.prev = _context106.next) {
+      return _regeneratorRuntime().wrap(function _callee106$(_context107) {
+        while (1) switch (_context107.prev = _context107.next) {
           case 0:
             setLoading(true);
-            _context106.prev = 1;
-            _context106.next = 4;
+            _context107.prev = 1;
+            _context107.next = 4;
             return fetch("".concat(SB, "/rest/v1/contracts?user_id=eq.").concat(user.id, "&status=in.(issued,accepted,declined)&select=*&order=issued_at.desc"), {
               headers: H
             }).then(function (r) {
               return r.ok ? r.json() : [];
             });
           case 4:
-            d = _context106.sent;
+            d = _context107.sent;
             arr = Array.isArray(d) ? d : [];
             setItems(arr);
             ids = arr.filter(function (c) {
@@ -23361,39 +23477,39 @@ function MyContracts(_ref243) {
               return c.id;
             });
             if (!ids.length) {
-              _context106.next = 15;
+              _context107.next = 15;
               break;
             }
-            _context106.next = 11;
+            _context107.next = 11;
             return fetch("".concat(SB, "/rest/v1/contract_signatures?contract_id=in.(").concat(ids.join(','), ")&select=contract_id,signer_name,signed_at,declaration,signature_data"), {
               headers: H
             }).then(function (r) {
               return r.ok ? r.json() : [];
             });
           case 11:
-            s = _context106.sent;
+            s = _context107.sent;
             m = {};
             (Array.isArray(s) ? s : []).forEach(function (x) {
               return m[x.contract_id] = x;
             });
             setSigs(m);
           case 15:
-            _context106.next = 20;
+            _context107.next = 20;
             break;
           case 17:
-            _context106.prev = 17;
-            _context106.t0 = _context106["catch"](1);
+            _context107.prev = 17;
+            _context107.t0 = _context107["catch"](1);
             setItems([]);
           case 20:
             setLoading(false);
           case 21:
           case "end":
-            return _context106.stop();
+            return _context107.stop();
         }
-      }, _callee105, null, [[1, 17]]);
+      }, _callee106, null, [[1, 17]]);
     }));
     return function load() {
-      return _ref244.apply(this, arguments);
+      return _ref245.apply(this, arguments);
     };
   }();
   useEffect(function () {
@@ -23482,64 +23598,64 @@ function MyContracts(_ref243) {
     className: "space-y-3"
   }, past.map(card))))));
 }
-function ContractSign(_ref245) {
-  var c = _ref245.c,
-    sig = _ref245.sig,
-    user = _ref245.user,
-    notify = _ref245.notify,
-    onDone = _ref245.onDone;
-  var _useState691 = useState({}),
-    _useState692 = _slicedToArray(_useState691, 2),
-    so = _useState692[0],
-    setSo = _useState692[1];
+function ContractSign(_ref246) {
+  var c = _ref246.c,
+    sig = _ref246.sig,
+    user = _ref246.user,
+    notify = _ref246.notify,
+    onDone = _ref246.onDone;
+  var _useState693 = useState({}),
+    _useState694 = _slicedToArray(_useState693, 2),
+    so = _useState694[0],
+    setSo = _useState694[1];
   useEffect(function () {
     conLoadSignoffs(c).then(setSo);
   }, [c.id]);
   var isNR = c.contract_type === 'non_renewal';
   var decl = isNR ? CON_DECL_ACK : CON_DECL_ACCEPT;
-  var _useState693 = useState(false),
-    _useState694 = _slicedToArray(_useState693, 2),
-    agreed = _useState694[0],
-    setAgreed = _useState694[1];
-  var _useState695 = useState(null),
+  var _useState695 = useState(false),
     _useState696 = _slicedToArray(_useState695, 2),
-    pad = _useState696[0],
-    setPad = _useState696[1];
-  var _useState697 = useState(false),
+    agreed = _useState696[0],
+    setAgreed = _useState696[1];
+  var _useState697 = useState(null),
     _useState698 = _slicedToArray(_useState697, 2),
-    busy = _useState698[0],
-    setBusy = _useState698[1];
-  var _useState699 = useState('sign'),
+    pad = _useState698[0],
+    setPad = _useState698[1];
+  var _useState699 = useState(false),
     _useState700 = _slicedToArray(_useState699, 2),
-    mode = _useState700[0],
-    setMode = _useState700[1];
-  var _useState701 = useState(''),
+    busy = _useState700[0],
+    setBusy = _useState700[1];
+  var _useState701 = useState('sign'),
     _useState702 = _slicedToArray(_useState701, 2),
-    why = _useState702[0],
-    setWhy = _useState702[1];
+    mode = _useState702[0],
+    setMode = _useState702[1];
+  var _useState703 = useState(''),
+    _useState704 = _slicedToArray(_useState703, 2),
+    why = _useState704[0],
+    setWhy = _useState704[1];
   var sign = function () {
-    var _ref246 = _asyncToGenerator(_regeneratorRuntime().mark(function _callee106() {
+    var _ref247 = _asyncToGenerator(_regeneratorRuntime().mark(function _callee107() {
       var r;
-      return _regeneratorRuntime().wrap(function _callee106$(_context107) {
-        while (1) switch (_context107.prev = _context107.next) {
+      return _regeneratorRuntime().wrap(function _callee107$(_context108) {
+        while (1) switch (_context108.prev = _context108.next) {
           case 0:
             if (agreed) {
-              _context107.next = 3;
+              _context108.next = 3;
               break;
             }
             notify('Please tick the declaration', 'error');
-            return _context107.abrupt("return");
+            return _context108.abrupt("return");
           case 3:
             if (pad) {
-              _context107.next = 6;
+              _context108.next = 6;
               break;
             }
             notify('Please add your signature', 'error');
-            return _context107.abrupt("return");
+            return _context108.abrupt("return");
           case 6:
             setBusy(true);
-            _context107.prev = 7;
-            _context107.next = 10;
+            _context108.prev = 7;
+            _context108.next = 10;
             return fetch("".concat(SB, "/rest/v1/contract_signatures"), {
               method: 'POST',
               headers: HJ,
@@ -23552,62 +23668,62 @@ function ContractSign(_ref245) {
               })
             });
           case 10:
-            r = _context107.sent;
+            r = _context108.sent;
             if (!r.ok) {
-              _context107.next = 16;
+              _context108.next = 16;
               break;
             }
             notify(isNR ? 'Receipt acknowledged' : 'Contract signed. Thank you.');
             onDone();
-            _context107.next = 21;
+            _context108.next = 21;
             break;
           case 16:
-            _context107.t0 = notify;
-            _context107.next = 19;
+            _context108.t0 = notify;
+            _context108.next = 19;
             return conErr(r, 'Signing failed — please try again');
           case 19:
-            _context107.t1 = _context107.sent;
-            (0, _context107.t0)(_context107.t1, 'error');
+            _context108.t1 = _context108.sent;
+            (0, _context108.t0)(_context108.t1, 'error');
           case 21:
-            _context107.next = 26;
+            _context108.next = 26;
             break;
           case 23:
-            _context107.prev = 23;
-            _context107.t2 = _context107["catch"](7);
+            _context108.prev = 23;
+            _context108.t2 = _context108["catch"](7);
             notify('Signing failed — check your connection', 'error');
           case 26:
             setBusy(false);
           case 27:
           case "end":
-            return _context107.stop();
+            return _context108.stop();
         }
-      }, _callee106, null, [[7, 23]]);
+      }, _callee107, null, [[7, 23]]);
     }));
     return function sign() {
-      return _ref246.apply(this, arguments);
+      return _ref247.apply(this, arguments);
     };
   }();
   var decline = function () {
-    var _ref247 = _asyncToGenerator(_regeneratorRuntime().mark(function _callee107() {
+    var _ref248 = _asyncToGenerator(_regeneratorRuntime().mark(function _callee108() {
       var r;
-      return _regeneratorRuntime().wrap(function _callee107$(_context108) {
-        while (1) switch (_context108.prev = _context108.next) {
+      return _regeneratorRuntime().wrap(function _callee108$(_context109) {
+        while (1) switch (_context109.prev = _context109.next) {
           case 0:
             if (!(why.trim().length < 10)) {
-              _context108.next = 3;
+              _context109.next = 3;
               break;
             }
             notify('Please explain why (at least 10 characters)', 'error');
-            return _context108.abrupt("return");
+            return _context109.abrupt("return");
           case 3:
             if (confirm('Decline this contract? HR will see your reason and contact you.')) {
-              _context108.next = 5;
+              _context109.next = 5;
               break;
             }
-            return _context108.abrupt("return");
+            return _context109.abrupt("return");
           case 5:
             setBusy(true);
-            _context108.next = 8;
+            _context109.next = 8;
             return fetch("".concat(SB, "/rest/v1/contracts?id=eq.").concat(c.id), {
               method: 'PATCH',
               headers: HJ,
@@ -23618,31 +23734,31 @@ function ContractSign(_ref245) {
               })
             });
           case 8:
-            r = _context108.sent;
+            r = _context109.sent;
             setBusy(false);
             if (!r.ok) {
-              _context108.next = 15;
+              _context109.next = 15;
               break;
             }
             notify('Your response has been sent to HR');
             onDone();
-            _context108.next = 20;
+            _context109.next = 20;
             break;
           case 15:
-            _context108.t0 = notify;
-            _context108.next = 18;
+            _context109.t0 = notify;
+            _context109.next = 18;
             return conErr(r, 'Could not send');
           case 18:
-            _context108.t1 = _context108.sent;
-            (0, _context108.t0)(_context108.t1, 'error');
+            _context109.t1 = _context109.sent;
+            (0, _context109.t0)(_context109.t1, 'error');
           case 20:
           case "end":
-            return _context108.stop();
+            return _context109.stop();
         }
-      }, _callee107);
+      }, _callee108);
     }));
     return function decline() {
-      return _ref247.apply(this, arguments);
+      return _ref248.apply(this, arguments);
     };
   }();
   return React.createElement("div", {
@@ -23685,10 +23801,10 @@ function ContractSign(_ref245) {
     className: "glass rounded-2xl p-6"
   }, !isNR && React.createElement("div", {
     className: "flex gap-2 mb-4"
-  }, [['sign', 'Accept and sign'], ['decline', 'I have a concern / decline']].map(function (_ref248) {
-    var _ref249 = _slicedToArray(_ref248, 2),
-      k = _ref249[0],
-      l = _ref249[1];
+  }, [['sign', 'Accept and sign'], ['decline', 'I have a concern / decline']].map(function (_ref249) {
+    var _ref250 = _slicedToArray(_ref249, 2),
+      k = _ref250[0],
+      l = _ref250[1];
     return React.createElement("button", {
       key: k,
       onClick: function onClick() {
@@ -23735,46 +23851,46 @@ function ContractSign(_ref245) {
     className: "fas fa-paper-plane mr-2"
   }), "Send to HR")))));
 }
-function LeaveRequest(_ref250) {
-  var user = _ref250.user,
-    notify = _ref250.notify,
-    onBack = _ref250.onBack;
-  var _useState703 = useState(''),
-    _useState704 = _slicedToArray(_useState703, 2),
-    type = _useState704[0],
-    setType = _useState704[1];
+function LeaveRequest(_ref251) {
+  var user = _ref251.user,
+    notify = _ref251.notify,
+    onBack = _ref251.onBack;
   var _useState705 = useState(''),
     _useState706 = _slicedToArray(_useState705, 2),
-    start = _useState706[0],
-    setStart = _useState706[1];
+    type = _useState706[0],
+    setType = _useState706[1];
   var _useState707 = useState(''),
     _useState708 = _slicedToArray(_useState707, 2),
-    end = _useState708[0],
-    setEnd = _useState708[1];
+    start = _useState708[0],
+    setStart = _useState708[1];
   var _useState709 = useState(''),
     _useState710 = _slicedToArray(_useState709, 2),
-    reason = _useState710[0],
-    setReason = _useState710[1];
-  var _useState711 = useState(false),
+    end = _useState710[0],
+    setEnd = _useState710[1];
+  var _useState711 = useState(''),
     _useState712 = _slicedToArray(_useState711, 2),
-    busy = _useState712[0],
-    setBusy = _useState712[1];
+    reason = _useState712[0],
+    setReason = _useState712[1];
+  var _useState713 = useState(false),
+    _useState714 = _slicedToArray(_useState713, 2),
+    busy = _useState714[0],
+    setBusy = _useState714[1];
   var submit = function () {
-    var _ref251 = _asyncToGenerator(_regeneratorRuntime().mark(function _callee108() {
+    var _ref252 = _asyncToGenerator(_regeneratorRuntime().mark(function _callee109() {
       var r;
-      return _regeneratorRuntime().wrap(function _callee108$(_context109) {
-        while (1) switch (_context109.prev = _context109.next) {
+      return _regeneratorRuntime().wrap(function _callee109$(_context110) {
+        while (1) switch (_context110.prev = _context110.next) {
           case 0:
             if (!(!type || !start || !end || !reason.trim())) {
-              _context109.next = 3;
+              _context110.next = 3;
               break;
             }
             notify('Complete all fields', 'error');
-            return _context109.abrupt("return");
+            return _context110.abrupt("return");
           case 3:
             setBusy(true);
-            _context109.prev = 4;
-            _context109.next = 7;
+            _context110.prev = 4;
+            _context110.next = 7;
             return fetch("".concat(SB, "/rest/v1/leave_requests"), {
               method: 'POST',
               headers: HJ,
@@ -23787,27 +23903,27 @@ function LeaveRequest(_ref250) {
               })
             });
           case 7:
-            r = _context109.sent;
+            r = _context110.sent;
             if (r.ok) {
               notify('Leave request submitted!');
               onBack();
             } else notify('Failed to submit', 'error');
-            _context109.next = 14;
+            _context110.next = 14;
             break;
           case 11:
-            _context109.prev = 11;
-            _context109.t0 = _context109["catch"](4);
+            _context110.prev = 11;
+            _context110.t0 = _context110["catch"](4);
             notify('Error', 'error');
           case 14:
             setBusy(false);
           case 15:
           case "end":
-            return _context109.stop();
+            return _context110.stop();
         }
-      }, _callee108, null, [[4, 11]]);
+      }, _callee109, null, [[4, 11]]);
     }));
     return function submit() {
-      return _ref251.apply(this, arguments);
+      return _ref252.apply(this, arguments);
     };
   }();
   return React.createElement("div", {
@@ -23872,40 +23988,40 @@ var leavePend = function leavePend(l) {
 var forFinal = function forFinal(lmOf, user, l) {
   return !!user && user.role === 'supervisor' && String(l.employee_id) !== String(user.id) && (isForMe(lmOf, user, l.employee_id) || !!l.head_decision);
 };
-var HeadRec = function HeadRec(_ref252) {
-  var l = _ref252.l;
+var HeadRec = function HeadRec(_ref253) {
+  var l = _ref253.l;
   return l.head_decision ? React.createElement("p", {
     className: "text-xs font-semibold mt-1 ".concat(l.head_decision === 'approved' ? 'text-green-700' : 'text-red-700')
   }, React.createElement("i", {
     className: "fas fa-user-check mr-1"
   }), l.head_decided_by || 'Head of Unit', " recommends: ", l.head_decision === 'approved' ? 'Approve' : 'Reject', l.head_comment ? " \xB7 \"".concat(l.head_comment, "\"") : '') : null;
 };
-function LeaveAdmin(_ref253) {
-  var notify = _ref253.notify,
-    onBack = _ref253.onBack,
-    readOnly = _ref253.readOnly,
-    user = _ref253.user,
-    team = _ref253.team;
-  var _useState713 = useState([]),
-    _useState714 = _slicedToArray(_useState713, 2),
-    list = _useState714[0],
-    setList = _useState714[1];
-  var _useState715 = useState({}),
+function LeaveAdmin(_ref254) {
+  var notify = _ref254.notify,
+    onBack = _ref254.onBack,
+    readOnly = _ref254.readOnly,
+    user = _ref254.user,
+    team = _ref254.team;
+  var _useState715 = useState([]),
     _useState716 = _slicedToArray(_useState715, 2),
-    names = _useState716[0],
-    setNames = _useState716[1];
-  var _useState717 = useState(null),
+    list = _useState716[0],
+    setList = _useState716[1];
+  var _useState717 = useState({}),
     _useState718 = _slicedToArray(_useState717, 2),
-    selected = _useState718[0],
-    setSelected = _useState718[1];
-  var _useState719 = useState({}),
+    names = _useState718[0],
+    setNames = _useState718[1];
+  var _useState719 = useState(null),
     _useState720 = _slicedToArray(_useState719, 2),
-    lmOf = _useState720[0],
-    setLmOf = _useState720[1];
-  var _useState721 = useState(false),
+    selected = _useState720[0],
+    setSelected = _useState720[1];
+  var _useState721 = useState({}),
     _useState722 = _slicedToArray(_useState721, 2),
-    showAll = _useState722[0],
-    setShowAll = _useState722[1];
+    lmOf = _useState722[0],
+    setLmOf = _useState722[1];
+  var _useState723 = useState(false),
+    _useState724 = _slicedToArray(_useState723, 2),
+    showAll = _useState724[0],
+    setShowAll = _useState724[1];
   var scoped = !!user && !readOnly;
   var isSupView = scoped && !team && user.role === 'supervisor';
   var load = function load() {
@@ -24021,45 +24137,45 @@ function LeaveAdmin(_ref253) {
     }, bt));
   }))));
 }
-function LeaveReview(_ref254) {
-  var req = _ref254.req,
-    name = _ref254.name,
-    user = _ref254.user,
-    recommend = _ref254.recommend,
-    notify = _ref254.notify,
-    onDone = _ref254.onDone;
-  var _useState723 = useState((recommend ? req.head_decision : req.status) || ''),
-    _useState724 = _slicedToArray(_useState723, 2),
-    decision = _useState724[0],
-    setDecision = _useState724[1];
-  var _useState725 = useState((recommend ? req.head_comment : req.supervisor_comment) || ''),
+function LeaveReview(_ref255) {
+  var req = _ref255.req,
+    name = _ref255.name,
+    user = _ref255.user,
+    recommend = _ref255.recommend,
+    notify = _ref255.notify,
+    onDone = _ref255.onDone;
+  var _useState725 = useState((recommend ? req.head_decision : req.status) || ''),
     _useState726 = _slicedToArray(_useState725, 2),
-    comment = _useState726[0],
-    setComment = _useState726[1];
-  var _useState727 = useState(false),
+    decision = _useState726[0],
+    setDecision = _useState726[1];
+  var _useState727 = useState((recommend ? req.head_comment : req.supervisor_comment) || ''),
     _useState728 = _slicedToArray(_useState727, 2),
-    busy = _useState728[0],
-    setBusy = _useState728[1];
+    comment = _useState728[0],
+    setComment = _useState728[1];
+  var _useState729 = useState(false),
+    _useState730 = _slicedToArray(_useState729, 2),
+    busy = _useState730[0],
+    setBusy = _useState730[1];
   var save = function () {
-    var _ref255 = _asyncToGenerator(_regeneratorRuntime().mark(function _callee109() {
+    var _ref256 = _asyncToGenerator(_regeneratorRuntime().mark(function _callee110() {
       var url, r, t;
-      return _regeneratorRuntime().wrap(function _callee109$(_context110) {
-        while (1) switch (_context110.prev = _context110.next) {
+      return _regeneratorRuntime().wrap(function _callee110$(_context111) {
+        while (1) switch (_context111.prev = _context111.next) {
           case 0:
             if (!(!decision || decision === 'pending')) {
-              _context110.next = 3;
+              _context111.next = 3;
               break;
             }
             notify('Choose approve or reject', 'error');
-            return _context110.abrupt("return");
+            return _context111.abrupt("return");
           case 3:
             setBusy(true);
             url = "".concat(SB, "/rest/v1/leave_requests?id=eq.").concat(req.id);
             if (!recommend) {
-              _context110.next = 20;
+              _context111.next = 20;
               break;
             }
-            _context110.next = 8;
+            _context111.next = 8;
             return fetch(url, {
               method: 'PATCH',
               headers: HJ,
@@ -24071,28 +24187,28 @@ function LeaveReview(_ref254) {
               })
             });
           case 8:
-            r = _context110.sent;
+            r = _context111.sent;
             if (!r.ok) {
-              _context110.next = 14;
+              _context111.next = 14;
               break;
             }
             notify('Recommendation sent for final approval');
             onDone();
-            _context110.next = 18;
+            _context111.next = 18;
             break;
           case 14:
-            _context110.next = 16;
+            _context111.next = 16;
             return r.text()["catch"](function () {
               return '';
             });
           case 16:
-            t = _context110.sent;
+            t = _context111.sent;
             notify(/head_/.test(t) ? 'Could not save: the leave verification SQL has not been run yet' : 'Failed', 'error');
           case 18:
-            _context110.next = 24;
+            _context111.next = 24;
             break;
           case 20:
-            _context110.next = 22;
+            _context111.next = 22;
             return writeAudited('PATCH', url, {
               status: decision,
               supervisor_comment: comment
@@ -24101,7 +24217,7 @@ function LeaveReview(_ref254) {
               decided_at: new Date().toISOString()
             });
           case 22:
-            r = _context110.sent;
+            r = _context111.sent;
             if (r.ok) {
               notify('Decision saved');
               onDone();
@@ -24110,12 +24226,12 @@ function LeaveReview(_ref254) {
             setBusy(false);
           case 25:
           case "end":
-            return _context110.stop();
+            return _context111.stop();
         }
-      }, _callee109);
+      }, _callee110);
     }));
     return function save() {
-      return _ref255.apply(this, arguments);
+      return _ref256.apply(this, arguments);
     };
   }();
   return React.createElement("div", {
@@ -24176,66 +24292,66 @@ function LeaveReview(_ref254) {
     className: "w-full btn-green text-white py-4 rounded-xl font-bold disabled:opacity-50"
   }, busy ? 'Saving...' : recommend ? 'Send for final approval' : 'Save Final Decision')));
 }
-function Directory(_ref256) {
-  var user = _ref256.user,
-    notify = _ref256.notify,
-    onBack = _ref256.onBack;
-  var _useState729 = useState([]),
-    _useState730 = _slicedToArray(_useState729, 2),
-    staff = _useState730[0],
-    setStaff = _useState730[1];
-  var _useState731 = useState(true),
+function Directory(_ref257) {
+  var user = _ref257.user,
+    notify = _ref257.notify,
+    onBack = _ref257.onBack;
+  var _useState731 = useState([]),
     _useState732 = _slicedToArray(_useState731, 2),
-    loading = _useState732[0],
-    setLoading = _useState732[1];
-  var _useState733 = useState(''),
+    staff = _useState732[0],
+    setStaff = _useState732[1];
+  var _useState733 = useState(true),
     _useState734 = _slicedToArray(_useState733, 2),
-    search = _useState734[0],
-    setSearch = _useState734[1];
+    loading = _useState734[0],
+    setLoading = _useState734[1];
+  var _useState735 = useState(''),
+    _useState736 = _slicedToArray(_useState735, 2),
+    search = _useState736[0],
+    setSearch = _useState736[1];
   var load = function () {
-    var _ref257 = _asyncToGenerator(_regeneratorRuntime().mark(function _callee110() {
+    var _ref258 = _asyncToGenerator(_regeneratorRuntime().mark(function _callee111() {
       var u, p;
-      return _regeneratorRuntime().wrap(function _callee110$(_context111) {
-        while (1) switch (_context111.prev = _context111.next) {
+      return _regeneratorRuntime().wrap(function _callee111$(_context112) {
+        while (1) switch (_context112.prev = _context112.next) {
           case 0:
             setLoading(true);
-            _context111.prev = 1;
-            _context111.next = 4;
+            _context112.prev = 1;
+            _context112.next = 4;
             return fetch("".concat(SB, "/rest/v1/users?select=id,name,email,role,is_mne"), {
               headers: H
             }).then(function (r) {
               return r.json();
             });
           case 4:
-            u = _context111.sent;
-            _context111.next = 7;
+            u = _context112.sent;
+            _context112.next = 7;
             return fetch("".concat(SB, "/rest/v1/staff_profiles"), {
               headers: H
             }).then(function (r) {
               return r.json();
             });
           case 7:
-            p = _context111.sent;
+            p = _context112.sent;
             setStaff(u.map(function (x) {
               return _objectSpread(_objectSpread({}, x), p.find(function (pp) {
                 return pp.user_id === x.id;
               }) || {});
             }));
-            _context111.next = 13;
+            _context112.next = 13;
             break;
           case 11:
-            _context111.prev = 11;
-            _context111.t0 = _context111["catch"](1);
+            _context112.prev = 11;
+            _context112.t0 = _context112["catch"](1);
           case 13:
             setLoading(false);
           case 14:
           case "end":
-            return _context111.stop();
+            return _context112.stop();
         }
-      }, _callee110, null, [[1, 11]]);
+      }, _callee111, null, [[1, 11]]);
     }));
     return function load() {
-      return _ref257.apply(this, arguments);
+      return _ref258.apply(this, arguments);
     };
   }();
   useEffect(function () {
@@ -24299,37 +24415,37 @@ function Directory(_ref256) {
     className: "text-center text-gray-400 py-6"
   }, "No staff found"))));
 }
-function HRAdmin(_ref258) {
-  var notify = _ref258.notify,
-    onBack = _ref258.onBack;
-  var _useState735 = useState([]),
-    _useState736 = _slicedToArray(_useState735, 2),
-    staff = _useState736[0],
-    setStaff = _useState736[1];
-  var _useState737 = useState({}),
+function HRAdmin(_ref259) {
+  var notify = _ref259.notify,
+    onBack = _ref259.onBack;
+  var _useState737 = useState([]),
     _useState738 = _slicedToArray(_useState737, 2),
-    profiles = _useState738[0],
-    setProfiles = _useState738[1];
-  var _useState739 = useState(null),
+    staff = _useState738[0],
+    setStaff = _useState738[1];
+  var _useState739 = useState({}),
     _useState740 = _slicedToArray(_useState739, 2),
-    selected = _useState740[0],
-    setSelected = _useState740[1];
-  var _useState741 = useState(true),
+    profiles = _useState740[0],
+    setProfiles = _useState740[1];
+  var _useState741 = useState(null),
     _useState742 = _slicedToArray(_useState741, 2),
-    loading = _useState742[0],
-    setLoading = _useState742[1];
-  var _useState743 = useState([]),
+    selected = _useState742[0],
+    setSelected = _useState742[1];
+  var _useState743 = useState(true),
     _useState744 = _slicedToArray(_useState743, 2),
-    people = _useState744[0],
-    setPeople = _useState744[1];
+    loading = _useState744[0],
+    setLoading = _useState744[1];
+  var _useState745 = useState([]),
+    _useState746 = _slicedToArray(_useState745, 2),
+    people = _useState746[0],
+    setPeople = _useState746[1];
   var load = function () {
-    var _ref259 = _asyncToGenerator(_regeneratorRuntime().mark(function _callee111() {
+    var _ref260 = _asyncToGenerator(_regeneratorRuntime().mark(function _callee112() {
       var u, ids, pd, map;
-      return _regeneratorRuntime().wrap(function _callee111$(_context112) {
-        while (1) switch (_context112.prev = _context112.next) {
+      return _regeneratorRuntime().wrap(function _callee112$(_context113) {
+        while (1) switch (_context113.prev = _context113.next) {
           case 0:
             setLoading(true);
-            _context112.prev = 1;
+            _context113.prev = 1;
             fetch("".concat(SB, "/rest/v1/users?select=id,name,is_active&order=name"), {
               headers: H
             }).then(function (r) {
@@ -24337,51 +24453,51 @@ function HRAdmin(_ref258) {
             }).then(function (p) {
               return setPeople(Array.isArray(p) ? p : []);
             })["catch"](function () {});
-            _context112.next = 5;
+            _context113.next = 5;
             return fetch("".concat(SB, "/rest/v1/users?select=id,name,email,role&role=eq.employee"), {
               headers: H
             }).then(function (r) {
               return r.json();
             });
           case 5:
-            u = _context112.sent;
+            u = _context113.sent;
             setStaff(u || []);
             ids = u.map(function (x) {
               return x.id;
             });
             if (!(ids.length > 0)) {
-              _context112.next = 15;
+              _context113.next = 15;
               break;
             }
-            _context112.next = 11;
+            _context113.next = 11;
             return fetch("".concat(SB, "/rest/v1/staff_profiles?user_id=in.(").concat(ids.join(','), ")"), {
               headers: H
             }).then(function (r) {
               return r.json();
             });
           case 11:
-            pd = _context112.sent;
+            pd = _context113.sent;
             map = {};
             pd.forEach(function (p) {
               return map[p.user_id] = p;
             });
             setProfiles(map);
           case 15:
-            _context112.next = 19;
+            _context113.next = 19;
             break;
           case 17:
-            _context112.prev = 17;
-            _context112.t0 = _context112["catch"](1);
+            _context113.prev = 17;
+            _context113.t0 = _context113["catch"](1);
           case 19:
             setLoading(false);
           case 20:
           case "end":
-            return _context112.stop();
+            return _context113.stop();
         }
-      }, _callee111, null, [[1, 17]]);
+      }, _callee112, null, [[1, 17]]);
     }));
     return function load() {
-      return _ref259.apply(this, arguments);
+      return _ref260.apply(this, arguments);
     };
   }();
   useEffect(function () {
@@ -24442,47 +24558,47 @@ function HRAdmin(_ref258) {
     }));
   }))));
 }
-function HRProfileEdit(_ref260) {
-  var staff = _ref260.staff,
-    profile = _ref260.profile,
-    people = _ref260.people,
-    notify = _ref260.notify,
-    onDone = _ref260.onDone;
-  var _useState745 = useState((profile === null || profile === void 0 ? void 0 : profile.position) || ''),
-    _useState746 = _slicedToArray(_useState745, 2),
-    position = _useState746[0],
-    setPosition = _useState746[1];
-  var _useState747 = useState((profile === null || profile === void 0 ? void 0 : profile.department) || ''),
+function HRProfileEdit(_ref261) {
+  var staff = _ref261.staff,
+    profile = _ref261.profile,
+    people = _ref261.people,
+    notify = _ref261.notify,
+    onDone = _ref261.onDone;
+  var _useState747 = useState((profile === null || profile === void 0 ? void 0 : profile.position) || ''),
     _useState748 = _slicedToArray(_useState747, 2),
-    department = _useState748[0],
-    setDepartment = _useState748[1];
-  var _useState749 = useState((profile === null || profile === void 0 ? void 0 : profile.phone) || ''),
+    position = _useState748[0],
+    setPosition = _useState748[1];
+  var _useState749 = useState((profile === null || profile === void 0 ? void 0 : profile.department) || ''),
     _useState750 = _slicedToArray(_useState749, 2),
-    phone = _useState750[0],
-    setPhone = _useState750[1];
-  var _useState751 = useState((profile === null || profile === void 0 ? void 0 : profile.supervisor_name) || ''),
+    department = _useState750[0],
+    setDepartment = _useState750[1];
+  var _useState751 = useState((profile === null || profile === void 0 ? void 0 : profile.phone) || ''),
     _useState752 = _slicedToArray(_useState751, 2),
-    supervisor = _useState752[0],
-    setSupervisor = _useState752[1];
-  var _useState753 = useState(false),
+    phone = _useState752[0],
+    setPhone = _useState752[1];
+  var _useState753 = useState((profile === null || profile === void 0 ? void 0 : profile.supervisor_name) || ''),
     _useState754 = _slicedToArray(_useState753, 2),
-    busy = _useState754[0],
-    setBusy = _useState754[1];
-  var _useState755 = useState((profile === null || profile === void 0 ? void 0 : profile.line_manager_id) != null ? String(profile.line_manager_id) : ''),
+    supervisor = _useState754[0],
+    setSupervisor = _useState754[1];
+  var _useState755 = useState(false),
     _useState756 = _slicedToArray(_useState755, 2),
-    lm = _useState756[0],
-    setLm = _useState756[1];
+    busy = _useState756[0],
+    setBusy = _useState756[1];
+  var _useState757 = useState((profile === null || profile === void 0 ? void 0 : profile.line_manager_id) != null ? String(profile.line_manager_id) : ''),
+    _useState758 = _slicedToArray(_useState757, 2),
+    lm = _useState758[0],
+    setLm = _useState758[1];
   var choices = (people || []).filter(function (p) {
     return String(p.id) !== String(staff.id) && (p.is_active !== false || String(p.id) === lm);
   });
   var save = function () {
-    var _ref261 = _asyncToGenerator(_regeneratorRuntime().mark(function _callee112() {
+    var _ref262 = _asyncToGenerator(_regeneratorRuntime().mark(function _callee113() {
       var lmPerson, payload, extra, r, t;
-      return _regeneratorRuntime().wrap(function _callee112$(_context113) {
-        while (1) switch (_context113.prev = _context113.next) {
+      return _regeneratorRuntime().wrap(function _callee113$(_context114) {
+        while (1) switch (_context114.prev = _context114.next) {
           case 0:
             setBusy(true);
-            _context113.prev = 1;
+            _context114.prev = 1;
             lmPerson = choices.find(function (p) {
               return String(p.id) === lm;
             });
@@ -24497,62 +24613,62 @@ function HRProfileEdit(_ref260) {
               line_manager_id: lm ? Number(lm) : null
             } : {};
             if (!profile) {
-              _context113.next = 11;
+              _context114.next = 11;
               break;
             }
-            _context113.next = 8;
+            _context114.next = 8;
             return fetch("".concat(SB, "/rest/v1/staff_profiles?user_id=eq.").concat(staff.id), {
               method: 'PATCH',
               headers: HJ,
               body: JSON.stringify(_objectSpread(_objectSpread({}, payload), extra))
             });
           case 8:
-            r = _context113.sent;
-            _context113.next = 14;
+            r = _context114.sent;
+            _context114.next = 14;
             break;
           case 11:
-            _context113.next = 13;
+            _context114.next = 13;
             return fetch("".concat(SB, "/rest/v1/staff_profiles"), {
               method: 'POST',
               headers: HJ,
               body: JSON.stringify(_objectSpread(_objectSpread({}, payload), extra))
             });
           case 13:
-            r = _context113.sent;
+            r = _context114.sent;
           case 14:
             if (!r.ok) {
-              _context113.next = 19;
+              _context114.next = 19;
               break;
             }
             notify('Profile saved');
             onDone();
-            _context113.next = 23;
+            _context114.next = 23;
             break;
           case 19:
-            _context113.next = 21;
+            _context114.next = 21;
             return r.text()["catch"](function () {
               return '';
             });
           case 21:
-            t = _context113.sent;
+            t = _context114.sent;
             notify(/line_manager_id/.test(t) ? 'Line manager could not be saved: run the line managers SQL first' : 'Failed', 'error');
           case 23:
-            _context113.next = 28;
+            _context114.next = 28;
             break;
           case 25:
-            _context113.prev = 25;
-            _context113.t0 = _context113["catch"](1);
+            _context114.prev = 25;
+            _context114.t0 = _context114["catch"](1);
             notify('Error', 'error');
           case 28:
             setBusy(false);
           case 29:
           case "end":
-            return _context113.stop();
+            return _context114.stop();
         }
-      }, _callee112, null, [[1, 25]]);
+      }, _callee113, null, [[1, 25]]);
     }));
     return function save() {
-      return _ref261.apply(this, arguments);
+      return _ref262.apply(this, arguments);
     };
   }();
   return React.createElement("div", {
