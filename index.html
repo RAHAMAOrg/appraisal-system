@@ -22035,7 +22035,9 @@ function Contracts(_ref230) {
               });
             };
             _context102.next = 4;
-            return Promise.all([j("".concat(SB, "/rest/v1/users?select=id,name,email,role,is_active&order=name.asc")), j("".concat(SB, "/rest/v1/staff_profiles?select=user_id,position,department,contract_end_date")).then(function (x) {
+            return Promise.all([j("".concat(SB, "/rest/v1/users?select=id,name,email,role,is_active,signs_contracts&order=name.asc")).then(function (x) {
+              return x || j("".concat(SB, "/rest/v1/users?select=id,name,email,role,is_active&order=name.asc"));
+            }), j("".concat(SB, "/rest/v1/staff_profiles?select=user_id,position,department,contract_end_date")).then(function (x) {
               return x || j("".concat(SB, "/rest/v1/staff_profiles?select=user_id,position,department"));
             }), j("".concat(SB, "/rest/v1/appraisals?status=eq.completed&select=id,employee_id,withdrawn,final_score,grade_band,review_period,completed_at,employee_review_status")), j("".concat(SB, "/rest/v1/contracts?select=*&order=updated_at.desc")), j("".concat(SB, "/rest/v1/hr_recommendations?select=user_id,recommendation,decision,recommended_at&order=recommended_at.desc")), j("".concat(SB, "/rest/v1/contract_signoffs?role=eq.ed&select=contract_id,signed_at"))]);
           case 4:
@@ -22518,7 +22520,7 @@ function ContractEditor(_ref237) {
   var body = touched ? terms : auto;
   var differs = sug ? !sug.keys.includes(f.contract_type) : f.contract_type !== 'new_contract';
   var isNR = f.contract_type === 'non_renewal';
-  var staffIsSup = row.s.role === 'supervisor';
+  var staffIsSup = row.s.signs_contracts === true || row.s.signs_contracts === undefined && String(row.s.id) === String(user.id);
   var nextStatus = staffIsSup ? 'awaiting_ed' : isSup ? 'issued' : 'awaiting_approval';
   var mustSign = isSup && !staffIsSup;
   var inp = "w-full border-2 border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:border-green-400 outline-none";
