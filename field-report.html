@@ -1,0 +1,150 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>RAHAMA Field Daily Report</title>
+<link rel="icon" type="image/png" href="RAHAMA Empowerment Logo Design (3).png">
+<style>
+:root{--g:#166534;--g2:#15803d;--g3:#ecfdf5;--line:#d1d5db;--ink:#1f2937;--mut:#6b7280;--red:#b91c1c}
+*{box-sizing:border-box}
+body{margin:0;font-family:system-ui,-apple-system,"Segoe UI",Roboto,Arial,sans-serif;background:#f3f6f4;color:var(--ink);font-size:16px}
+header{background:var(--g);color:#fff;padding:16px;display:flex;gap:12px;align-items:center}
+header img{width:48px;height:48px;object-fit:contain;background:#fff;border-radius:10px;padding:3px}
+header b{display:block;font-size:17px}header span{font-size:12px;opacity:.85}
+main{max-width:560px;margin:0 auto;padding:16px}
+.card{background:#fff;border-radius:14px;padding:16px;margin-bottom:14px;box-shadow:0 1px 3px rgba(0,0,0,.06)}
+h2{font-size:15px;margin:0 0 10px;color:var(--g)}
+label{display:block;font-weight:600;font-size:14px;margin:12px 0 5px}
+label .req{color:var(--red)}
+input,select,textarea{width:100%;padding:12px;border:1.5px solid var(--line);border-radius:10px;font:inherit;background:#fff}
+input:focus,select:focus,textarea:focus{outline:2px solid var(--g2);border-color:var(--g2)}
+.row{display:flex;gap:10px}.row>div{flex:1}
+.hint{font-size:12px;color:var(--mut);margin-top:4px}
+canvas{width:100%;height:150px;border:2px dashed var(--line);border-radius:10px;background:#fff;touch-action:none;display:block}
+.sigbar{display:flex;justify-content:space-between;font-size:12px;color:var(--mut);margin-top:4px}
+.sigbar button{background:none;border:0;color:var(--red);font-weight:600;font:inherit;font-size:13px;cursor:pointer}
+.btn{width:100%;padding:14px;border:0;border-radius:12px;background:var(--g);color:#fff;font:inherit;font-weight:700;font-size:16px;cursor:pointer;margin-top:14px}
+.btn:disabled{opacity:.6}
+.btn.sec{background:#e5e7eb;color:var(--ink)}
+.msg{padding:12px;border-radius:10px;margin-top:12px;font-size:14px}
+.msg.err{background:#fef2f2;color:var(--red);border:1px solid #fecaca}
+.msg.ok{background:var(--g3);color:var(--g);border:1px solid #bbf7d0}
+.mine{list-style:none;padding:0;margin:8px 0 0}.mine li{padding:8px 0;border-bottom:1px solid #f1f5f9;font-size:14px}
+.mine b{display:inline-block;min-width:60px}.late{color:#b45309;font-size:12px;font-weight:700}
+.roles{display:flex;gap:10px}.roles label{flex:1;margin:0;display:flex;align-items:center;justify-content:center;gap:8px;padding:12px;border:1.5px solid var(--line);border-radius:10px;cursor:pointer;font-weight:600}
+.roles input{width:auto;margin:0}.roles label:has(input:checked){border-color:var(--g);background:var(--g3);color:var(--g)}
+.loc{font-size:12px;color:var(--mut);margin-top:10px}
+</style>
+</head>
+<body>
+<header><img src="RAHAMA Empowerment Logo Design (3).png" alt="" onerror="this.style.display='none'"><div><b>Field Daily Activity Report</b><span>RAHAMA Girl Child and Women Empowerment Initiative</span></div></header>
+<main>
+ <div class="card" id="who">
+  <h2>Who are you?</h2>
+  <label for="name">Name <span class="req">*</span></label>
+  <select id="name"><option value="">Loading…</option></select>
+  <label for="pin">PIN <span class="req">*</span></label>
+  <input id="pin" type="password" inputmode="numeric" maxlength="4" autocomplete="off" placeholder="4-digit PIN from HR">
+  <div class="hint">Your name and PIN are given by HR. Do not share your PIN.</div>
+  <label>I am <span class="req">*</span></label>
+  <div class="roles"><label><input type="radio" name="role" value="FO"> FO</label><label><input type="radio" name="role" value="CMO"> CMO</label></div>
+  <div class="hint">FO: Field Officer · CMO: Case Management Officer</div>
+ </div>
+ <form class="card" id="form" autocomplete="off">
+  <h2>Daily activity report</h2>
+  <div class="row"><div><label for="date">Date <span class="req">*</span></label><input id="date" type="date"></div>
+   <div><label for="lga">LGA <span class="req">*</span></label><select id="lga"><option value="">Choose</option><option>Kankia</option><option>Zango</option><option>Sandamu</option></select></div></div>
+  <div class="hint" id="datehint"></div>
+  <label for="ward">Ward</label>
+  <input id="ward" placeholder="e.g. Galadima B">
+  <label for="activity">Activity conducted <span class="req">*</span></label>
+  <textarea id="activity" rows="4" placeholder="e.g. Sensitization at OTP on family planning, IYCF and WASH; MUAC screening for children"></textarea>
+  <div class="row"><div><label for="females">Females reached <span class="req">*</span></label><input id="females" type="number" min="0" inputmode="numeric" placeholder="0"></div>
+   <div><label for="males">Males reached</label><input id="males" type="number" min="0" inputmode="numeric" placeholder="0"></div></div>
+  <div class="row"><div><label for="children">Children screened</label><input id="children" type="number" min="0" inputmode="numeric" placeholder="0"></div>
+   <div><label for="fp">People referred for FP</label><input id="fp" type="number" min="0" inputmode="numeric" placeholder="0"></div></div>
+  <div class="hint">Leave a number empty if it does not apply (counted as 0).</div>
+  <label for="other">Other cases</label>
+  <input id="other" placeholder="e.g. 4 infection">
+  <label for="challenges">Challenges and recommendations</label>
+  <textarea id="challenges" rows="3" placeholder="Write 'None' if there were no challenges"></textarea>
+  <label>Signature <span class="req">*</span></label>
+  <canvas id="sig"></canvas>
+  <div class="sigbar"><span>Sign inside the box with your finger</span><button type="button" id="clear">Clear</button></div>
+  <div class="loc" id="loc">Location is required: reports are accepted only from within your LGA, from your own phone.</div>
+  <button class="btn" id="send" type="submit">Submit report</button>
+  <div id="out"></div>
+ </form>
+ <div class="card" id="minecard" style="display:none">
+  <h2 id="minetitle">My reports this month</h2>
+  <ul class="mine" id="mine"></ul>
+ </div>
+ <button class="btn sec" id="seemine" type="button">See my reports this month</button>
+</main>
+<script>
+const SB='https://wdondphcmnhdslcypeya.supabase.co', SK='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Indkb25kcGhjbW5oZHNsY3lwZXlhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Njg5MDA3MDcsImV4cCI6MjA4NDQ3NjcwN30.wIisWHb3w4cSGZIB4f3q0Z6lboidH6SzL7oGToGdnsw';
+const $=id=>document.getElementById(id);
+const rpc=(fn,args)=>fetch(`${SB}/rest/v1/rpc/${fn}`,{method:'POST',headers:{apikey:SK,Authorization:'Bearer '+SK,'Content-Type':'application/json'},body:JSON.stringify(args||{})})
+  .then(async r=>{const t=await r.text();let d=null;try{d=JSON.parse(t)}catch(e){}if(!r.ok)throw new Error((d&&d.message)||'Could not reach the server');return d;});
+const store={get:k=>{try{return localStorage.getItem(k)}catch(e){return null}},set:(k,v)=>{try{localStorage.setItem(k,v)}catch(e){}}};
+const lagosToday=()=>{const d=new Date(Date.now()+(60+new Date().getTimezoneOffset())*60000);return d.toISOString().slice(0,10)};
+const today=lagosToday();const minDay=new Date(Date.parse(today)-3*864e5).toISOString().slice(0,10);
+$('date').value=today;$('date').max=today;$('date').min=minDay;
+$('datehint').textContent='Today, or up to 3 days late (marked late).';
+let staff=[];
+rpc('field_report_names').then(d=>{staff=d||[];const last=store.get('fr_staff');
+  $('name').innerHTML='<option value="">Choose your name</option>'+staff.map(s=>`<option value="${s.id}">${s.name.replace(/</g,'&lt;')}${s.lga?' ('+s.lga.replace(/</g,'&lt;')+')':''}</option>`).join('');
+  if(last&&staff.some(s=>String(s.id)===last)){$('name').value=last;fillLga();}}).catch(e=>{$('name').innerHTML='<option value="">Could not load names</option>';show('err',e.message);});
+function fillLga(){const s=staff.find(x=>String(x.id)===$('name').value);if(s&&s.lga&&!$('lga').value)$('lga').value=s.lga;
+  const r=store.get('fr_role_'+$('name').value)||(s&&s.role==='Case Management Officer'?'CMO':'');document.querySelectorAll('input[name=role]').forEach(x=>x.checked=x.value===r);}
+const roleNow=()=>{const x=document.querySelector('input[name=role]:checked');return x?x.value:'';};
+$('name').onchange=()=>{store.set('fr_staff',$('name').value);$('lga').value='';fillLga();$('minecard').style.display='none';};
+// signature
+const cv=$('sig');let drawing=false,has=false;
+function setup(){const r=window.devicePixelRatio||1;cv.width=cv.offsetWidth*r;cv.height=150*r;const c=cv.getContext('2d');c.setTransform(r,0,0,r,0,0);c.lineWidth=2.2;c.lineCap='round';c.lineJoin='round';c.strokeStyle='#111827';has=false;}
+setup();
+const pos=e=>{const b=cv.getBoundingClientRect();return{x:e.clientX-b.left,y:e.clientY-b.top}};
+cv.addEventListener('pointerdown',e=>{e.preventDefault();if(/Sign the report/.test($('out').textContent))$('out').innerHTML='';try{cv.setPointerCapture(e.pointerId)}catch(_){}drawing=true;const p=pos(e),c=cv.getContext('2d');c.beginPath();c.moveTo(p.x,p.y);});
+cv.addEventListener('pointermove',e=>{if(!drawing)return;e.preventDefault();const p=pos(e),c=cv.getContext('2d');c.lineTo(p.x,p.y);c.stroke();has=true;});
+['pointerup','pointerleave'].forEach(t=>cv.addEventListener(t,()=>{drawing=false}));
+$('clear').onclick=setup;
+function sigData(){const o=document.createElement('canvas');o.width=400;o.height=Math.round(400*cv.height/cv.width);const x=o.getContext('2d');x.fillStyle='#fff';x.fillRect(0,0,o.width,o.height);x.drawImage(cv,0,0,o.width,o.height);return o.toDataURL('image/jpeg',0.7);}
+// this phone's code: kept on the phone; the first accepted report registers it to the person
+let device=store.get('fr_device');
+if(!device){device=(window.crypto&&crypto.randomUUID?crypto.randomUUID():Date.now().toString(36)+Math.random().toString(36).slice(2)+Math.random().toString(36).slice(2));store.set('fr_device',device);
+  if(store.get('fr_device')!==device)$('loc').textContent='This browser cannot remember this phone (private window?). Open the link in the phone\'s normal browser.';}
+// location: required, taken fresh when sending
+const getHere=()=>new Promise((ok,no)=>{if(!navigator.geolocation)return no(new Error('This phone cannot share its location'));
+  navigator.geolocation.getCurrentPosition(p=>ok({lat:+p.coords.latitude.toFixed(6),lng:+p.coords.longitude.toFixed(6)}),
+    e=>no(new Error(e&&e.code===1?'Location is blocked. Allow location for this page in your browser settings, then send again.':'Could not get your location. Turn on GPS (location), go outside if you can, and send again.')),
+    {enableHighAccuracy:true,timeout:20000,maximumAge:60000});});
+if(navigator.geolocation)navigator.geolocation.getCurrentPosition(()=>{$('loc').textContent='Location is on. Reports are accepted only from within your LGA, from your own phone.';},()=>{},{timeout:10000,maximumAge:300000});
+function show(kind,text){$('out').innerHTML=`<div class="msg ${kind}">${String(text).replace(/</g,'&lt;')}</div>`;}
+async function loadMine(){const id=$('name').value,pin=$('pin').value.trim();if(!id||!/^\d{4}$/.test(pin)){show('err','Choose your name and enter your 4-digit PIN first');return;}
+  const m=$('date').value.slice(0,7)||today.slice(0,7);const d=await rpc('field_report_mine',{p_staff:+id,p_pin:pin,p_month:m});
+  if(d.error){show('err',d.error);return;}
+  $('minetitle').textContent=`My reports: ${new Date(m+'-01T12:00:00').toLocaleDateString('en-GB',{month:'long',year:'numeric'})} (${d.rows.length})`;
+  $('mine').innerHTML=d.rows.length?d.rows.map(r=>`<li><b>${new Date(r.report_date+'T12:00:00').toLocaleDateString('en-GB',{weekday:'short',day:'numeric'})}</b> ${String(r.activity).replace(/</g,'&lt;').slice(0,90)} · ${r.females_reached} F · ${r.males_reached||0} M · ${r.children_screened||0} children${r.referred_fp?' · '+r.referred_fp+' FP':''} ${r.late?'<span class="late">late</span>':''}</li>`).join(''):'<li>No reports yet this month.</li>';
+  $('minecard').style.display='';}
+$('seemine').onclick=()=>loadMine().catch(e=>show('err',e.message));
+$('form').onsubmit=async e=>{e.preventDefault();
+  const id=$('name').value,pin=$('pin').value.trim(),fem=$('females').value;
+  if(!id)return show('err','Choose your name');if(!/^\d{4}$/.test(pin))return show('err','Enter your 4-digit PIN');
+  if(!roleNow())return show('err','Choose FO or CMO');
+  if(!$('lga').value.trim())return show('err','Choose the LGA');if($('activity').value.trim().length<10)return show('err','Describe the activity conducted');
+  if(fem===''||+fem<0)return show('err','Enter the number of females reached (0 if none)');
+  const num=k=>{const v=$(k).value;return v===''?0:Math.round(+v);};if(['males','children','fp'].some(k=>num(k)<0))return show('err','Numbers cannot be negative');if(!has)return show('err','Sign the report');
+  $('send').disabled=true;$('send').textContent='Getting your location…';
+  let here;try{here=await getHere();}catch(err){show('err',err.message);$('send').disabled=false;$('send').textContent='Submit report';return;}
+  $('send').textContent='Sending…';
+  try{const d=await rpc('field_report_submit',{p_staff:+id,p_pin:pin,p_date:$('date').value,p_lga:$('lga').value.trim(),p_activity:$('activity').value.trim(),
+      p_females:Math.round(+fem),p_other:$('other').value.trim()||null,p_challenges:$('challenges').value.trim()||null,p_signature:sigData(),p_lat:here.lat,p_lng:here.lng,p_device:device,p_ward:$('ward').value.trim()||null,p_males:num('males'),p_children:num('children'),p_referred_fp:num('fp'),p_role:roleNow()});
+    if(d&&d.error){show('err',d.error);}
+    else{store.set('fr_role_'+id,roleNow());const s=staff.find(x=>String(x.id)===id);show('ok',`Report sent for ${new Date($('date').value+'T12:00:00').toLocaleDateString('en-GB',{weekday:'long',day:'numeric',month:'long'})}. Thank you${s?', '+s.name.split(' ')[0]:''}.`);
+      ['activity','females','males','children','fp','other','challenges'].forEach(k=>$(k).value='');setup();loadMine().catch(()=>{});}}
+  catch(err){show('err',err.message+'. Check your connection and try again.');}
+  $('send').disabled=false;$('send').textContent='Submit report';};
+</script>
+</body>
+</html>
