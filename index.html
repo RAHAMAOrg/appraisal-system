@@ -21279,7 +21279,10 @@ function FieldReportsHub(_ref234) {
       var s = staff.find(function (x) {
         return String(x.id) === String(r.staff_id);
       }) || {};
-      return [String(r.report_date).slice(0, 10), s.name, s.role, r.lga, r.ward, r.activity, r.females_reached, r.males_reached || 0, r.children_screened || 0, r.referred_fp || 0, r.other_cases, r.challenges, r.late ? 'Yes' : '', new Date(r.submitted_at).toLocaleString('en-GB'), r.lat, r.lng, r.distance_km];
+      return [String(r.report_date).slice(0, 10), s.name, r.role || {
+        'Field Officer': 'FO',
+        'Case Management Officer': 'CMO'
+      }[s.role] || s.role, r.lga, r.ward, r.activity, r.females_reached, r.males_reached || 0, r.children_screened || 0, r.referred_fp || 0, r.other_cases, r.challenges, r.late ? 'Yes' : '', new Date(r.submitted_at).toLocaleString('en-GB'), r.lat, r.lng, r.distance_km];
     }))));
   };
   var csvSheets = function csvSheets() {
