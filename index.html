@@ -240,6 +240,13 @@ var quarterLabel = function quarterLabel(d) {
 var currentQuarterLabel = function currentQuarterLabel() {
   return quarterLabel(new Date());
 };
+var reviewedQuarterOf = function reviewedQuarterOf(d) {
+  var x = new Date(d);
+  return quarterLabel(new Date(x.getFullYear(), x.getMonth() - 3, 1));
+};
+var currentReviewQuarter = function currentReviewQuarter() {
+  return reviewedQuarterOf(new Date());
+};
 var recentQuarters = function recentQuarters() {
   var count = arguments.length > 0 && arguments[0] !== undefined ? arguments[0] : 8;
   var out = [];
@@ -13523,7 +13530,7 @@ function parseQuarterLabel(label) {
 function QuarterlyOverview(_ref128) {
   var notify = _ref128.notify,
     onBack = _ref128.onBack;
-  var _useState385 = useState(currentQuarterLabel()),
+  var _useState385 = useState(currentReviewQuarter()),
     _useState386 = _slicedToArray(_useState385, 2),
     quarter = _useState386[0],
     setQuarter = _useState386[1];
@@ -13585,11 +13592,8 @@ function QuarterlyOverview(_ref128) {
   useEffect(function () {
     load();
   }, []);
-  var range = parseQuarterLabel(quarter);
   var inRange = function inRange(dateStr) {
-    if (!range || !dateStr) return false;
-    var d = new Date(dateStr);
-    return d >= range.start && d <= range.end;
+    return !!dateStr && reviewedQuarterOf(dateStr) === quarter;
   };
   var reviewed = apps.filter(function (a) {
     return !a.withdrawn && a.status === 'completed' && a.review_period === quarter;
@@ -14367,7 +14371,7 @@ function SupReview(_ref134) {
     _useState448 = _slicedToArray(_useState447, 2),
     busy = _useState448[0],
     setBusy = _useState448[1];
-  var _useState449 = useState(app.review_period || currentQuarterLabel()),
+  var _useState449 = useState(app.review_period || reviewedQuarterOf(app.created_at || new Date())),
     _useState450 = _slicedToArray(_useState449, 2),
     reviewPeriod = _useState450[0],
     setReviewPeriod = _useState450[1];
@@ -23684,7 +23688,7 @@ function HRDashboard(_ref260) {
               return x.final_score != null && (x.review_period || x.completed_at);
             }).map(function (x) {
               return x.review_period ? x : _objectSpread(_objectSpread({}, x), {}, {
-                review_period: quarterLabel(new Date(x.completed_at))
+                review_period: reviewedQuarterOf(x.completed_at)
               });
             });
             setLegacy(all.filter(function (x) {
@@ -25070,7 +25074,7 @@ function Contracts(_ref275) {
       id: l.id,
       score: Number(l.final_score),
       band: hrBandOf(Number(l.final_score)),
-      period: l.review_period || quarterLabel(new Date(l.completed_at)),
+      period: l.review_period || reviewedQuarterOf(l.completed_at),
       disputed: l.employee_review_status === 'rejected'
     } : null;
   };
