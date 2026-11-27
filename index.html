@@ -10299,9 +10299,9 @@ function _saveTransportPhotos() {
     return _regeneratorRuntime().wrap(function _callee145$(_context146) {
       while (1) switch (_context146.prev = _context146.next) {
         case 0:
-          items = [['plate', plate], ['manifest', manifest]].filter(function (_ref320) {
-            var _ref321 = _slicedToArray(_ref320, 2),
-              v = _ref321[1];
+          items = [['plate', plate], ['manifest', manifest]].filter(function (_ref329) {
+            var _ref330 = _slicedToArray(_ref329, 2),
+              v = _ref330[1];
             return v;
           });
           rows = [];
@@ -21970,7 +21970,7 @@ function PortalShell(_ref244) {
   }), "Log out"))), React.createElement("main", {
     className: "flex-1 min-w-0 pb-24 md:pb-10"
   }, React.createElement("div", {
-    className: "max-w-3xl mx-auto px-3 md:px-8 pt-4 md:pt-8"
+    className: "max-w-6xl px-3 md:px-10 pt-4 md:pt-8"
   }, children))), React.createElement("nav", {
     className: "md:hidden fixed left-0 right-0 bottom-0 bg-white border-t z-40 grid",
     style: {
@@ -22061,21 +22061,117 @@ function PhRow(_ref246) {
     }
   }));
 }
-function PortalHome(_ref249) {
-  var user = _ref249.user,
-    greet = _ref249.greet,
-    position = _ref249.position,
-    presence = _ref249.presence,
-    setPresence = _ref249.setPresence,
-    today = _ref249.today,
-    attn = _ref249.attn,
-    workspace = _ref249.workspace,
-    notices = _ref249.notices,
-    content = _ref249.content,
-    openScreen = _ref249.openScreen,
-    notify = _ref249.notify,
-    onPw = _ref249.onPw,
-    onLogout = _ref249.onLogout;
+function PhGroup(_ref249) {
+  var title = _ref249.title,
+    items = _ref249.items,
+    _ref249$className = _ref249.className,
+    className = _ref249$className === void 0 ? '' : _ref249$className;
+  if (!items.length) return null;
+  return React.createElement("div", {
+    className: "bg-white rounded-2xl border overflow-hidden ".concat(className),
+    style: {
+      borderColor: '#E1E9E4'
+    }
+  }, title && React.createElement("div", {
+    className: "px-4 pt-3.5 pb-2 text-xs font-bold uppercase tracking-wider",
+    style: {
+      color: '#5B6B62'
+    }
+  }, title), items.map(function (x, i) {
+    var _PH_TONE = _slicedToArray(PH_TONE[x.tone || 'green'], 2),
+      bg = _PH_TONE[0],
+      fg = _PH_TONE[1];
+    return React.createElement("button", {
+      key: x.k || i,
+      onClick: x.go,
+      className: "w-full px-4 py-3 flex gap-3 items-center text-left hover:bg-gray-50",
+      style: {
+        borderTop: i || title ? '1px solid #EEF2EF' : 'none'
+      }
+    }, React.createElement("span", {
+      className: "w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0",
+      style: {
+        background: bg,
+        color: fg
+      }
+    }, React.createElement("i", {
+      className: "fas ".concat(x.icon, " text-sm")
+    })), React.createElement("span", {
+      className: "flex-1 min-w-0"
+    }, React.createElement("span", {
+      className: "block text-sm font-semibold"
+    }, x.t), x.s && React.createElement("span", {
+      className: "block text-xs",
+      style: {
+        color: '#4B5A52'
+      }
+    }, x.s)), x.b > 0 && React.createElement("span", {
+      className: "px-2 py-0.5 rounded-full text-xs font-bold text-white",
+      style: {
+        background: '#C2410C'
+      }
+    }, x.b), React.createElement("i", {
+      className: "fas fa-chevron-right text-xs",
+      style: {
+        color: '#8A9A91'
+      }
+    }));
+  }));
+}
+var PH_HR_GROUPS = [['Performance', ['hrdash', 'appraisalqueue', 'quarterly', 'deadline']], ['Time and attendance', ['teamattendance', 'timesheets']], ['Leave', ['leaveadmin', 'leavebalances']], ['People and contracts', ['profiles', 'contracts']], ['Policies and notices', ['policies', 'portalcontent']]];
+var phGroupTiles = function phGroupTiles(tiles, groups, _go) {
+  var used = new Set();
+  var out = groups.map(function (_ref250) {
+    var _ref251 = _slicedToArray(_ref250, 2),
+      t = _ref251[0],
+      ks = _ref251[1];
+    var it = ks.map(function (k) {
+      return tiles.find(function (x) {
+        return x.k === k;
+      });
+    }).filter(Boolean);
+    it.forEach(function (x) {
+      return used.add(x.k);
+    });
+    return [t, it.map(function (x) {
+      return _objectSpread(_objectSpread({}, x), {}, {
+        go: function go() {
+          return _go(x.k);
+        }
+      });
+    })];
+  });
+  var rest = tiles.filter(function (x) {
+    return !used.has(x.k);
+  });
+  if (rest.length) out.push(['Other', rest.map(function (x) {
+    return _objectSpread(_objectSpread({}, x), {}, {
+      go: function go() {
+        return _go(x.k);
+      }
+    });
+  })]);
+  return out.filter(function (_ref252) {
+    var _ref253 = _slicedToArray(_ref252, 2),
+      it = _ref253[1];
+    return it.length;
+  });
+};
+function PortalHome(_ref254) {
+  var user = _ref254.user,
+    greet = _ref254.greet,
+    position = _ref254.position,
+    presence = _ref254.presence,
+    setPresence = _ref254.setPresence,
+    today = _ref254.today,
+    attn = _ref254.attn,
+    workspace = _ref254.workspace,
+    notices = _ref254.notices,
+    content = _ref254.content,
+    openScreen = _ref254.openScreen,
+    notify = _ref254.notify,
+    onPw = _ref254.onPw,
+    onLogout = _ref254.onLogout;
   var _useState657 = useState(false),
     _useState658 = _slicedToArray(_useState657, 2),
     writing = _useState658[0],
@@ -22108,7 +22204,7 @@ function PortalHome(_ref249) {
     return "".concat(Math.floor(m / 60), " h ").concat(String(m % 60).padStart(2, '0'), " m");
   };
   var save = function () {
-    var _ref250 = _asyncToGenerator(_regeneratorRuntime().mark(function _callee105() {
+    var _ref255 = _asyncToGenerator(_regeneratorRuntime().mark(function _callee105() {
       var _yield$supabaseClient16, data, error;
       return _regeneratorRuntime().wrap(function _callee105$(_context106) {
         while (1) switch (_context106.prev = _context106.next) {
@@ -22154,7 +22250,7 @@ function PortalHome(_ref249) {
       }, _callee105, null, [[4, 17]]);
     }));
     return function save() {
-      return _ref250.apply(this, arguments);
+      return _ref255.apply(this, arguments);
     };
   }();
   var dateLine = new Date().toLocaleDateString('en-GB', {
@@ -22208,6 +22304,8 @@ function PortalHome(_ref249) {
   }, React.createElement("i", {
     className: "fas fa-sign-out-alt text-sm"
   })))), React.createElement("div", {
+    className: "grid lg:grid-cols-2 gap-4 items-start"
+  }, React.createElement("div", {
     className: "rounded-3xl p-5 text-white",
     style: {
       background: PH_GREEN
@@ -22294,12 +22392,20 @@ function PortalHome(_ref249) {
     }
   }, "Today"), React.createElement("div", {
     className: "text-2xl font-extrabold mt-1"
-  }, attn.length ? "".concat(attn.length, " thing").concat(attn.length > 1 ? 's' : '', " waiting for you") : 'You\'re all caught up'))), React.createElement(PhSection, {
-    title: "Waiting for you"
-  }, attn.length === 0 ? React.createElement("div", {
-    className: "bg-white rounded-2xl px-4 py-4 text-sm border",
+  }, attn.length ? "".concat(attn.length, " thing").concat(attn.length > 1 ? 's' : '', " waiting for you") : 'You\'re all caught up'))), attn.length === 0 ? React.createElement("div", {
+    className: "bg-white rounded-2xl border overflow-hidden",
     style: {
-      borderColor: '#E1E9E4',
+      borderColor: '#E1E9E4'
+    }
+  }, React.createElement("div", {
+    className: "px-4 pt-3.5 pb-2 text-xs font-bold uppercase tracking-wider",
+    style: {
+      color: '#5B6B62'
+    }
+  }, "Waiting for you"), React.createElement("div", {
+    className: "px-4 py-4 text-sm",
+    style: {
+      borderTop: '1px solid #EEF2EF',
       color: '#4B5A52'
     }
   }, React.createElement("i", {
@@ -22307,20 +22413,20 @@ function PortalHome(_ref249) {
     style: {
       color: '#1F6F4A'
     }
-  }), "Nothing waiting for you.") : React.createElement("div", {
-    className: "flex flex-col gap-2"
-  }, attn.map(function (a, i) {
-    return React.createElement(PhRow, {
-      key: i,
-      icon: a.icon,
-      tone: a.tone,
-      title: a.text,
-      onClick: a.go
-    });
-  }))), React.createElement(PhSection, {
+  }), "Nothing waiting for you.")) : React.createElement(PhGroup, {
+    title: "Waiting for you",
+    items: attn.map(function (a) {
+      return {
+        icon: a.icon,
+        tone: a.tone,
+        t: a.text,
+        go: a.go
+      };
+    })
+  })), React.createElement(PhSection, {
     title: "Quick actions"
   }, React.createElement("div", {
-    className: "grid grid-cols-3 md:grid-cols-4 gap-2"
+    className: "grid grid-cols-3 md:grid-cols-4 xl:grid-cols-6 gap-2"
   }, quick.map(function (w) {
     return React.createElement("button", {
       key: w.k,
@@ -22343,7 +22449,9 @@ function PortalHome(_ref249) {
         fontSize: 10
       }
     }, w.b));
-  }))), notices.length > 0 && React.createElement(PhSection, {
+  }))), React.createElement("div", {
+    className: "grid lg:grid-cols-2 gap-x-4 items-start"
+  }, React.createElement("div", null, notices.length > 0 && React.createElement(PhSection, {
     title: "Notice board"
   }, React.createElement("div", {
     className: "flex flex-col gap-2"
@@ -22374,19 +22482,19 @@ function PortalHome(_ref249) {
     }, x.posted_by || 'HR', " \xB7 ", new Date(x.posted_at).toLocaleDateString()));
   }))), extra.length > 0 && React.createElement(PhSection, {
     title: "People"
-  }, React.createElement("div", {
-    className: "flex flex-col gap-2"
-  }, extra.map(function (w) {
-    return React.createElement(PhRow, {
-      key: w.k,
-      icon: w.icon,
-      title: w.t,
-      sub: w.s,
-      onClick: function onClick() {
-        return openScreen(w.k);
-      }
-    });
-  }))), React.createElement(PhSection, {
+  }, React.createElement(PhGroup, {
+    items: extra.map(function (w) {
+      return {
+        k: w.k,
+        icon: w.icon,
+        t: w.t,
+        s: w.s,
+        go: function go() {
+          return openScreen(w.k);
+        }
+      };
+    })
+  }))), React.createElement("div", null, React.createElement(PhSection, {
     title: "About RAHAMA"
   }, React.createElement("details", {
     className: "bg-white rounded-2xl border p-4",
@@ -22425,14 +22533,14 @@ function PortalHome(_ref249) {
         color: '#1F6F4A'
       }
     }, v);
-  })), [['where_we_work', 'Where We Work'], ['contacts', 'Who To Contact']].filter(function (_ref251) {
-    var _ref252 = _slicedToArray(_ref251, 1),
-      k = _ref252[0];
+  })), [['where_we_work', 'Where We Work'], ['contacts', 'Who To Contact']].filter(function (_ref256) {
+    var _ref257 = _slicedToArray(_ref256, 1),
+      k = _ref257[0];
     return lines(k).length;
-  }).map(function (_ref253) {
-    var _ref254 = _slicedToArray(_ref253, 2),
-      k = _ref254[0],
-      l = _ref254[1];
+  }).map(function (_ref258) {
+    var _ref259 = _slicedToArray(_ref258, 2),
+      k = _ref259[0],
+      l = _ref259[1];
     return React.createElement("div", {
       key: k
     }, React.createElement("p", {
@@ -22475,12 +22583,12 @@ function PortalHome(_ref249) {
     }, part) : React.createElement("span", {
       key: i
     }, part);
-  }))));
+  }))))));
 }
-function PortalsView(_ref255) {
-  var portals = _ref255.portals,
-    onPw = _ref255.onPw,
-    onLogout = _ref255.onLogout;
+function PortalsView(_ref260) {
+  var portals = _ref260.portals,
+    onPw = _ref260.onPw,
+    onLogout = _ref260.onLogout;
   return React.createElement(React.Fragment, null, React.createElement("div", {
     className: "pt-1 pb-3"
   }, React.createElement("h1", {
@@ -22491,38 +22599,50 @@ function PortalsView(_ref255) {
       color: '#4B5A52'
     }
   }, "Everything beyond your own workspace")), React.createElement("div", {
-    className: "flex flex-col gap-2"
-  }, portals.map(function (p, i) {
-    return React.createElement(PhRow, {
-      key: i,
-      icon: p.icon,
-      title: p.t,
-      sub: p.s,
-      badge: p.b,
-      onClick: p.go
+    className: "grid lg:grid-cols-2 gap-4 items-start"
+  }, [['People and HR', ['My Team', 'HR Portal']], ['Programmes', ['Field Reports', 'M&E Portal']], ['Safety and security', ['Security Portal']], ['Finance', ['Financial Management System']]].map(function (_ref261) {
+    var _ref262 = _slicedToArray(_ref261, 2),
+      g = _ref262[0],
+      ns = _ref262[1];
+    return React.createElement(PhGroup, {
+      key: g,
+      title: g,
+      items: portals.filter(function (p) {
+        return ns.includes(p.t);
+      }).map(function (p) {
+        return {
+          k: p.t,
+          icon: p.icon,
+          t: p.t,
+          s: p.s,
+          b: p.b,
+          go: p.go
+        };
+      })
     });
-  })), React.createElement(PhSection, {
-    title: "Account"
-  }, React.createElement("div", {
-    className: "flex flex-col gap-2"
-  }, React.createElement(PhRow, {
-    icon: "fa-key",
-    title: "Change password",
-    onClick: onPw
-  }), React.createElement(PhRow, {
-    icon: "fa-sign-out-alt",
-    tone: "red",
-    title: "Log out",
-    onClick: onLogout
-  }))));
+  }), React.createElement(PhGroup, {
+    title: "Account",
+    items: [{
+      k: 'pw',
+      icon: 'fa-key',
+      t: 'Change password',
+      go: onPw
+    }, {
+      k: 'out',
+      icon: 'fa-sign-out-alt',
+      tone: 'red',
+      t: 'Log out',
+      go: onLogout
+    }]
+  })));
 }
-function PortalTile(_ref256) {
-  var icon = _ref256.icon,
-    grad = _ref256.grad,
-    title = _ref256.title,
-    sub = _ref256.sub,
-    onClick = _ref256.onClick,
-    badge = _ref256.badge;
+function PortalTile(_ref263) {
+  var icon = _ref263.icon,
+    grad = _ref263.grad,
+    title = _ref263.title,
+    sub = _ref263.sub,
+    onClick = _ref263.onClick,
+    badge = _ref263.badge;
   return React.createElement("button", {
     onClick: onClick,
     className: "glass rounded-2xl p-5 hover:shadow-xl stat group text-left w-full"
@@ -22547,10 +22667,10 @@ function PortalTile(_ref256) {
     className: "fas fa-arrow-right text-gray-300 ml-auto group-hover:text-green-600 transition"
   })));
 }
-function RemoteDay(_ref257) {
-  var presence = _ref257.presence,
-    setPresence = _ref257.setPresence,
-    notify = _ref257.notify;
+function RemoteDay(_ref264) {
+  var presence = _ref264.presence,
+    setPresence = _ref264.setPresence,
+    notify = _ref264.notify;
   var _useState665 = useState(presence.summary || ''),
     _useState666 = _slicedToArray(_useState665, 2),
     txt = _useState666[0],
@@ -22561,7 +22681,7 @@ function RemoteDay(_ref257) {
     setBusy = _useState668[1];
   if (presence.status !== 'remote') return null;
   var save = function () {
-    var _ref258 = _asyncToGenerator(_regeneratorRuntime().mark(function _callee106() {
+    var _ref265 = _asyncToGenerator(_regeneratorRuntime().mark(function _callee106() {
       var _yield$supabaseClient17, data, error;
       return _regeneratorRuntime().wrap(function _callee106$(_context107) {
         while (1) switch (_context107.prev = _context107.next) {
@@ -22606,7 +22726,7 @@ function RemoteDay(_ref257) {
       }, _callee106, null, [[4, 16]]);
     }));
     return function save() {
-      return _ref258.apply(this, arguments);
+      return _ref265.apply(this, arguments);
     };
   }();
   return React.createElement("div", {
@@ -22639,10 +22759,10 @@ function RemoteDay(_ref257) {
     className: "px-4 py-2 rounded-xl font-semibold text-sm bg-green-600 text-white disabled:opacity-50"
   }, busy ? 'Saving…' : 'Save')));
 }
-function StaffPortal(_ref259) {
-  var user = _ref259.user,
-    onLogout = _ref259.onLogout,
-    notify = _ref259.notify;
+function StaffPortal(_ref266) {
+  var user = _ref266.user,
+    onLogout = _ref266.onLogout,
+    notify = _ref266.notify;
   var isSup = user.role === 'supervisor';
   var isEmp = user.role === 'employee';
   var _useState669 = useState({
@@ -22715,7 +22835,7 @@ function StaffPortal(_ref259) {
     var alive = true,
       lastAct = Date.now();
     var ping = function () {
-      var _ref260 = _asyncToGenerator(_regeneratorRuntime().mark(function _callee107() {
+      var _ref267 = _asyncToGenerator(_regeneratorRuntime().mark(function _callee107() {
         var _yield$supabaseClient18, data, error;
         return _regeneratorRuntime().wrap(function _callee107$(_context108) {
           while (1) switch (_context108.prev = _context108.next) {
@@ -22740,7 +22860,7 @@ function StaffPortal(_ref259) {
         }, _callee107, null, [[0, 9]]);
       }));
       return function ping() {
-        return _ref260.apply(this, arguments);
+        return _ref267.apply(this, arguments);
       };
     }();
     var act = function act() {
@@ -22785,7 +22905,7 @@ function StaffPortal(_ref259) {
   var storyFinal = isSup;
   var storyReviewer = storyComms || storyFinal;
   var flag = function () {
-    var _ref261 = _asyncToGenerator(_regeneratorRuntime().mark(function _callee108(col) {
+    var _ref268 = _asyncToGenerator(_regeneratorRuntime().mark(function _callee108(col) {
       var r, d;
       return _regeneratorRuntime().wrap(function _callee108$(_context109) {
         while (1) switch (_context109.prev = _context109.next) {
@@ -22819,7 +22939,7 @@ function StaffPortal(_ref259) {
       }, _callee108, null, [[0, 12]]);
     }));
     return function flag(_x90) {
-      return _ref261.apply(this, arguments);
+      return _ref268.apply(this, arguments);
     };
   }();
   useEffect(function () {
@@ -22907,7 +23027,7 @@ function StaffPortal(_ref259) {
     }))();
   }, []);
   var loadAttn = function () {
-    var _ref264 = _asyncToGenerator(_regeneratorRuntime().mark(function _callee114() {
+    var _ref271 = _asyncToGenerator(_regeneratorRuntime().mark(function _callee114() {
       var items, c, safe, j, pol, od, myCon, cs, ca, eds, na, ne, nr, goC, msgs, ap, _nr, fc, myF, fts, fa, fw, mt, lmMap, tw, meEd, amEd, sups, edFor, nts, hd, headNow, pa, np, lv, lvArr, nl, rec, nrec, tr, ta, nt, goT, ns, no, nm, st, sa, ret, own, w, _ta;
       return _regeneratorRuntime().wrap(function _callee114$(_context115) {
         while (1) switch (_context115.prev = _context115.next) {
@@ -22915,7 +23035,7 @@ function StaffPortal(_ref259) {
             items = [];
             c = {};
             safe = function () {
-              var _ref265 = _asyncToGenerator(_regeneratorRuntime().mark(function _callee111(fn) {
+              var _ref272 = _asyncToGenerator(_regeneratorRuntime().mark(function _callee111(fn) {
                 return _regeneratorRuntime().wrap(function _callee111$(_context112) {
                   while (1) switch (_context112.prev = _context112.next) {
                     case 0:
@@ -22935,7 +23055,7 @@ function StaffPortal(_ref259) {
                 }, _callee111, null, [[0, 6]]);
               }));
               return function safe(_x91) {
-                return _ref265.apply(this, arguments);
+                return _ref272.apply(this, arguments);
               };
             }();
             j = function j(url) {
@@ -23446,7 +23566,7 @@ function StaffPortal(_ref259) {
       }, _callee114);
     }));
     return function loadAttn() {
-      return _ref264.apply(this, arguments);
+      return _ref271.apply(this, arguments);
     };
   }();
   useEffect(function () {
@@ -23911,8 +24031,8 @@ function StaffPortal(_ref259) {
     t: 'Login Activity Logs',
     s: 'Login history, devices & failed attempts'
   }];
-  var Header = function Header(_ref268) {
-    var sub = _ref268.sub;
+  var Header = function Header(_ref275) {
+    var sub = _ref275.sub;
     return React.createElement("div", {
       className: "glass rounded-2xl p-6 mb-6 animate-in"
     }, React.createElement("div", {
@@ -23941,8 +24061,8 @@ function StaffPortal(_ref259) {
       className: "fas fa-sign-out-alt mr-2"
     }), "Logout"))));
   };
-  var Grid = function Grid(_ref269) {
-    var tiles = _ref269.tiles;
+  var Grid = function Grid(_ref276) {
+    var tiles = _ref276.tiles;
     return React.createElement("div", {
       className: "grid md:grid-cols-2 gap-4"
     }, tiles.map(function (x) {
@@ -24074,7 +24194,7 @@ function StaffPortal(_ref259) {
   var pw = function pw() {
     return setShowPw(true);
   };
-  var secView = function secView(title, sub, tiles, extra) {
+  var secView = function secView(title, sub, tiles, extra, groups) {
     return React.createElement(PortalShell, {
       user: user,
       tab: "portals",
@@ -24101,17 +24221,17 @@ function StaffPortal(_ref259) {
         color: '#4B5A52'
       }
     }, sub)), React.createElement("div", {
-      className: "flex flex-col gap-2"
-    }, tiles.map(function (x) {
-      return React.createElement(PhRow, {
-        key: x.k,
-        icon: x.icon,
-        title: x.t,
-        sub: x.s,
-        badge: x.b,
-        onClick: function onClick() {
-          return setScreen(x.k);
-        }
+      className: "grid lg:grid-cols-2 gap-4 items-start"
+    }, phGroupTiles(tiles, groups || [], function (k) {
+      return setScreen(k);
+    }).map(function (_ref277) {
+      var _ref278 = _slicedToArray(_ref277, 2),
+        g = _ref278[0],
+        it = _ref278[1];
+      return React.createElement(PhGroup, {
+        key: g,
+        title: g,
+        items: it
       });
     })), extra, showPw && React.createElement(ChangePw, {
       user: user,
@@ -24121,7 +24241,7 @@ function StaffPortal(_ref259) {
       notify: notify
     }));
   };
-  if (section === 'hr' && hrAccess) return secView('HR Portal', hrAccess === 'hr' ? 'Appraisal scoring and leave approval sit with each person\'s line manager (the supervisor when none is set); you see the findings and records.' : hrAccess === 'ed' ? 'Leave approval sits with each person\'s line manager (the supervisor when none is set); you see the records.' : 'Performance, attendance, timesheets, leave, profiles and policies', hrTiles);
+  if (section === 'hr' && hrAccess) return secView('HR Portal', hrAccess === 'hr' ? 'Appraisal scoring and leave approval sit with each person\'s line manager (the supervisor when none is set); you see the findings and records.' : hrAccess === 'ed' ? 'Leave approval sits with each person\'s line manager (the supervisor when none is set); you see the records.' : 'Performance, attendance, timesheets, leave, profiles and policies', hrTiles, null, PH_HR_GROUPS);
   if (section === 'team' && isHead) return secView('My Team', "".concat(myTeam.length, " staff you line-manage"), teamTiles, React.createElement(PhSection, {
     title: "Your team (".concat(myTeam.length, ")")
   }, React.createElement("div", {
@@ -24145,8 +24265,8 @@ function StaffPortal(_ref259) {
     style: {
       color: '#4B5A52'
     }
-  }, "HR sets line managers in Staff Profiles. Your leave recommendations go to the supervisor for final approval. Your own leave and appraisal go to your line manager, not to you."))));
-  if (section === 'security' && secAccess) return secView('Security Portal', 'Field trip monitoring and login activity', secTiles);
+  }, "HR sets line managers in Staff Profiles. Your leave recommendations go to the supervisor for final approval. Your own leave and appraisal go to your line manager, not to you."))), [['Team requests', ['teamleave', 'teamappraisals', 'teamtimesheets']]]);
+  if (section === 'security' && secAccess) return secView('Security Portal', 'Field trip monitoring and login activity', secTiles, null, [['Field trips', ['tripmon']], ['Accounts', ['loginlogs']]]);
   return React.createElement(PortalShell, {
     user: user,
     tab: section === 'portals' ? 'portals' : 'home',
@@ -24285,11 +24405,11 @@ var hrFlagFor = function hrFlagFor(hist) {
   })) return 'promotion';
   return 'ontrack';
 };
-function HRDashboard(_ref270) {
-  var user = _ref270.user,
-    notify = _ref270.notify,
-    onBack = _ref270.onBack,
-    access = _ref270.access;
+function HRDashboard(_ref279) {
+  var user = _ref279.user,
+    notify = _ref279.notify,
+    onBack = _ref279.onBack,
+    access = _ref279.access;
   var canRecommend = access === 'hr';
   var canDecide = access === 'ed' || access === 'supervisor';
   var _useState695 = useState('performance'),
@@ -24345,7 +24465,7 @@ function HRDashboard(_ref270) {
     selStaff = _useState720[0],
     setSelStaff = _useState720[1];
   var load = function () {
-    var _ref271 = _asyncToGenerator(_regeneratorRuntime().mark(function _callee115() {
+    var _ref280 = _asyncToGenerator(_regeneratorRuntime().mark(function _callee115() {
       var _yield$Promise$all25, _yield$Promise$all26, a, u, p, r, all, good, pend, pm, ps;
       return _regeneratorRuntime().wrap(function _callee115$(_context116) {
         while (1) switch (_context116.prev = _context116.next) {
@@ -24441,7 +24561,7 @@ function HRDashboard(_ref270) {
       }, _callee115, null, [[1, 28]]);
     }));
     return function load() {
-      return _ref271.apply(this, arguments);
+      return _ref280.apply(this, arguments);
     };
   }();
   useEffect(function () {
@@ -24663,11 +24783,11 @@ function HRDashboard(_ref270) {
     className: "fas fa-file-excel mr-2"
   }), "Export"))), React.createElement("div", {
     className: "flex flex-wrap gap-2 mt-5 border-t pt-4"
-  }, tabs.map(function (_ref273) {
-    var _ref274 = _slicedToArray(_ref273, 3),
-      k = _ref274[0],
-      l = _ref274[1],
-      i = _ref274[2];
+  }, tabs.map(function (_ref282) {
+    var _ref283 = _slicedToArray(_ref282, 3),
+      k = _ref283[0],
+      l = _ref283[1],
+      i = _ref283[2];
     return React.createElement("button", {
       key: k,
       onClick: function onClick() {
@@ -24862,15 +24982,15 @@ function HRDashboard(_ref270) {
     }, "HR: ", r.rec.recommendation.replace('_', ' '), " \xB7 ", r.rec.decision));
   }))))));
 }
-function HRStaffDetail(_ref275) {
-  var row = _ref275.row,
-    recs = _ref275.recs,
-    period = _ref275.period,
-    user = _ref275.user,
-    canRecommend = _ref275.canRecommend,
-    canDecide = _ref275.canDecide,
-    notify = _ref275.notify,
-    onBack = _ref275.onBack;
+function HRStaffDetail(_ref284) {
+  var row = _ref284.row,
+    recs = _ref284.recs,
+    period = _ref284.period,
+    user = _ref284.user,
+    canRecommend = _ref284.canRecommend,
+    canDecide = _ref284.canDecide,
+    notify = _ref284.notify,
+    onBack = _ref284.onBack;
   var s = row.s,
     prof = row.prof,
     hist = row.hist,
@@ -24891,7 +25011,7 @@ function HRStaffDetail(_ref275) {
   var show = cur || hist[hist.length - 1];
   var app = show ? show.app : null;
   var submit = function () {
-    var _ref276 = _asyncToGenerator(_regeneratorRuntime().mark(function _callee116() {
+    var _ref285 = _asyncToGenerator(_regeneratorRuntime().mark(function _callee116() {
       var r;
       return _regeneratorRuntime().wrap(function _callee116$(_context117) {
         while (1) switch (_context117.prev = _context117.next) {
@@ -24931,7 +25051,7 @@ function HRStaffDetail(_ref275) {
       }, _callee116);
     }));
     return function submit() {
-      return _ref276.apply(this, arguments);
+      return _ref285.apply(this, arguments);
     };
   }();
   return React.createElement("div", {
@@ -25036,10 +25156,10 @@ function HRStaffDetail(_ref275) {
     className: "fas fa-user-check text-indigo-600 mr-2"
   }), "HR recommendation ", period ? "for ".concat(period) : ''), React.createElement("div", {
     className: "grid md:grid-cols-2 gap-2 mb-3"
-  }, Object.entries(HR_REC).map(function (_ref277) {
-    var _ref278 = _slicedToArray(_ref277, 2),
-      k = _ref278[0],
-      l = _ref278[1];
+  }, Object.entries(HR_REC).map(function (_ref286) {
+    var _ref287 = _slicedToArray(_ref286, 2),
+      k = _ref287[0],
+      l = _ref287[1];
     return React.createElement("label", {
       key: k,
       className: "border-2 rounded-xl p-3 cursor-pointer text-sm font-semibold ".concat(rec === k ? 'border-green-500 bg-green-50' : 'border-gray-200')
@@ -25079,21 +25199,21 @@ function HRStaffDetail(_ref275) {
     hideName: true
   }))));
 }
-function HRRecList(_ref280) {
-  var recs = _ref280.recs,
-    nameOf = _ref280.nameOf,
-    user = _ref280.user,
-    canDecide = _ref280.canDecide,
-    notify = _ref280.notify,
-    onChanged = _ref280.onChanged,
-    onOpen = _ref280.onOpen,
-    hideName = _ref280.hideName;
+function HRRecList(_ref289) {
+  var recs = _ref289.recs,
+    nameOf = _ref289.nameOf,
+    user = _ref289.user,
+    canDecide = _ref289.canDecide,
+    notify = _ref289.notify,
+    onChanged = _ref289.onChanged,
+    onOpen = _ref289.onOpen,
+    hideName = _ref289.hideName;
   var _useState727 = useState({}),
     _useState728 = _slicedToArray(_useState727, 2),
     noteFor = _useState728[0],
     setNoteFor = _useState728[1];
   var decide = function () {
-    var _ref281 = _asyncToGenerator(_regeneratorRuntime().mark(function _callee117(r, decision) {
+    var _ref290 = _asyncToGenerator(_regeneratorRuntime().mark(function _callee117(r, decision) {
       var res;
       return _regeneratorRuntime().wrap(function _callee117$(_context118) {
         while (1) switch (_context118.prev = _context118.next) {
@@ -25127,7 +25247,7 @@ function HRRecList(_ref280) {
       }, _callee117);
     }));
     return function decide(_x92, _x93) {
-      return _ref281.apply(this, arguments);
+      return _ref290.apply(this, arguments);
     };
   }();
   return React.createElement("div", {
@@ -25179,17 +25299,17 @@ function HRRecList(_ref280) {
     }), "Reject")));
   }));
 }
-function HRRecommendations(_ref282) {
-  var recs = _ref282.recs,
-    nameOf = _ref282.nameOf,
-    user = _ref282.user,
-    canDecide = _ref282.canDecide,
-    canRecommend = _ref282.canRecommend,
-    candidates = _ref282.candidates,
-    period = _ref282.period,
-    notify = _ref282.notify,
-    onOpen = _ref282.onOpen,
-    onChanged = _ref282.onChanged;
+function HRRecommendations(_ref291) {
+  var recs = _ref291.recs,
+    nameOf = _ref291.nameOf,
+    user = _ref291.user,
+    canDecide = _ref291.canDecide,
+    canRecommend = _ref291.canRecommend,
+    candidates = _ref291.candidates,
+    period = _ref291.period,
+    notify = _ref291.notify,
+    onOpen = _ref291.onOpen,
+    onChanged = _ref291.onChanged;
   var pending = recs.filter(function (r) {
     return r.decision === 'pending';
   });
@@ -25414,7 +25534,7 @@ var conRef = function conRef(c) {
   return "RAHAMA/HR/CON/".concat(String(c.id || 0).padStart(3, '0'), "/").concat(new Date(c.issued_at || c.drafted_at || Date.now()).getFullYear());
 };
 var conErr = function () {
-  var _ref283 = _asyncToGenerator(_regeneratorRuntime().mark(function _callee118(r, fallback) {
+  var _ref292 = _asyncToGenerator(_regeneratorRuntime().mark(function _callee118(r, fallback) {
     var t, j;
     return _regeneratorRuntime().wrap(function _callee118$(_context119) {
       while (1) switch (_context119.prev = _context119.next) {
@@ -25437,7 +25557,7 @@ var conErr = function () {
     }, _callee118, null, [[0, 8]]);
   }));
   return function conErr(_x99, _x100) {
-    return _ref283.apply(this, arguments);
+    return _ref292.apply(this, arguments);
   };
 }();
 var conDaysTo = function conDaysTo(d) {
@@ -25479,11 +25599,11 @@ var conBody = function conBody(t) {
     }, ln);
   });
 };
-function ConLetter(_ref284) {
-  var c = _ref284.c,
-    name = _ref284.name,
-    sig = _ref284.sig,
-    so = _ref284.so;
+function ConLetter(_ref293) {
+  var c = _ref293.c,
+    name = _ref293.name,
+    sig = _ref293.sig,
+    so = _ref293.so;
   so = so || {};
   var nr = c.contract_type === 'non_renewal';
   return React.createElement("div", {
@@ -25639,13 +25759,13 @@ function _conOpenFile() {
   }));
   return _conOpenFile.apply(this, arguments);
 }
-function Contracts(_ref285) {
-  var user = _ref285.user,
-    notify = _ref285.notify,
-    onBack = _ref285.onBack,
-    canDraft = _ref285.canDraft,
-    canApprove = _ref285.canApprove,
-    canConcur = _ref285.canConcur;
+function Contracts(_ref294) {
+  var user = _ref294.user,
+    notify = _ref294.notify,
+    onBack = _ref294.onBack,
+    canDraft = _ref294.canDraft,
+    canApprove = _ref294.canApprove,
+    canConcur = _ref294.canConcur;
   var _useState729 = useState(true),
     _useState730 = _slicedToArray(_useState729, 2),
     loading = _useState730[0],
@@ -25699,7 +25819,7 @@ function Contracts(_ref285) {
     endEdit = _useState754[0],
     setEndEdit = _useState754[1];
   var load = function () {
-    var _ref286 = _asyncToGenerator(_regeneratorRuntime().mark(function _callee119() {
+    var _ref295 = _asyncToGenerator(_regeneratorRuntime().mark(function _callee119() {
       var j, _yield$Promise$all27, _yield$Promise$all28, u, p, a, c, r, es, pm;
       return _regeneratorRuntime().wrap(function _callee119$(_context120) {
         while (1) switch (_context120.prev = _context120.next) {
@@ -25750,7 +25870,7 @@ function Contracts(_ref285) {
       }, _callee119);
     }));
     return function load() {
-      return _ref286.apply(this, arguments);
+      return _ref295.apply(this, arguments);
     };
   }();
   useEffect(function () {
@@ -25867,7 +25987,7 @@ function Contracts(_ref285) {
     });
   }
   var saveEnd = function () {
-    var _ref287 = _asyncToGenerator(_regeneratorRuntime().mark(function _callee120(r, val) {
+    var _ref296 = _asyncToGenerator(_regeneratorRuntime().mark(function _callee120(r, val) {
       var body, res;
       return _regeneratorRuntime().wrap(function _callee120$(_context121) {
         while (1) switch (_context121.prev = _context121.next) {
@@ -25926,7 +26046,7 @@ function Contracts(_ref285) {
       }, _callee120);
     }));
     return function saveEnd(_x103, _x104) {
-      return _ref287.apply(this, arguments);
+      return _ref296.apply(this, arguments);
     };
   }();
   var card = function card(c) {
@@ -25969,11 +26089,11 @@ function Contracts(_ref285) {
     className: "text-gray-500 text-sm mt-1"
   }, canDraft ? 'Draft renewals and contract changes from appraisal findings. ' : '', canApprove ? 'You approve and sign; the letter goes to the staff member at once and the ED signs alongside. ' : '', canConcur ? 'Sign each letter once the Program Manager has signed; the staff member can already see it. ' : '', "Staff read and sign their letter in the portal."), React.createElement("div", {
     className: "flex flex-wrap gap-2 mt-5 border-t pt-4"
-  }, [['staff', 'Staff & renewals', 'fa-users'], ['progress', "In progress (".concat(inProg.length, ")").concat(nAct ? " \xB7 ".concat(nAct, " for you") : ''), 'fa-hourglass-half'], ['done', "Completed (".concat(done.length, ")"), 'fa-circle-check']].map(function (_ref288) {
-    var _ref289 = _slicedToArray(_ref288, 3),
-      k = _ref289[0],
-      l = _ref289[1],
-      i = _ref289[2];
+  }, [['staff', 'Staff & renewals', 'fa-users'], ['progress', "In progress (".concat(inProg.length, ")").concat(nAct ? " \xB7 ".concat(nAct, " for you") : ''), 'fa-hourglass-half'], ['done', "Completed (".concat(done.length, ")"), 'fa-circle-check']].map(function (_ref297) {
+    var _ref298 = _slicedToArray(_ref297, 3),
+      k = _ref298[0],
+      l = _ref298[1],
+      i = _ref298[2];
     return React.createElement("button", {
       key: k,
       onClick: function onClick() {
@@ -25995,10 +26115,10 @@ function Contracts(_ref285) {
     className: "glass rounded-2xl p-6"
   }, React.createElement("div", {
     className: "flex flex-wrap gap-2 mb-2"
-  }, [['all', 'All staff'], ['due', 'Contract ends within 90 days'], ['pip', 'PIP (below 60)'], ['promo', '80 and above'], ['none', 'No appraisal']].map(function (_ref290) {
-    var _ref291 = _slicedToArray(_ref290, 2),
-      k = _ref291[0],
-      l = _ref291[1];
+  }, [['all', 'All staff'], ['due', 'Contract ends within 90 days'], ['pip', 'PIP (below 60)'], ['promo', '80 and above'], ['none', 'No appraisal']].map(function (_ref299) {
+    var _ref300 = _slicedToArray(_ref299, 2),
+      k = _ref300[0],
+      l = _ref300[1];
     return React.createElement("button", {
       key: k,
       onClick: function onClick() {
@@ -26112,12 +26232,12 @@ function Contracts(_ref285) {
     className: "space-y-2"
   }, (tab === 'progress' ? inProg : done).map(card)))));
 }
-function ContractEditor(_ref292) {
-  var init = _ref292.init,
-    user = _ref292.user,
-    isSup = _ref292.isSup,
-    notify = _ref292.notify,
-    onDone = _ref292.onDone;
+function ContractEditor(_ref301) {
+  var init = _ref301.init,
+    user = _ref301.user,
+    isSup = _ref301.isSup,
+    notify = _ref301.notify,
+    onDone = _ref301.onDone;
   var row = init.row;
   var ex = init.contract;
   var app = ex ? ex.appraisal_score != null ? {
@@ -26215,7 +26335,7 @@ function ContractEditor(_ref292) {
     });
   };
   var save = function () {
-    var _ref293 = _asyncToGenerator(_regeneratorRuntime().mark(function _callee121(submit) {
+    var _ref302 = _asyncToGenerator(_regeneratorRuntime().mark(function _callee121(submit) {
       var payload, id, r, d, _r3, fr, _r4;
       return _regeneratorRuntime().wrap(function _callee121$(_context122) {
         while (1) switch (_context122.prev = _context122.next) {
@@ -26481,13 +26601,13 @@ function ContractEditor(_ref292) {
       }, _callee121, null, [[30, 105]]);
     }));
     return function save(_x105) {
-      return _ref293.apply(this, arguments);
+      return _ref302.apply(this, arguments);
     };
   }();
-  var TypeCard = function TypeCard(_ref294) {
-    var _ref295 = _slicedToArray(_ref294, 2),
-      k = _ref295[0],
-      l = _ref295[1];
+  var TypeCard = function TypeCard(_ref303) {
+    var _ref304 = _slicedToArray(_ref303, 2),
+      k = _ref304[0],
+      l = _ref304[1];
     return React.createElement("label", {
       key: k,
       className: "border-2 rounded-xl p-3 cursor-pointer text-sm font-semibold flex items-start gap-2 ".concat(f.contract_type === k ? 'border-green-500 bg-green-50' : 'border-gray-200')
@@ -26742,17 +26862,17 @@ function ContractEditor(_ref292) {
     className: "fas fa-paper-plane mr-2"
   }), nextStatus === 'issued' ? "Sign and send to ".concat((row.s.name || '').split(' ')[0]) : nextStatus === 'awaiting_ed' ? 'Send to the ED to sign' : 'Send to the supervisor for approval')))));
 }
-function ContractView(_ref296) {
-  var c = _ref296.c,
-    name = _ref296.name,
-    email = _ref296.email,
-    user = _ref296.user,
-    canDraft = _ref296.canDraft,
-    canApprove = _ref296.canApprove,
-    canConcur = _ref296.canConcur,
-    notify = _ref296.notify,
-    onEdit = _ref296.onEdit,
-    onBack = _ref296.onBack;
+function ContractView(_ref305) {
+  var c = _ref305.c,
+    name = _ref305.name,
+    email = _ref305.email,
+    user = _ref305.user,
+    canDraft = _ref305.canDraft,
+    canApprove = _ref305.canApprove,
+    canConcur = _ref305.canConcur,
+    notify = _ref305.notify,
+    onEdit = _ref305.onEdit,
+    onBack = _ref305.onBack;
   var _useState769 = useState({}),
     _useState770 = _slicedToArray(_useState769, 2),
     so = _useState770[0],
@@ -26798,7 +26918,7 @@ function ContractView(_ref296) {
   }, [c.id]);
   var own = c.user_id === user.id;
   var act = function () {
-    var _ref297 = _asyncToGenerator(_regeneratorRuntime().mark(function _callee122(status, label, needNote, doneMsg) {
+    var _ref306 = _asyncToGenerator(_regeneratorRuntime().mark(function _callee122(status, label, needNote, doneMsg) {
       var role, r;
       return _regeneratorRuntime().wrap(function _callee122$(_context123) {
         while (1) switch (_context123.prev = _context123.next) {
@@ -26877,7 +26997,7 @@ function ContractView(_ref296) {
       }, _callee122, null, [[11, 16]]);
     }));
     return function act(_x106, _x107, _x108, _x109) {
-      return _ref297.apply(this, arguments);
+      return _ref306.apply(this, arguments);
     };
   }();
   var emailStaff = function emailStaff() {
@@ -26905,7 +27025,7 @@ function ContractView(_ref296) {
   var canConcurNow = canConcur && c.status === 'awaiting_ed' && !own;
   var edSignNow = canConcur && !own && ['issued', 'accepted'].includes(c.status) && !so.ed;
   var edSign = function () {
-    var _ref298 = _asyncToGenerator(_regeneratorRuntime().mark(function _callee123() {
+    var _ref307 = _asyncToGenerator(_regeneratorRuntime().mark(function _callee123() {
       return _regeneratorRuntime().wrap(function _callee123$(_context124) {
         while (1) switch (_context124.prev = _context124.next) {
           case 0:
@@ -26950,7 +27070,7 @@ function ContractView(_ref296) {
       }, _callee123, null, [[6, 18]]);
     }));
     return function edSign() {
-      return _ref298.apply(this, arguments);
+      return _ref307.apply(this, arguments);
     };
   }();
   var btn = "px-4 py-2 rounded-xl font-semibold text-sm";
@@ -27127,10 +27247,10 @@ function ContractView(_ref296) {
     }, "\"", e.note, "\""));
   })))));
 }
-function MyContracts(_ref299) {
-  var user = _ref299.user,
-    notify = _ref299.notify,
-    onBack = _ref299.onBack;
+function MyContracts(_ref308) {
+  var user = _ref308.user,
+    notify = _ref308.notify,
+    onBack = _ref308.onBack;
   var _useState781 = useState([]),
     _useState782 = _slicedToArray(_useState781, 2),
     items = _useState782[0],
@@ -27148,7 +27268,7 @@ function MyContracts(_ref299) {
     sel = _useState788[0],
     setSel = _useState788[1];
   var load = function () {
-    var _ref300 = _asyncToGenerator(_regeneratorRuntime().mark(function _callee124() {
+    var _ref309 = _asyncToGenerator(_regeneratorRuntime().mark(function _callee124() {
       var d, arr, ids, s, m;
       return _regeneratorRuntime().wrap(function _callee124$(_context125) {
         while (1) switch (_context125.prev = _context125.next) {
@@ -27203,7 +27323,7 @@ function MyContracts(_ref299) {
       }, _callee124, null, [[1, 17]]);
     }));
     return function load() {
-      return _ref300.apply(this, arguments);
+      return _ref309.apply(this, arguments);
     };
   }();
   useEffect(function () {
@@ -27292,12 +27412,12 @@ function MyContracts(_ref299) {
     className: "space-y-3"
   }, past.map(card))))));
 }
-function ContractSign(_ref301) {
-  var c = _ref301.c,
-    sig = _ref301.sig,
-    user = _ref301.user,
-    notify = _ref301.notify,
-    onDone = _ref301.onDone;
+function ContractSign(_ref310) {
+  var c = _ref310.c,
+    sig = _ref310.sig,
+    user = _ref310.user,
+    notify = _ref310.notify,
+    onDone = _ref310.onDone;
   var _useState789 = useState({}),
     _useState790 = _slicedToArray(_useState789, 2),
     so = _useState790[0],
@@ -27328,7 +27448,7 @@ function ContractSign(_ref301) {
     why = _useState800[0],
     setWhy = _useState800[1];
   var sign = function () {
-    var _ref302 = _asyncToGenerator(_regeneratorRuntime().mark(function _callee125() {
+    var _ref311 = _asyncToGenerator(_regeneratorRuntime().mark(function _callee125() {
       var r;
       return _regeneratorRuntime().wrap(function _callee125$(_context126) {
         while (1) switch (_context126.prev = _context126.next) {
@@ -27394,11 +27514,11 @@ function ContractSign(_ref301) {
       }, _callee125, null, [[7, 23]]);
     }));
     return function sign() {
-      return _ref302.apply(this, arguments);
+      return _ref311.apply(this, arguments);
     };
   }();
   var decline = function () {
-    var _ref303 = _asyncToGenerator(_regeneratorRuntime().mark(function _callee126() {
+    var _ref312 = _asyncToGenerator(_regeneratorRuntime().mark(function _callee126() {
       var r;
       return _regeneratorRuntime().wrap(function _callee126$(_context127) {
         while (1) switch (_context127.prev = _context127.next) {
@@ -27452,7 +27572,7 @@ function ContractSign(_ref301) {
       }, _callee126);
     }));
     return function decline() {
-      return _ref303.apply(this, arguments);
+      return _ref312.apply(this, arguments);
     };
   }();
   return React.createElement("div", {
@@ -27495,10 +27615,10 @@ function ContractSign(_ref301) {
     className: "glass rounded-2xl p-6"
   }, !isNR && React.createElement("div", {
     className: "flex gap-2 mb-4"
-  }, [['sign', 'Accept and sign'], ['decline', 'I have a concern / decline']].map(function (_ref304) {
-    var _ref305 = _slicedToArray(_ref304, 2),
-      k = _ref305[0],
-      l = _ref305[1];
+  }, [['sign', 'Accept and sign'], ['decline', 'I have a concern / decline']].map(function (_ref313) {
+    var _ref314 = _slicedToArray(_ref313, 2),
+      k = _ref314[0],
+      l = _ref314[1];
     return React.createElement("button", {
       key: k,
       onClick: function onClick() {
@@ -27545,10 +27665,10 @@ function ContractSign(_ref301) {
     className: "fas fa-paper-plane mr-2"
   }), "Send to HR")))));
 }
-function LeaveRequest(_ref306) {
-  var user = _ref306.user,
-    notify = _ref306.notify,
-    onBack = _ref306.onBack;
+function LeaveRequest(_ref315) {
+  var user = _ref315.user,
+    notify = _ref315.notify,
+    onBack = _ref315.onBack;
   var _useState801 = useState(''),
     _useState802 = _slicedToArray(_useState801, 2),
     type = _useState802[0],
@@ -27570,7 +27690,7 @@ function LeaveRequest(_ref306) {
     busy = _useState810[0],
     setBusy = _useState810[1];
   var submit = function () {
-    var _ref307 = _asyncToGenerator(_regeneratorRuntime().mark(function _callee127() {
+    var _ref316 = _asyncToGenerator(_regeneratorRuntime().mark(function _callee127() {
       var r;
       return _regeneratorRuntime().wrap(function _callee127$(_context128) {
         while (1) switch (_context128.prev = _context128.next) {
@@ -27617,7 +27737,7 @@ function LeaveRequest(_ref306) {
       }, _callee127, null, [[4, 11]]);
     }));
     return function submit() {
-      return _ref307.apply(this, arguments);
+      return _ref316.apply(this, arguments);
     };
   }();
   return React.createElement("div", {
@@ -27682,17 +27802,17 @@ var leavePend = function leavePend(l) {
 var forFinal = function forFinal(lmOf, user, l) {
   return !!user && user.role === 'supervisor' && String(l.employee_id) !== String(user.id) && (isForMe(lmOf, user, l.employee_id) || !!l.head_decision);
 };
-var HeadRec = function HeadRec(_ref308) {
-  var l = _ref308.l;
+var HeadRec = function HeadRec(_ref317) {
+  var l = _ref317.l;
   return l.head_decision ? React.createElement("p", {
     className: "text-xs font-semibold mt-1 ".concat(l.head_decision === 'approved' ? 'text-green-700' : 'text-red-700')
   }, React.createElement("i", {
     className: "fas fa-user-check mr-1"
   }), l.head_decided_by || 'Head of Unit', " recommends: ", l.head_decision === 'approved' ? 'Approve' : 'Reject', l.head_comment ? " \xB7 \"".concat(l.head_comment, "\"") : '') : null;
 };
-function LeaveBalances(_ref309) {
-  var notify = _ref309.notify,
-    onBack = _ref309.onBack;
+function LeaveBalances(_ref318) {
+  var notify = _ref318.notify,
+    onBack = _ref318.onBack;
   var thisYr = new Date().getFullYear();
   var _useState811 = useState(thisYr),
     _useState812 = _slicedToArray(_useState811, 2),
@@ -27951,12 +28071,12 @@ function LeaveBalances(_ref309) {
     className: "text-xs text-white/80 mt-4 px-1"
   }, "Days are counted Monday to Friday. Public holidays and part-year entitlement for new staff are not adjusted here, so HR's records are final.")));
 }
-function LeaveAdmin(_ref311) {
-  var notify = _ref311.notify,
-    onBack = _ref311.onBack,
-    readOnly = _ref311.readOnly,
-    user = _ref311.user,
-    team = _ref311.team;
+function LeaveAdmin(_ref320) {
+  var notify = _ref320.notify,
+    onBack = _ref320.onBack,
+    readOnly = _ref320.readOnly,
+    user = _ref320.user,
+    team = _ref320.team;
   var _useState819 = useState([]),
     _useState820 = _slicedToArray(_useState819, 2),
     list = _useState820[0],
@@ -28092,13 +28212,13 @@ function LeaveAdmin(_ref311) {
     }, bt));
   }))));
 }
-function LeaveReview(_ref312) {
-  var req = _ref312.req,
-    name = _ref312.name,
-    user = _ref312.user,
-    recommend = _ref312.recommend,
-    notify = _ref312.notify,
-    onDone = _ref312.onDone;
+function LeaveReview(_ref321) {
+  var req = _ref321.req,
+    name = _ref321.name,
+    user = _ref321.user,
+    recommend = _ref321.recommend,
+    notify = _ref321.notify,
+    onDone = _ref321.onDone;
   var _useState829 = useState((recommend ? req.head_decision : req.status) || ''),
     _useState830 = _slicedToArray(_useState829, 2),
     decision = _useState830[0],
@@ -28112,7 +28232,7 @@ function LeaveReview(_ref312) {
     busy = _useState834[0],
     setBusy = _useState834[1];
   var save = function () {
-    var _ref313 = _asyncToGenerator(_regeneratorRuntime().mark(function _callee129() {
+    var _ref322 = _asyncToGenerator(_regeneratorRuntime().mark(function _callee129() {
       var url, r, t;
       return _regeneratorRuntime().wrap(function _callee129$(_context130) {
         while (1) switch (_context130.prev = _context130.next) {
@@ -28186,7 +28306,7 @@ function LeaveReview(_ref312) {
       }, _callee129);
     }));
     return function save() {
-      return _ref313.apply(this, arguments);
+      return _ref322.apply(this, arguments);
     };
   }();
   return React.createElement("div", {
@@ -28247,10 +28367,10 @@ function LeaveReview(_ref312) {
     className: "w-full btn-green text-white py-4 rounded-xl font-bold disabled:opacity-50"
   }, busy ? 'Saving...' : recommend ? 'Send for final approval' : 'Save Final Decision')));
 }
-function Directory(_ref314) {
-  var user = _ref314.user,
-    notify = _ref314.notify,
-    onBack = _ref314.onBack;
+function Directory(_ref323) {
+  var user = _ref323.user,
+    notify = _ref323.notify,
+    onBack = _ref323.onBack;
   var _useState835 = useState([]),
     _useState836 = _slicedToArray(_useState835, 2),
     staff = _useState836[0],
@@ -28264,7 +28384,7 @@ function Directory(_ref314) {
     search = _useState840[0],
     setSearch = _useState840[1];
   var load = function () {
-    var _ref315 = _asyncToGenerator(_regeneratorRuntime().mark(function _callee130() {
+    var _ref324 = _asyncToGenerator(_regeneratorRuntime().mark(function _callee130() {
       var u, p;
       return _regeneratorRuntime().wrap(function _callee130$(_context131) {
         while (1) switch (_context131.prev = _context131.next) {
@@ -28306,7 +28426,7 @@ function Directory(_ref314) {
       }, _callee130, null, [[1, 11]]);
     }));
     return function load() {
-      return _ref315.apply(this, arguments);
+      return _ref324.apply(this, arguments);
     };
   }();
   useEffect(function () {
@@ -28370,9 +28490,9 @@ function Directory(_ref314) {
     className: "text-center text-gray-400 py-6"
   }, "No staff found"))));
 }
-function HRAdmin(_ref316) {
-  var notify = _ref316.notify,
-    onBack = _ref316.onBack;
+function HRAdmin(_ref325) {
+  var notify = _ref325.notify,
+    onBack = _ref325.onBack;
   var _useState841 = useState([]),
     _useState842 = _slicedToArray(_useState841, 2),
     staff = _useState842[0],
@@ -28394,7 +28514,7 @@ function HRAdmin(_ref316) {
     people = _useState850[0],
     setPeople = _useState850[1];
   var load = function () {
-    var _ref317 = _asyncToGenerator(_regeneratorRuntime().mark(function _callee131() {
+    var _ref326 = _asyncToGenerator(_regeneratorRuntime().mark(function _callee131() {
       var u, ids, pd, map;
       return _regeneratorRuntime().wrap(function _callee131$(_context132) {
         while (1) switch (_context132.prev = _context132.next) {
@@ -28452,7 +28572,7 @@ function HRAdmin(_ref316) {
       }, _callee131, null, [[1, 17]]);
     }));
     return function load() {
-      return _ref317.apply(this, arguments);
+      return _ref326.apply(this, arguments);
     };
   }();
   useEffect(function () {
@@ -28513,12 +28633,12 @@ function HRAdmin(_ref316) {
     }));
   }))));
 }
-function HRProfileEdit(_ref318) {
-  var staff = _ref318.staff,
-    profile = _ref318.profile,
-    people = _ref318.people,
-    notify = _ref318.notify,
-    onDone = _ref318.onDone;
+function HRProfileEdit(_ref327) {
+  var staff = _ref327.staff,
+    profile = _ref327.profile,
+    people = _ref327.people,
+    notify = _ref327.notify,
+    onDone = _ref327.onDone;
   var _useState851 = useState((profile === null || profile === void 0 ? void 0 : profile.position) || ''),
     _useState852 = _slicedToArray(_useState851, 2),
     position = _useState852[0],
@@ -28547,7 +28667,7 @@ function HRProfileEdit(_ref318) {
     return String(p.id) !== String(staff.id) && (p.is_active !== false || String(p.id) === lm);
   });
   var save = function () {
-    var _ref319 = _asyncToGenerator(_regeneratorRuntime().mark(function _callee132() {
+    var _ref328 = _asyncToGenerator(_regeneratorRuntime().mark(function _callee132() {
       var lmPerson, payload, extra, r, t;
       return _regeneratorRuntime().wrap(function _callee132$(_context133) {
         while (1) switch (_context133.prev = _context133.next) {
@@ -28623,7 +28743,7 @@ function HRProfileEdit(_ref318) {
       }, _callee132, null, [[1, 25]]);
     }));
     return function save() {
-      return _ref319.apply(this, arguments);
+      return _ref328.apply(this, arguments);
     };
   }();
   return React.createElement("div", {
