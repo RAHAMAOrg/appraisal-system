@@ -23959,89 +23959,6 @@ function StaffPortal(_ref259) {
       });
     }));
   };
-  if (section === 'hr' && hrAccess) return React.createElement("div", {
-    className: "min-h-screen p-4 md:p-8"
-  }, React.createElement("div", {
-    className: "max-w-5xl mx-auto"
-  }, React.createElement("button", {
-    onClick: function onClick() {
-      return setSection('home');
-    },
-    className: "text-green-600 font-semibold text-sm mb-3 hover:underline"
-  }, React.createElement("i", {
-    className: "fas fa-arrow-left mr-2"
-  }), "Back to Staff Portal home"), React.createElement(Header, {
-    sub: "HR Portal"
-  }), hrAccess !== 'supervisor' && React.createElement("p", {
-    className: "text-xs text-gray-500 mb-4 px-1"
-  }, hrAccess === 'hr' ? 'Appraisal scoring and leave approval sit with each person\'s line manager (the supervisor when none is set); you see the findings and records.' : 'Leave approval sits with each person\'s line manager (the supervisor when none is set); you see the records.'), React.createElement(Grid, {
-    tiles: hrTiles
-  }), showPw && React.createElement(ChangePw, {
-    user: user,
-    onClose: function onClose() {
-      return setShowPw(false);
-    },
-    notify: notify
-  })));
-  if (section === 'team' && isHead) return React.createElement("div", {
-    className: "min-h-screen p-4 md:p-8"
-  }, React.createElement("div", {
-    className: "max-w-5xl mx-auto"
-  }, React.createElement("button", {
-    onClick: function onClick() {
-      return setSection('home');
-    },
-    className: "text-green-600 font-semibold text-sm mb-3 hover:underline"
-  }, React.createElement("i", {
-    className: "fas fa-arrow-left mr-2"
-  }), "Back to Staff Portal home"), React.createElement(Header, {
-    sub: "My Team"
-  }), React.createElement(Grid, {
-    tiles: teamTiles
-  }), React.createElement("div", {
-    className: "glass rounded-2xl p-6 mt-6"
-  }, React.createElement("h2", {
-    className: "font-bold mb-3"
-  }, React.createElement("i", {
-    className: "fas fa-users text-green-600 mr-2"
-  }), "Staff you line-manage (", myTeam.length, ")"), React.createElement("div", {
-    className: "flex flex-wrap gap-2"
-  }, myTeam.map(function (id) {
-    return React.createElement("span", {
-      key: id,
-      className: "px-3 py-1.5 rounded-full text-sm font-semibold bg-green-50 text-green-800"
-    }, teamNames[id] || '…');
-  })), React.createElement("p", {
-    className: "text-xs text-gray-500 mt-3"
-  }, "HR sets line managers in Staff Profiles. Your leave recommendations go to the supervisor for final approval. Your own leave and appraisal go to your line manager, not to you.")), showPw && React.createElement(ChangePw, {
-    user: user,
-    onClose: function onClose() {
-      return setShowPw(false);
-    },
-    notify: notify
-  })));
-  if (section === 'security' && secAccess) return React.createElement("div", {
-    className: "min-h-screen p-4 md:p-8"
-  }, React.createElement("div", {
-    className: "max-w-5xl mx-auto"
-  }, React.createElement("button", {
-    onClick: function onClick() {
-      return setSection('home');
-    },
-    className: "text-green-600 font-semibold text-sm mb-3 hover:underline"
-  }, React.createElement("i", {
-    className: "fas fa-arrow-left mr-2"
-  }), "Back to Staff Portal home"), React.createElement(Header, {
-    sub: "Security Portal"
-  }), React.createElement(Grid, {
-    tiles: secTiles
-  }), showPw && React.createElement(ChangePw, {
-    user: user,
-    onClose: function onClose() {
-      return setShowPw(false);
-    },
-    notify: notify
-  })));
   var tone = {
     red: 'bg-red-50 border-red-200 text-red-800',
     amber: 'bg-amber-50 border-amber-200 text-amber-800',
@@ -24157,6 +24074,79 @@ function StaffPortal(_ref259) {
   var pw = function pw() {
     return setShowPw(true);
   };
+  var secView = function secView(title, sub, tiles, extra) {
+    return React.createElement(PortalShell, {
+      user: user,
+      tab: "portals",
+      nav: nav,
+      onPw: pw,
+      onLogout: onLogout
+    }, React.createElement("button", {
+      onClick: function onClick() {
+        return setSection('portals');
+      },
+      className: "text-sm font-semibold mb-2",
+      style: {
+        color: '#1F6F4A'
+      }
+    }, React.createElement("i", {
+      className: "fas fa-arrow-left mr-2"
+    }), "Portals"), React.createElement("div", {
+      className: "pb-3"
+    }, React.createElement("h1", {
+      className: "text-2xl font-extrabold"
+    }, title), sub && React.createElement("p", {
+      className: "text-sm mt-1",
+      style: {
+        color: '#4B5A52'
+      }
+    }, sub)), React.createElement("div", {
+      className: "flex flex-col gap-2"
+    }, tiles.map(function (x) {
+      return React.createElement(PhRow, {
+        key: x.k,
+        icon: x.icon,
+        title: x.t,
+        sub: x.s,
+        badge: x.b,
+        onClick: function onClick() {
+          return setScreen(x.k);
+        }
+      });
+    })), extra, showPw && React.createElement(ChangePw, {
+      user: user,
+      onClose: function onClose() {
+        return setShowPw(false);
+      },
+      notify: notify
+    }));
+  };
+  if (section === 'hr' && hrAccess) return secView('HR Portal', hrAccess === 'hr' ? 'Appraisal scoring and leave approval sit with each person\'s line manager (the supervisor when none is set); you see the findings and records.' : hrAccess === 'ed' ? 'Leave approval sits with each person\'s line manager (the supervisor when none is set); you see the records.' : 'Performance, attendance, timesheets, leave, profiles and policies', hrTiles);
+  if (section === 'team' && isHead) return secView('My Team', "".concat(myTeam.length, " staff you line-manage"), teamTiles, React.createElement(PhSection, {
+    title: "Your team (".concat(myTeam.length, ")")
+  }, React.createElement("div", {
+    className: "bg-white rounded-2xl border p-4",
+    style: {
+      borderColor: '#E1E9E4'
+    }
+  }, React.createElement("div", {
+    className: "flex flex-wrap gap-2"
+  }, myTeam.map(function (id) {
+    return React.createElement("span", {
+      key: id,
+      className: "px-3 py-1.5 rounded-full text-sm font-semibold",
+      style: {
+        background: '#DCEFE3',
+        color: '#1F6F4A'
+      }
+    }, teamNames[id] || '…');
+  })), React.createElement("p", {
+    className: "text-xs mt-3",
+    style: {
+      color: '#4B5A52'
+    }
+  }, "HR sets line managers in Staff Profiles. Your leave recommendations go to the supervisor for final approval. Your own leave and appraisal go to your line manager, not to you."))));
+  if (section === 'security' && secAccess) return secView('Security Portal', 'Field trip monitoring and login activity', secTiles);
   return React.createElement(PortalShell, {
     user: user,
     tab: section === 'portals' ? 'portals' : 'home',
