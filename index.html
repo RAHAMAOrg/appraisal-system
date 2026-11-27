@@ -807,37 +807,85 @@ function Login(_ref5) {
       return _ref6.apply(this, arguments);
     };
   }();
+  useEffect(function () {
+    if (CLASSIC_VIEW) return;
+    document.body.classList.add('rp-new');
+    return function () {
+      return document.body.classList.remove('rp-new');
+    };
+  }, []);
+  var lbl = "block text-xs font-bold uppercase tracking-wider mb-2";
   return React.createElement("div", {
-    className: "min-h-screen flex items-center justify-center p-4"
+    className: "min-h-screen md:flex",
+    style: {
+      background: '#F2F6F3',
+      color: '#17251E'
+    }
   }, React.createElement("div", {
-    className: "w-full max-w-md glass rounded-3xl p-8 animate-in"
+    className: "md:w-5/12 lg:w-1/2 text-white flex flex-col justify-between p-6 md:p-12",
+    style: {
+      background: '#173D2B'
+    }
   }, React.createElement("div", {
-    className: "text-center mb-8"
+    className: "flex items-center gap-3"
+  }, React.createElement("div", {
+    className: "w-12 h-12 md:w-14 md:h-14 rounded-2xl bg-white flex items-center justify-center overflow-hidden flex-shrink-0"
   }, React.createElement("img", {
     src: "RAHAMA Empowerment Logo Design (3).png",
-    alt: "RAHAMA",
-    className: "w-24 h-24 mx-auto mb-4 object-contain",
+    alt: "RAHAMA logo",
+    className: "w-full h-full object-contain p-1",
     onError: function onError(e) {
       e.target.style.display = 'none';
-      e.target.nextSibling.style.display = 'flex';
     }
-  }), React.createElement("div", {
-    className: "w-20 h-20 mx-auto mb-4 rounded-2xl bg-gradient-to-br from-green-500 to-emerald-700 items-center justify-center shadow-lg",
-    style: {
-      display: 'none'
-    }
-  }, React.createElement("i", {
-    className: "fas fa-chart-line text-white text-3xl"
-  })), React.createElement("h1", {
-    className: "text-3xl font-extrabold text-gray-800 mb-1"
+  })), React.createElement("div", null, React.createElement("p", {
+    className: "text-xl font-extrabold tracking-wide"
   }, "RAHAMA"), React.createElement("p", {
-    className: "text-sm font-medium text-gray-500 tracking-wide uppercase"
+    className: "text-xs",
+    style: {
+      color: '#B7D3C3'
+    }
+  }, "Girl Child and Women Empowerment Initiative"))), React.createElement("div", {
+    className: "hidden md:block"
+  }, React.createElement("h1", {
+    className: "text-4xl font-extrabold leading-tight"
+  }, "Staff Portal"), React.createElement("p", {
+    className: "mt-3 text-base max-w-md",
+    style: {
+      color: '#D5E6DC'
+    }
+  }, "Your timesheet, leave, appraisals, field trips, work plan and policies in one place, with Finance one tap away.")), React.createElement("p", {
+    className: "hidden md:block text-xs",
+    style: {
+      color: '#9FC2AE'
+    }
+  }, "\xA9 ", new Date().getFullYear(), " RAHAMA Initiative"), React.createElement("h1", {
+    className: "md:hidden text-2xl font-extrabold mt-5"
   }, "Staff Portal")), React.createElement("div", {
-    className: "mb-6"
-  }, React.createElement("label", {
-    className: "block text-xs font-bold text-gray-500 uppercase tracking-wider mb-3"
+    className: "flex-1 flex items-start md:items-center justify-center p-4 md:p-12"
+  }, React.createElement("div", {
+    className: "w-full max-w-md bg-white rounded-3xl border p-6 md:p-8 -mt-2 md:mt-0",
+    style: {
+      borderColor: '#E1E9E4'
+    }
+  }, React.createElement("h2", {
+    className: "text-2xl font-extrabold"
+  }, "Sign in"), React.createElement("p", {
+    className: "text-sm mt-1 mb-6",
+    style: {
+      color: '#4B5A52'
+    }
+  }, "Use your RAHAMA email and password."), React.createElement("div", {
+    className: "mb-5"
+  }, React.createElement("span", {
+    className: lbl,
+    style: {
+      color: '#5B6B62'
+    }
   }, "Sign in as"), React.createElement("div", {
-    className: "grid grid-cols-2 gap-3"
+    className: "grid grid-cols-2 gap-2 p-1 rounded-xl",
+    style: {
+      background: '#EEF2EF'
+    }
   }, [['employee', 'fa-user', 'Employee'], ['supervisor', 'fa-user-tie', 'Supervisor']].map(function (_ref7) {
     var _ref8 = _slicedToArray(_ref7, 3),
       r = _ref8[0],
@@ -848,35 +896,61 @@ function Login(_ref5) {
       onClick: function onClick() {
         return setRole(r);
       },
-      className: "py-3 rounded-xl font-semibold transition-all ".concat(role === r ? 'btn-green text-white shadow-lg' : 'bg-gray-100 text-gray-600 hover:bg-gray-200')
+      className: "h-11 rounded-lg font-semibold text-sm transition-all",
+      style: role === r ? {
+        background: '#FFFFFF',
+        color: '#173D2B',
+        boxShadow: '0 1px 3px rgba(0,0,0,0.08)'
+      } : {
+        color: '#4B5A52'
+      }
     }, React.createElement("i", {
       className: "fas ".concat(ic, " mr-2")
     }), lb);
   }))), React.createElement("div", {
     className: "mb-4"
   }, React.createElement("label", {
-    className: "block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2"
+    htmlFor: "lgEmail",
+    className: lbl,
+    style: {
+      color: '#5B6B62'
+    }
   }, "Email"), React.createElement("div", {
     className: "relative"
   }, React.createElement("i", {
-    className: "fas fa-envelope absolute left-4 top-3.5 text-gray-400"
+    className: "fas fa-envelope absolute left-4 top-3.5",
+    style: {
+      color: '#8A9A91'
+    }
   }), React.createElement("input", {
+    id: "lgEmail",
     type: "email",
     value: email,
     onChange: function onChange(e) {
       return setEmail(e.target.value);
     },
-    className: "w-full pl-11 pr-4 py-3 border-2 border-gray-200 rounded-xl transition",
+    className: "w-full pl-11 pr-4 py-3 border rounded-xl transition",
+    style: {
+      borderColor: '#CFDAD3'
+    },
     placeholder: "your.email@rgcweinigeria.org"
   }))), React.createElement("div", {
     className: "mb-6"
   }, React.createElement("label", {
-    className: "block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2"
+    htmlFor: "lgPw",
+    className: lbl,
+    style: {
+      color: '#5B6B62'
+    }
   }, "Password"), React.createElement("div", {
     className: "relative"
   }, React.createElement("i", {
-    className: "fas fa-lock absolute left-4 top-3.5 text-gray-400"
+    className: "fas fa-lock absolute left-4 top-3.5",
+    style: {
+      color: '#8A9A91'
+    }
   }), React.createElement("input", {
+    id: "lgPw",
     type: show ? "text" : "password",
     value: pw,
     onChange: function onChange(e) {
@@ -885,26 +959,39 @@ function Login(_ref5) {
     onKeyPress: function onKeyPress(e) {
       return e.key === 'Enter' && go();
     },
-    className: "w-full pl-11 pr-12 py-3 border-2 border-gray-200 rounded-xl transition",
+    className: "w-full pl-11 pr-12 py-3 border rounded-xl transition",
+    style: {
+      borderColor: '#CFDAD3'
+    },
     placeholder: "Enter password"
   }), React.createElement("button", {
     onClick: function onClick() {
       return setShow(!show);
     },
-    className: "absolute right-4 top-3.5 text-gray-400 hover:text-gray-600"
+    "aria-label": show ? 'Hide password' : 'Show password',
+    className: "absolute right-3 top-1.5 w-10 h-10",
+    style: {
+      color: '#8A9A91'
+    }
   }, React.createElement("i", {
     className: "fas fa-eye".concat(show ? '-slash' : '')
   })))), React.createElement("button", {
     onClick: go,
     disabled: busy || !email || !pw,
-    className: "w-full btn-green text-white py-3.5 rounded-xl font-bold disabled:opacity-50"
+    className: "w-full text-white h-12 rounded-xl font-bold disabled:opacity-50",
+    style: {
+      background: '#173D2B'
+    }
   }, busy ? React.createElement(React.Fragment, null, React.createElement("i", {
     className: "fas fa-spinner fa-spin mr-2"
   }), "Signing in...") : React.createElement(React.Fragment, null, React.createElement("i", {
     className: "fas fa-sign-in-alt mr-2"
-  }), "Sign In")), React.createElement("p", {
-    className: "text-center text-xs text-gray-400 mt-6"
-  }, "\xA9 2025 RAHAMA Initiative")));
+  }), "Sign in")), React.createElement("p", {
+    className: "md:hidden text-center text-xs mt-6",
+    style: {
+      color: '#6B7A72'
+    }
+  }, "\xA9 ", new Date().getFullYear(), " RAHAMA Initiative"))));
 }
 function ChangePw(_ref9) {
   var user = _ref9.user,
