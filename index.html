@@ -23137,7 +23137,7 @@ function StaffPortal(_ref266) {
   }, []);
   var loadAttn = function () {
     var _ref271 = _asyncToGenerator(_regeneratorRuntime().mark(function _callee114() {
-      var items, c, safe, j, pol, od, myCon, cs, ca, eds, na, ne, nr, goC, msgs, ap, _nr, fc, myF, fts, fa, fw, mt, lmMap, tw, meEd, amEd, sups, edFor, nts, hd, headNow, pa, np, lv, lvArr, nl, rec, nrec, tr, ta, nt, goT, ns, no, nm, st, sa, ret, own, w, _ta;
+      var items, c, safe, j, pol, od, myCon, cs, ca, eds, na, ne, nr, goC, msgsAll, liveTrips, liveIds, msgs, ap, _nr, fc, myF, fts, fa, fw, mt, lmMap, tw, meEd, amEd, sups, edFor, nts, hd, headNow, pa, np, lv, lvArr, nl, rec, nrec, tr, ta, nt, goT, ns, no, nm, st, sa, ret, own, w, _ta;
       return _regeneratorRuntime().wrap(function _callee114$(_context115) {
         while (1) switch (_context115.prev = _context115.next) {
           case 0:
@@ -23293,10 +23293,22 @@ function StaffPortal(_ref266) {
           case 36:
             _context115.next = 38;
             return safe(function () {
-              return j("".concat(SB, "/rest/v1/trip_messages?to_user_id=eq.").concat(user.id, "&acknowledged_at=is.null&select=id"));
+              return j("".concat(SB, "/rest/v1/trip_messages?to_user_id=eq.").concat(user.id, "&acknowledged_at=is.null&select=id,trip_id"));
             });
           case 38:
-            msgs = _context115.sent;
+            msgsAll = _context115.sent;
+            _context115.next = 41;
+            return safe(function () {
+              return j("".concat(SB, "/rest/v1/field_trips?employee_id=eq.").concat(user.id, "&status=eq.active&select=id"));
+            });
+          case 41:
+            liveTrips = _context115.sent;
+            liveIds = new Set((Array.isArray(liveTrips) ? liveTrips : []).map(function (t) {
+              return String(t.id);
+            }));
+            msgs = (Array.isArray(msgsAll) ? msgsAll : []).filter(function (m) {
+              return m.trip_id == null || liveIds.has(String(m.trip_id));
+            });
             if (Array.isArray(msgs) && msgs.length) items.push({
               icon: 'fa-shield-halved',
               tone: 'red',
@@ -23306,14 +23318,14 @@ function StaffPortal(_ref266) {
               }
             });
             if (!isEmp) {
-              _context115.next = 46;
+              _context115.next = 51;
               break;
             }
-            _context115.next = 43;
+            _context115.next = 48;
             return safe(function () {
               return j("".concat(SB, "/rest/v1/appraisals?employee_id=eq.").concat(user.id, "&status=eq.completed&select=id,withdrawn,employee_review_status"));
             });
-          case 43:
+          case 48:
             ap = _context115.sent;
             _nr = (Array.isArray(ap) ? ap : []).filter(function (a) {
               return !a.withdrawn && (!a.employee_review_status || a.employee_review_status === 'pending');
@@ -23329,22 +23341,22 @@ function StaffPortal(_ref266) {
                 }
               });
             }
-          case 46:
-            _context115.next = 48;
+          case 51:
+            _context115.next = 53;
             return safe(function () {
               return j("".concat(SB, "/rest/v1/field_staff?coordinator_id=eq.").concat(user.id, "&is_active=eq.true&select=id"));
             });
-          case 48:
+          case 53:
             fc = _context115.sent;
             myF = Array.isArray(fc) ? fc.map(function (x) {
               return x.id;
             }) : [];
             if (myF.length) c.fieldCoord = myF.length;
-            _context115.next = 53;
+            _context115.next = 58;
             return safe(function () {
               return j("".concat(SB, "/rest/v1/field_timesheets?status=in.(coordinator_signed,returned)&select=staff_id,status,coordinator_id"));
             });
-          case 53:
+          case 58:
             fts = _context115.sent;
             fa = Array.isArray(fts) ? fts : [];
             fw = fa.filter(function (x) {
@@ -23362,14 +23374,14 @@ function StaffPortal(_ref266) {
               });
             }
             if (!(isEmp || isSup)) {
-              _context115.next = 62;
+              _context115.next = 67;
               break;
             }
-            _context115.next = 60;
+            _context115.next = 65;
             return safe(function () {
               return j("".concat(SB, "/rest/v1/timesheets?user_id=eq.").concat(user.id, "&status=eq.returned&select=id,month"));
             });
-          case 60:
+          case 65:
             mt = _context115.sent;
             if (Array.isArray(mt) && mt.length) {
               c.myTs = mt.length;
@@ -23382,47 +23394,47 @@ function StaffPortal(_ref266) {
                 }
               });
             }
-          case 62:
-            _context115.next = 64;
+          case 67:
+            _context115.next = 69;
             return loadLineManagers();
-          case 64:
+          case 69:
             lmMap = _context115.sent;
             setLmOf(lmMap);
-            _context115.next = 68;
+            _context115.next = 73;
             return safe(function () {
               return j("".concat(SB, "/rest/v1/timesheets?status=eq.submitted&select=id,user_id"));
             });
-          case 68:
+          case 73:
             tw = _context115.sent;
-            _context115.next = 71;
+            _context115.next = 76;
             return safe(function () {
               return j("".concat(SB, "/rest/v1/users?id=eq.").concat(user.id, "&select=is_ed"));
             });
-          case 71:
+          case 76:
             meEd = _context115.sent;
             amEd = Array.isArray(meEd) && meEd[0] && !!meEd[0].is_ed;
             if (!amEd) {
-              _context115.next = 82;
+              _context115.next = 87;
               break;
             }
-            _context115.next = 76;
+            _context115.next = 81;
             return safe(function () {
               return j("".concat(SB, "/rest/v1/users?role=eq.supervisor&select=id"));
             });
-          case 76:
+          case 81:
             _context115.t3 = _context115.sent;
             if (_context115.t3) {
-              _context115.next = 79;
+              _context115.next = 84;
               break;
             }
             _context115.t3 = [];
-          case 79:
+          case 84:
             _context115.t2 = _context115.t3;
-            _context115.next = 83;
+            _context115.next = 88;
             break;
-          case 82:
+          case 87:
             _context115.t2 = [];
-          case 83:
+          case 88:
             sups = _context115.t2;
             edFor = function edFor(uid) {
               return amEd && String(uid) !== String(user.id) && lmMap[uid] == null && sups.some(function (x) {
@@ -23453,23 +23465,23 @@ function StaffPortal(_ref266) {
               return String(lmMap[k]) === String(user.id);
             });
             if (!(isSup || headNow)) {
-              _context115.next = 99;
+              _context115.next = 104;
               break;
             }
-            _context115.next = 91;
+            _context115.next = 96;
             return safe(function () {
               return j("".concat(SB, "/rest/v1/appraisals?status=eq.pending&select=id,withdrawn,employee_id"));
             });
-          case 91:
+          case 96:
             pa = _context115.sent;
             np = (Array.isArray(pa) ? pa : []).filter(function (a) {
               return !a.withdrawn && isForMe(lmMap, user, a.employee_id);
             }).length;
-            _context115.next = 95;
+            _context115.next = 100;
             return safe(function () {
               return j("".concat(SB, "/rest/v1/leave_requests?select=*"));
             });
-          case 95:
+          case 100:
             lv = _context115.sent;
             lvArr = (Array.isArray(lv) ? lv : []).filter(leavePend);
             nl = isSup ? lvArr.filter(function (l) {
@@ -23526,16 +23538,16 @@ function StaffPortal(_ref266) {
                 });
               }
             }
-          case 99:
+          case 104:
             if (!hrAccess) {
-              _context115.next = 105;
+              _context115.next = 110;
               break;
             }
-            _context115.next = 102;
+            _context115.next = 107;
             return safe(function () {
               return j("".concat(SB, "/rest/v1/hr_recommendations?decision=eq.pending&select=id"));
             });
-          case 102:
+          case 107:
             rec = _context115.sent;
             nrec = Array.isArray(rec) ? rec.length : 0;
             if (nrec) {
@@ -23550,16 +23562,16 @@ function StaffPortal(_ref266) {
                 }
               });
             }
-          case 105:
+          case 110:
             if (!secAccess) {
-              _context115.next = 117;
+              _context115.next = 122;
               break;
             }
-            _context115.next = 108;
+            _context115.next = 113;
             return safe(function () {
               return j("".concat(SB, "/rest/v1/field_trips?status=eq.active&select=*"));
             });
-          case 108:
+          case 113:
             tr = _context115.sent;
             ta = Array.isArray(tr) ? tr : [];
             nt = ta.length;
@@ -23595,12 +23607,12 @@ function StaffPortal(_ref266) {
                 go: goT
               });
             }
-          case 117:
+          case 122:
             if (!supabaseClient) {
-              _context115.next = 127;
+              _context115.next = 132;
               break;
             }
-            _context115.next = 120;
+            _context115.next = 125;
             return safe(_asyncToGenerator(_regeneratorRuntime().mark(function _callee113() {
               var _yield$supabaseClient19, data, error;
               return _regeneratorRuntime().wrap(function _callee113$(_context114) {
@@ -23619,7 +23631,7 @@ function StaffPortal(_ref266) {
                 }
               }, _callee113);
             })));
-          case 120:
+          case 125:
             st = _context115.sent;
             sa = Array.isArray(st) ? st : [];
             ret = sa.filter(function (x) {
@@ -23653,22 +23665,22 @@ function StaffPortal(_ref266) {
                 }
               });
             }
-          case 127:
+          case 132:
             if (!isEmp) {
-              _context115.next = 132;
+              _context115.next = 137;
               break;
             }
-            _context115.next = 130;
+            _context115.next = 135;
             return safe(function () {
               return j("".concat(SB, "/rest/v1/attendance?employee_id=eq.").concat(user.id, "&date=eq.").concat(new Date().toISOString().slice(0, 10), "&select=clock_in,clock_out,status"));
             });
-          case 130:
+          case 135:
             _ta = _context115.sent;
             setTodayAtt(Array.isArray(_ta) && _ta[0] ? _ta[0] : {});
-          case 132:
+          case 137:
             setAttn(items);
             setCounts(c);
-          case 134:
+          case 139:
           case "end":
             return _context115.stop();
         }
