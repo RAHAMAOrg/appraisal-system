@@ -28054,8 +28054,8 @@ var HeadRec = function HeadRec(_ref318) {
     className: "fas fa-user-check mr-1"
   }), l.head_decided_by || 'Head of Unit', " recommends: ", l.head_decision === 'approved' ? 'Approve' : 'Reject', l.head_comment ? " \xB7 \"".concat(l.head_comment, "\"") : '') : null;
 };
-var EXIT_PROP = [['laptop', 'Laptop'], ['phone', 'Phone / SIM'], ['id_card', 'ID card'], ['keys', 'Keys']];
-var EXIT_DEPTS = [['hr', 'HR', 'Handover, keys, work tools, ID card, fines or penalties, last timesheet and field trips'], ['procurement', 'Procurement', 'Store items, vehicles and assets in their care'], ['mne', 'M&E', 'Reports, data and work plan activities handed over'], ['finance', 'Finance', 'Advances retired and nothing open in the FMS (FMS › Staff shows what is open)']];
+var EXIT_PROP = [['laptop', 'Laptop'], ['phone', 'Phone / SIM'], ['id_card', 'ID card'], ['vis_jacket', 'Visibility jacket'], ['keys', 'Keys']];
+var EXIT_DEPTS = [['hr', 'HR', 'Handover, keys, work tools, ID card, visibility jacket, fines or penalties, last timesheet and field trips'], ['procurement', 'Procurement', 'Store items, vehicles and assets in their care'], ['mne', 'M&E', 'Reports, data and work plan activities handed over'], ['finance', 'Finance', 'Advances retired and nothing open in the FMS (FMS › Staff shows what is open)']];
 var EXIT_STATUS = {
   with_line_manager: ['With line manager', 'bg-amber-100 text-amber-800'],
   with_supervisor: ['With supervisor', 'bg-amber-100 text-amber-800'],
@@ -28962,7 +28962,7 @@ function ExitDetail(_ref336) {
       className: "text-sm text-gray-500"
     }, "The line manager (", e.line_manager || 'or HR', ") records this.")), React.createElement("div", null, React.createElement("p", {
       className: "text-xs font-bold text-gray-500 uppercase mb-2"
-    }, "Keys, work tools and ID card"), React.createElement("div", {
+    }, "Keys, work tools, ID card and visibility jacket"), React.createElement("div", {
       className: "space-y-2"
     }, EXIT_PROP.map(function (_ref341) {
       var _ref342 = _slicedToArray(_ref341, 2),
